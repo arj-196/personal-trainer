@@ -1,0 +1,21 @@
+[tool.poetry]
+name = "personal-trainer"
+version = "0.1.0"
+description = "Markdown-first personal trainer application"
+authors = []
+readme = "README.md"
+packages = [{ include = "personal_trainer", from = "src" }]
+
+[tool.poetry.dependencies]
+python = ">=3.10,<4.0"
+click = "^8.3.0"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.3.5"
+
+[tool.poetry.scripts]
+personal-trainer = "personal_trainer.cli:main"
+
+[build-system]
+requires = ["poetry-core>=1.9.0"]
+build-backend = "poetry.core.masonry.api"

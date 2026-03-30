@@ -1,0 +1,303 @@
+from __future__ import annotations
+
+import json
+import re
+from datetime import date
+from pathlib import Path
+
+from personal_trainer.models import (
+    AppState,
+    CheckIn,
+    UserProfile,
+    WorkoutPlan,
+    WorkspacePaths,
+)
+
+SECTION_PATTERN = re.compile(r"^##\s+(?P<title>.+?)\s*$", re.MULTILINE)
+KEY_VALUE_PATTERN = re.compile(r"^-\s+([^:]+):\s*(.+)$")
+LIST_ITEM_PATTERN = re.compile(r"^-\s+(.+)$")
+
+
+def workspace_paths(root: Path) -> WorkspacePaths:
+    return WorkspacePaths(
+        root=root,
+        profile=root / "profile.md",
+        plan=root / "plan.md",
+        coach_notes=root / "coach_notes.md",
+        state=root / ".trainer" / "state.json",
+        checkins_dir=root / "checkins",
+    )
+
+
+def ensure_workspace(root: Path) -> WorkspacePaths:
+    paths = workspace_paths(root)
+    paths.root.mkdir(parents=True, exist_ok=True)
+    paths.checkins_dir.mkdir(parents=True, exist_ok=True)
+    paths.state.parent.mkdir(parents=True, exist_ok=True)
+    return paths
+
+
+def _split_sections(text: str) -> dict[str, str]:
+    matches = list(SECTION_PATTERN.finditer(text))
+    sections: dict[str, str] = {}
+    for index, match in enumerate(matches):
+        start = match.end()
+        end = matches[index + 1].start() if index + 1 < len(matches) else len(text)
+        sections[match.group("title").strip().lower()] = text[start:end].strip()
+    return sections
+
+
+def _parse_bullets(block: str) -> list[str]:
+    items: list[str] = []
+    for line in block.splitlines():
+        match = LIST_ITEM_PATTERN.match(line.strip())
+        if match:
+            items.append(match.group(1).strip())
+    return items
+
+
+def _parse_key_values(block: str) -> dict[str, str]:
+    values: dict[str, str] = {}
+    for line in block.splitlines():
+        match = KEY_VALUE_PATTERN.match(line.strip())
+        if match:
+            values[match.group(1).strip().lower().replace(" ", "_")] = match.group(
+                2
+            ).strip()
+    return values
+
+
+def _parse_int(value: str | None, default: int | None = None) -> int | None:
+    if value is None or value == "":
+        return default
+    digits = re.findall(r"\d+", value)
+    if not digits:
+        return default
+    return int(digits[0])
+
+
+def _parse_float(value: str | None) -> float | None:
+    if value is None or value == "":
+        return None
+    match = re.search(r"\d+(?:\.\d+)?", value)
+    if not match:
+        return None
+    return float(match.group(0))
+
+
+def load_profile(path: Path) -> UserProfile:
+    text = path.read_text(encoding="utf-8")
+    sections = _split_sections(text)
+    basics = _parse_key_values(sections.get("basics", ""))
+    goals = _parse_key_values(sections.get("goals", ""))
+    schedule = _parse_key_values(sections.get("schedule", ""))
+
+    return UserProfile(
+        name=basics.get("name", "Athlete"),
+        age=_parse_int(basics.get("age")),
+        sex=basics.get("sex", ""),
+        height_cm=_parse_int(basics.get("height_cm")),
+        weight_kg=_parse_float(basics.get("weight_kg")),
+        goal=goals.get("primary_goal", goals.get("goal", "General fitness")),
+        experience_level=goals.get("experience_level", "beginner").lower(),
+        training_days=max(2, min(6, _parse_int(schedule.get("days_per_week"), 3) or 3)),
+        session_length_minutes=max(
+            20, min(120, _parse_int(schedule.get("session_length_minutes"), 45) or 45)
+        ),
+        equipment=_parse_bullets(sections.get("equipment", "")),
+        limitations=_parse_bullets(sections.get("limitations", "")),
+        preferred_focus=_parse_bullets(sections.get("preferred_focus", "")),
+        cardio_preference=goals.get("cardio_preference", "walk"),
+        notes=_parse_bullets(sections.get("notes", "")),
+    )
+
+
+def load_checkin(path: Path) -> CheckIn:
+    text = path.read_text(encoding="utf-8")
+    sections = _split_sections(text)
+    summary = _parse_key_values(sections.get("summary", ""))
+    reflections = _parse_key_values(sections.get("reflections", ""))
+
+    raw_date = summary.get("date")
+    if not raw_date:
+        raise ValueError(
+            "Check-in is missing '- Date: YYYY-MM-DD' in the Summary section."
+        )
+
+    return CheckIn(
+        check_in_date=date.fromisoformat(raw_date),
+        workouts_completed=_parse_int(summary.get("workouts_completed"), 0) or 0,
+        workouts_planned=_parse_int(summary.get("workouts_planned"), 0) or 0,
+        average_difficulty=max(
+            1, min(10, _parse_int(summary.get("average_difficulty"), 5) or 5)
+        ),
+        energy=max(1, min(10, _parse_int(summary.get("energy"), 5) or 5)),
+        soreness=max(1, min(10, _parse_int(summary.get("soreness"), 3) or 3)),
+        body_weight_kg=_parse_float(summary.get("body_weight_kg")),
+        wins=_parse_bullets(sections.get("wins", "")),
+        struggles=_parse_bullets(sections.get("struggles", "")),
+        notes=_parse_bullets(sections.get("notes", ""))
+        + _parse_bullets(sections.get("reflections", "")),
+    )
+
+
+def load_state(path: Path) -> AppState:
+    if not path.exists():
+        return AppState()
+    return AppState.from_dict(json.loads(path.read_text(encoding="utf-8")))
+
+
+def save_state(path: Path, state: AppState) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(state.to_dict(), indent=2), encoding="utf-8")
+
+
+def render_profile_template() -> str:
+    return """# Athlete Profile
+
+Fill in the sections below, then run `personal-trainer plan <workspace>`.
+
+## Basics
+- Name: Alex
+- Age: 34
+- Sex: male
+- Height cm: 178
+- Weight kg: 82
+
+## Goals
+- Primary goal: Build muscle and improve conditioning
+- Experience level: beginner
+- Cardio preference: bike
+
+## Schedule
+- Days per week: 4
+- Session length minutes: 50
+
+## Equipment
+- Dumbbells
+- Adjustable bench
+- Pull-up bar
+- Exercise bike
+
+## Limitations
+- Mild left knee irritation with deep knee flexion
+
+## Preferred Focus
+- Upper body strength
+- Sustainable fat loss
+- Better energy during workdays
+
+## Notes
+- I usually train before work.
+- I prefer simple plans I can repeat for a few weeks.
+"""
+
+
+def render_checkin_template(plan: WorkoutPlan) -> str:
+    return f"""# Weekly Check-In
+
+Complete this after finishing your current training week, then run `personal-trainer refresh <workspace> <checkin.md>`.
+
+## Summary
+- Date: {date.today().isoformat()}
+- Workouts completed: {plan.workouts_per_week}
+- Workouts planned: {plan.workouts_per_week}
+- Average difficulty (1-10): 6
+- Energy (1-10): 7
+- Soreness (1-10): 4
+- Body weight kg: 
+
+## Wins
+- 
+
+## Struggles
+- 
+
+## Notes
+- 
+"""
+
+
+def render_plan(plan: WorkoutPlan, profile: UserProfile) -> str:
+    lines = [
+        f"# {profile.name}'s Training Plan",
+        "",
+        f"- Generated on: {plan.generated_on.isoformat()}",
+        f"- Plan version: {plan.plan_version}",
+        f"- Goal: {profile.goal}",
+        f"- Weekly training days: {plan.workouts_per_week}",
+        f"- Target session length: {profile.session_length_minutes} minutes",
+        "",
+        "## Summary",
+        plan.summary,
+        "",
+        "## Progression",
+        plan.progression_note,
+        "",
+    ]
+
+    for day in plan.days:
+        lines.extend(
+            [
+                f"## {day.day_label}: {day.focus}",
+                f"- Warm-up: {day.warmup}",
+                "- Main work:",
+            ]
+        )
+        lines.extend([exercise.to_markdown() for exercise in day.exercises])
+        lines.extend(
+            [
+                f"- Finisher: {day.finisher}",
+                f"- Recovery: {day.recovery}",
+                "",
+            ]
+        )
+
+    lines.extend(
+        [
+            "## Next Check-In",
+            plan.next_checkin_prompt,
+            "",
+        ]
+    )
+    return "\n".join(lines)
+
+
+def render_coach_notes(
+    plan: WorkoutPlan, profile: UserProfile, checkin: CheckIn | None = None
+) -> str:
+    lines = [
+        "# Coach Notes",
+        "",
+        f"Athlete: {profile.name}",
+        f"Current goal: {profile.goal}",
+        f"Current plan version: {plan.plan_version}",
+        "",
+        "## What To Focus On",
+        f"- Keep effort around RPE 6-8 on most work sets.",
+        f"- Protect these constraints: {', '.join(profile.limitations) if profile.limitations else 'none reported'}.",
+        f"- Prioritize consistency over adding extra sessions.",
+        "",
+    ]
+    if checkin is not None:
+        lines.extend(
+            [
+                "## Latest Check-In Read",
+                f"- Date: {checkin.check_in_date.isoformat()}",
+                f"- Adherence: {checkin.workouts_completed}/{checkin.workouts_planned}",
+                f"- Difficulty / Energy / Soreness: {checkin.average_difficulty}/{checkin.energy}/{checkin.soreness}",
+                f"- Wins: {', '.join(checkin.wins) if checkin.wins else 'none logged'}",
+                f"- Struggles: {', '.join(checkin.struggles) if checkin.struggles else 'none logged'}",
+                "",
+            ]
+        )
+    lines.extend(
+        [
+            "## Next Action",
+            "- Follow the plan for one week.",
+            "- Complete a check-in Markdown file.",
+            "- Regenerate the plan with `personal-trainer refresh`.",
+            "",
+        ]
+    )
+    return "\n".join(lines)
