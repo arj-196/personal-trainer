@@ -28,8 +28,27 @@ poetry install
 poetry run personal-trainer init sample_workspace
 poetry run personal-trainer plan sample_workspace
 poetry run personal-trainer status sample_workspace
+poetry run personal-trainer publish-notes sample_workspace
 poetry run personal-trainer refresh sample_workspace sample_workspace/checkins/2026-03-30-checkin.md
 ```
+
+## Apple Notes publishing
+
+On macOS, you can publish the current plan into Apple Notes:
+
+```bash
+poetry run personal-trainer publish-notes sample_workspace
+poetry run personal-trainer publish-notes sample_workspace --folder "Gym Plans" --title "Current Workout - Alex"
+```
+
+This command:
+
+- reads the current `plan.md`
+- converts it into Notes-friendly HTML
+- appends an `Exercise Images` section where each exercise label is followed by its matching image
+- replaces any existing note with the same title in the target folder
+
+The default destination is the `iCloud` account, in a folder named `Personal Trainer`.
 
 ## Markdown contract
 

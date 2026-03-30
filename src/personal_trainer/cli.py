@@ -16,6 +16,7 @@ from personal_trainer.markdown_io import (
     render_profile_template,
     save_state,
 )
+from personal_trainer.notes_publisher import NotesPublishError, publish_plan_to_notes
 from personal_trainer.planner import build_plan
 
 
@@ -125,6 +126,40 @@ def status_command(workspace: Path) -> None:
     click.echo(f"Plan version: {state.plan_version}")
     click.echo(f"Generated plans: {state.generated_plans}")
     click.echo(f"Last check-in: {state.last_check_in or 'none'}")
+
+
+@main.command("publish-notes", help="Publish the current plan to Apple Notes on macOS.")
+@WORKSPACE_ARGUMENT
+@click.option(
+    "--account", default="iCloud", show_default=True, help="Notes account name."
+)
+@click.option(
+    "--folder",
+    "folder_name",
+    default="Personal Trainer",
+    show_default=True,
+    help="Destination Notes folder.",
+)
+@click.option("--title", default=None, help="Override the note title.")
+def publish_notes_command(
+    workspace: Path, account: str, folder_name: str, title: str | None
+) -> None:
+    paths = ensure_workspace(workspace)
+    sync_workspace_library(paths.root)
+    try:
+        result = publish_plan_to_notes(
+            paths.root,
+            account=account,
+            folder=folder_name,
+            title=title,
+        )
+    except NotesPublishError as error:
+        raise click.ClickException(str(error)) from error
+
+    click.echo(
+        f"Published '{result.title}' to Apple Notes in {result.account}/{result.folder}"
+    )
+    click.echo(f"Note ID: {result.note_id}")
 
 
 if __name__ == "__main__":
