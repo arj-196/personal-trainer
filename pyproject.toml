@@ -5,6 +5,9 @@ description = "Markdown-first personal trainer application"
 authors = []
 readme = "README.md"
 packages = [{ include = "personal_trainer", from = "src" }]
+include = [
+  { path = "src/personal_trainer/assets/**", format = ["sdist", "wheel"] },
+]
 
 [tool.poetry.dependencies]
 python = ">=3.10,<4.0"

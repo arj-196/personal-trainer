@@ -13,6 +13,7 @@ def test_init_and_plan_flow(tmp_path) -> None:
     result = runner.invoke(main, ["init", str(workspace)])
     assert result.exit_code == 0
     assert (workspace / "profile.md").exists()
+    assert (workspace / "exercise_library" / "index.md").exists()
 
     profile = (workspace / "profile.md").read_text(encoding="utf-8")
     profile = profile.replace("Alex", "Jordan").replace(
@@ -27,6 +28,9 @@ def test_init_and_plan_flow(tmp_path) -> None:
 
     assert "Plan written" in result.output
     assert "coach_notes.md" in result.output
+    plan_text = (workspace / "plan.md").read_text(encoding="utf-8")
+    assert "exercise_library/images/" in plan_text
+    assert "Reference: [Dumbbell Bench Press]" in plan_text
 
 
 def test_refresh_updates_state(tmp_path) -> None:
@@ -69,6 +73,7 @@ def test_refresh_updates_state(tmp_path) -> None:
     assert state.generated_plans == 2
     assert state.last_check_in == "2026-03-30"
     assert "Plan version: 2" in (workspace / "plan.md").read_text(encoding="utf-8")
+    assert (workspace / "exercise_library" / "goblet-squat.md").exists()
 
 
 def test_status_runs(tmp_path) -> None:

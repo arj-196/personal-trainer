@@ -147,12 +147,12 @@ def _exercise_block(
         ]
 
     squat_pattern = (
-        "Box Squat"
+        "Squat to Bench"
         if lower_care
         else ("Goblet Squat" if dumbbells else "Bodyweight Squat")
     )
     hinge_pattern = "Dumbbell Romanian Deadlift" if dumbbells else "Hip Hinge"
-    split_squat = "Reverse Lunge" if not lower_care else "Low Step-Up"
+    split_squat = "Lunge" if not lower_care else "Low Step-Up"
     return [
         Exercise(
             squat_pattern, main_sets, rep_range, "Use a pain-free range of motion."
@@ -173,7 +173,10 @@ def _exercise_block(
             "Pause one second at the top.",
         ),
         Exercise(
-            "Dead Bug", 3, "8-10 / side", "Move slowly and keep the lower back quiet."
+            "Side Plank",
+            3,
+            "20-30 sec / side",
+            "Keep hips stacked and breathe behind the brace.",
         ),
     ]
 

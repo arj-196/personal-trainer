@@ -4,6 +4,7 @@ from pathlib import Path
 
 import click
 
+from personal_trainer.exercise_library import sync_workspace_library
 from personal_trainer.markdown_io import (
     ensure_workspace,
     load_checkin,
@@ -35,6 +36,7 @@ def main() -> None:
 @WORKSPACE_ARGUMENT
 def init_command(workspace: Path) -> None:
     paths = ensure_workspace(workspace)
+    sync_workspace_library(paths.root)
     if not paths.profile.exists():
         paths.profile.write_text(render_profile_template(), encoding="utf-8")
     save_state(paths.state, load_state(paths.state))
@@ -48,6 +50,7 @@ def init_command(workspace: Path) -> None:
 @WORKSPACE_ARGUMENT
 def plan_command(workspace: Path) -> None:
     paths = ensure_workspace(workspace)
+    sync_workspace_library(paths.root)
     if not paths.profile.exists():
         raise click.ClickException(f"Missing profile: {paths.profile}")
 
@@ -79,6 +82,7 @@ def plan_command(workspace: Path) -> None:
 @CHECKIN_ARGUMENT
 def refresh_command(workspace: Path, checkin: Path) -> None:
     paths = ensure_workspace(workspace)
+    sync_workspace_library(paths.root)
     if not paths.profile.exists():
         raise click.ClickException(f"Missing profile: {paths.profile}")
     if not checkin.exists():

@@ -1,0 +1,376 @@
+[
+  {
+    "slug": "dumbbell-bench-press",
+    "name": "Dumbbell Bench Press",
+    "aliases": [
+      "Dumbbell Bench Press"
+    ],
+    "summary": "A flat press using dumbbells to train chest, shoulders, and triceps.",
+    "setup": "Lie on a bench with a dumbbell in each hand and feet planted.",
+    "cues": [
+      "Lower the bells with elbows slightly tucked.",
+      "Press up while keeping shoulder blades pulled into the bench.",
+      "Stop just before the elbows fully lock out."
+    ],
+    "visual_note": "",
+    "image_filename": "dumbbell-bench-press.png",
+    "source_title": "File:Dumbbell-bench-press-1.png",
+    "source_url": "https://commons.wikimedia.org/wiki/File:Dumbbell-bench-press-1.png",
+    "author": "Everkinetic",
+    "credit": "http://everkinetic.com/",
+    "license": "CC BY-SA 3.0",
+    "license_url": "https://creativecommons.org/licenses/by-sa/3.0"
+  },
+  {
+    "slug": "push-up",
+    "name": "Push-Up",
+    "aliases": [
+      "Push-Up"
+    ],
+    "summary": "A bodyweight horizontal press that trains chest, shoulders, triceps, and trunk stiffness.",
+    "setup": "Start in a straight-arm plank with hands just outside shoulder width.",
+    "cues": [
+      "Keep ribs down and glutes tight.",
+      "Lower chest and hips together.",
+      "Drive the floor away to finish the rep."
+    ],
+    "visual_note": "",
+    "image_filename": "push-up.png",
+    "source_title": "File:Push-up-2.png",
+    "source_url": "https://commons.wikimedia.org/wiki/File:Push-up-2.png",
+    "author": "Everkinetic",
+    "credit": "http://everkinetic.com/",
+    "license": "CC BY-SA 3.0",
+    "license_url": "https://creativecommons.org/licenses/by-sa/3.0"
+  },
+  {
+    "slug": "pull-ups",
+    "name": "Pull-Ups",
+    "aliases": [
+      "Pull-Ups"
+    ],
+    "summary": "A vertical pulling movement for the back and arms using your bodyweight.",
+    "setup": "Hang from the bar with a full grip and active shoulders.",
+    "cues": [
+      "Start by pulling the shoulders down from the ears.",
+      "Drive elbows toward your ribs.",
+      "Lower under control to a dead hang."
+    ],
+    "visual_note": "",
+    "image_filename": "pull-ups.jpg",
+    "source_title": "File:Pull-ups exercise from back.jpg",
+    "source_url": "https://commons.wikimedia.org/wiki/File:Pull-ups_exercise_from_back.jpg",
+    "author": "PTPioneer",
+    "credit": "https://www.flickr.com/photos/182613284@N02/48441717042/",
+    "license": "CC BY 2.0",
+    "license_url": "https://creativecommons.org/licenses/by/2.0"
+  },
+  {
+    "slug": "one-arm-dumbbell-row",
+    "name": "1-Arm Dumbbell Row",
+    "aliases": [
+      "1-Arm Dumbbell Row"
+    ],
+    "summary": "A supported rowing pattern for the upper back and lats.",
+    "setup": "Brace one hand on a bench or thigh and row the dumbbell with the other arm.",
+    "cues": [
+      "Keep the torso quiet instead of twisting to move the weight.",
+      "Drive the elbow back toward your hip.",
+      "Pause briefly at the top and lower slowly."
+    ],
+    "visual_note": "The reference image shows the same bent-over row pattern without the one-hand bench support.",
+    "image_filename": "one-arm-dumbbell-row.JPG",
+    "source_title": "File:DumbbellBentOverRow.JPG",
+    "source_url": "https://commons.wikimedia.org/wiki/File:DumbbellBentOverRow.JPG",
+    "author": "No machine-readable author provided. GeorgeStepanek assumed (based on copyright claims).",
+    "credit": "No machine-readable source provided. Own work assumed (based on copyright claims).",
+    "license": "CC BY-SA 3.0",
+    "license_url": "http://creativecommons.org/licenses/by-sa/3.0/"
+  },
+  {
+    "slug": "seated-dumbbell-shoulder-press",
+    "name": "Seated Dumbbell Shoulder Press",
+    "aliases": [
+      "Seated Dumbbell Shoulder Press"
+    ],
+    "summary": "An overhead press variation that biases the shoulders while limiting lower-body momentum.",
+    "setup": "Sit tall on a bench with dumbbells at shoulder height.",
+    "cues": [
+      "Keep forearms vertical at the bottom.",
+      "Press overhead without flaring the ribcage.",
+      "Finish with biceps near the ears."
+    ],
+    "visual_note": "",
+    "image_filename": "seated-dumbbell-shoulder-press.png",
+    "source_title": "File:Dumbbell shoulder press 1.svg",
+    "source_url": "https://commons.wikimedia.org/wiki/File:Dumbbell_shoulder_press_1.svg",
+    "author": "Everkinetic",
+    "credit": "http://db.everkinetic.com/",
+    "license": "CC BY-SA 3.0",
+    "license_url": "https://creativecommons.org/licenses/by-sa/3.0"
+  },
+  {
+    "slug": "pike-push-up",
+    "name": "Pike Push-Up",
+    "aliases": [
+      "Pike Push-Up"
+    ],
+    "summary": "A bodyweight overhead pressing pattern that shifts load toward the shoulders.",
+    "setup": "From downward-dog-like hips, place hands on the floor and aim the head between the hands.",
+    "cues": [
+      "Keep hips high throughout the rep.",
+      "Lower the head in front of the hands, not straight down to the floor.",
+      "Push back to the start position."
+    ],
+    "visual_note": "The reference image shows a handstand push-up, which is a harder vertical pressing cousin of the pike push-up.",
+    "image_filename": "pike-push-up.jpg",
+    "source_title": "File:Handstand pushup.jpg",
+    "source_url": "https://commons.wikimedia.org/wiki/File:Handstand_pushup.jpg",
+    "author": "U.S. Air Force photo by Senior Airman Stephanie Rubi",
+    "credit": "http://www.jble.af.mil/shared/media/photodb/photos/2012/08/120817-F-QV958-018.jpg",
+    "license": "Public domain",
+    "license_url": ""
+  },
+  {
+    "slug": "rear-delt-raise-on-bench",
+    "name": "Chest-Supported Rear Delt Raise",
+    "aliases": [
+      "Chest-Supported Rear Delt Raise"
+    ],
+    "summary": "A rear-shoulder isolation movement performed face-down on a bench.",
+    "setup": "Lie chest-down on an incline bench and raise the arms out to the sides.",
+    "cues": [
+      "Use light weight and soft elbows.",
+      "Move from the shoulders, not the lower back.",
+      "Pause briefly when the upper arms are level with the torso."
+    ],
+    "visual_note": "",
+    "image_filename": "rear-delt-raise-on-bench.png",
+    "source_title": "File:Bent over rear deltoid raise with head on bench 1.svg",
+    "source_url": "https://commons.wikimedia.org/wiki/File:Bent_over_rear_deltoid_raise_with_head_on_bench_1.svg",
+    "author": "Everkinetic",
+    "credit": "http://db.everkinetic.com/",
+    "license": "CC BY-SA 3.0",
+    "license_url": "https://creativecommons.org/licenses/by-sa/3.0"
+  },
+  {
+    "slug": "plank",
+    "name": "Plank",
+    "aliases": [
+      "Plank"
+    ],
+    "summary": "An anti-extension core hold that teaches full-body bracing.",
+    "setup": "Set forearms on the floor, elbows under shoulders, and legs straight.",
+    "cues": [
+      "Squeeze glutes and quads.",
+      "Keep a straight line from shoulders to heels.",
+      "Breathe behind the brace instead of holding your breath."
+    ],
+    "visual_note": "",
+    "image_filename": "plank.png",
+    "source_title": "File:Plank exercise.svg",
+    "source_url": "https://commons.wikimedia.org/wiki/File:Plank_exercise.svg",
+    "author": "Pk0001",
+    "credit": "Own work",
+    "license": "CC BY-SA 4.0",
+    "license_url": "https://creativecommons.org/licenses/by-sa/4.0"
+  },
+  {
+    "slug": "side-plank",
+    "name": "Side Plank",
+    "aliases": [
+      "Side Plank"
+    ],
+    "summary": "A lateral core hold that trains obliques and trunk stability.",
+    "setup": "Stack feet, place the forearm under the shoulder, and lift hips off the floor.",
+    "cues": [
+      "Keep ears, shoulders, hips, knees, and ankles in one line.",
+      "Push the floor away with the bottom forearm.",
+      "Do not let the top shoulder roll forward."
+    ],
+    "visual_note": "",
+    "image_filename": "side-plank.jpg",
+    "source_title": "File:Side Plank.jpg",
+    "source_url": "https://commons.wikimedia.org/wiki/File:Side_Plank.jpg",
+    "author": "Jaykayfit",
+    "credit": "Own work",
+    "license": "CC BY-SA 3.0",
+    "license_url": "https://creativecommons.org/licenses/by-sa/3.0"
+  },
+  {
+    "slug": "squat-to-bench",
+    "name": "Squat to Bench",
+    "aliases": [
+      "Squat to Bench"
+    ],
+    "summary": "A squat variation that uses a bench as a depth target and control point.",
+    "setup": "Stand in front of a bench, sit back under control, then stand back up.",
+    "cues": [
+      "Reach hips back first.",
+      "Keep the full foot connected to the floor.",
+      "Lightly touch the bench instead of collapsing onto it."
+    ],
+    "visual_note": "",
+    "image_filename": "squat-to-bench.png",
+    "source_title": "File:Front squat to bench with barbells 1.svg",
+    "source_url": "https://commons.wikimedia.org/wiki/File:Front_squat_to_bench_with_barbells_1.svg",
+    "author": "Everkinetic",
+    "credit": "http://db.everkinetic.com/",
+    "license": "CC BY-SA 3.0",
+    "license_url": "https://creativecommons.org/licenses/by-sa/3.0"
+  },
+  {
+    "slug": "goblet-squat",
+    "name": "Goblet Squat",
+    "aliases": [
+      "Goblet Squat"
+    ],
+    "summary": "A squat performed while holding one weight vertically against the chest.",
+    "setup": "Hold a dumbbell or kettlebell close to the sternum with elbows pointed down.",
+    "cues": [
+      "Keep the weight close to your torso.",
+      "Sit between the hips while keeping the chest tall.",
+      "Drive through the whole foot to stand."
+    ],
+    "visual_note": "The image is a still frame from a Wikimedia Commons goblet squat demonstration video.",
+    "image_filename": "goblet-squat.jpg",
+    "source_title": "File:Kettlebell Goblet Squat.webm",
+    "source_url": "https://commons.wikimedia.org/wiki/File:Kettlebell_Goblet_Squat.webm",
+    "author": "Taco fleur",
+    "credit": "Own work",
+    "license": "CC BY-SA 4.0",
+    "license_url": "https://creativecommons.org/licenses/by-sa/4.0"
+  },
+  {
+    "slug": "bodyweight-squat",
+    "name": "Bodyweight Squat",
+    "aliases": [
+      "Bodyweight Squat"
+    ],
+    "summary": "A no-load squat pattern used to practice depth, balance, and leg strength.",
+    "setup": "Stand around shoulder width and counterbalance with the arms if needed.",
+    "cues": [
+      "Keep the heels grounded.",
+      "Let knees travel naturally as hips bend.",
+      "Stand up by driving the floor away."
+    ],
+    "visual_note": "",
+    "image_filename": "bodyweight-squat.gif",
+    "source_title": "File:Bodyweight Squats.gif",
+    "source_url": "https://commons.wikimedia.org/wiki/File:Bodyweight_Squats.gif",
+    "author": "Danielflefil",
+    "credit": "Own work",
+    "license": "CC BY-SA 4.0",
+    "license_url": "https://creativecommons.org/licenses/by-sa/4.0"
+  },
+  {
+    "slug": "dumbbell-romanian-deadlift",
+    "name": "Dumbbell Romanian Deadlift",
+    "aliases": [
+      "Dumbbell Romanian Deadlift"
+    ],
+    "summary": "A hip-dominant hinge that trains hamstrings and glutes.",
+    "setup": "Hold dumbbells in front of the thighs with knees softly bent.",
+    "cues": [
+      "Push hips back while the spine stays long.",
+      "Keep dumbbells close to the legs.",
+      "Stand tall by squeezing glutes at the top."
+    ],
+    "visual_note": "",
+    "image_filename": "dumbbell-romanian-deadlift.png",
+    "source_title": "File:Romanian-deadlift-1.png",
+    "source_url": "https://commons.wikimedia.org/wiki/File:Romanian-deadlift-1.png",
+    "author": "Everkinetic",
+    "credit": "http://everkinetic.com/",
+    "license": "CC BY-SA 3.0",
+    "license_url": "https://creativecommons.org/licenses/by-sa/3.0"
+  },
+  {
+    "slug": "hip-hinge",
+    "name": "Hip Hinge",
+    "aliases": [
+      "Hip Hinge"
+    ],
+    "summary": "A drill for learning to bend at the hips while keeping the trunk stable.",
+    "setup": "Soften the knees, brace the trunk, and move the hips backward without rounding.",
+    "cues": [
+      "Think about closing a car door with your hips.",
+      "Keep the ribs stacked over the pelvis.",
+      "Return by driving the hips forward."
+    ],
+    "visual_note": "The reference image is a still frame from a hip-hinge-style kettlebell swing demo, used to show the hinge position.",
+    "image_filename": "hip-hinge.jpg",
+    "source_title": "File:Kettlebell Swing Hip Hinge Style.webm",
+    "source_url": "https://commons.wikimedia.org/wiki/File:Kettlebell_Swing_Hip_Hinge_Style.webm",
+    "author": "Taco fleur",
+    "credit": "Own work",
+    "license": "CC BY-SA 4.0",
+    "license_url": "https://creativecommons.org/licenses/by-sa/4.0"
+  },
+  {
+    "slug": "lunge",
+    "name": "Lunge",
+    "aliases": [
+      "Lunge"
+    ],
+    "summary": "A split-stance leg exercise for quads, glutes, and balance.",
+    "setup": "Take a comfortable stride and lower until both knees bend.",
+    "cues": [
+      "Keep the front foot flat.",
+      "Drop straight down instead of tipping forward.",
+      "Push through the front foot to return."
+    ],
+    "visual_note": "The CDC reference shows a standard lunge pattern, which is close to the reverse-lunge mechanics used in the plan.",
+    "image_filename": "lunge.gif",
+    "source_title": "File:Lunge-CDC strength training for older adults.gif",
+    "source_url": "https://commons.wikimedia.org/wiki/File:Lunge-CDC_strength_training_for_older_adults.gif",
+    "author": "Centers for Disease Control and Prevention",
+    "credit": "Growing Stronger - Strength Training for Older Adults - More Exercises",
+    "license": "Public domain",
+    "license_url": ""
+  },
+  {
+    "slug": "low-step-up",
+    "name": "Low Step-Up",
+    "aliases": [
+      "Low Step-Up"
+    ],
+    "summary": "A knee-friendly single-leg exercise using a low step or box.",
+    "setup": "Place one full foot on a low step and drive through that leg to stand tall.",
+    "cues": [
+      "Keep the working foot flat on the step.",
+      "Use the top leg to do most of the work.",
+      "Lower under control."
+    ],
+    "visual_note": "",
+    "image_filename": "low-step-up.gif",
+    "source_title": "File:Step up-CDC strength training for older adults.gif",
+    "source_url": "https://commons.wikimedia.org/wiki/File:Step_up-CDC_strength_training_for_older_adults.gif",
+    "author": "Centers for Disease Control and Prevention",
+    "credit": "Growing Stronger - Strength Training for Older Adults - Exercises Stage 2",
+    "license": "Public domain",
+    "license_url": ""
+  },
+  {
+    "slug": "glute-bridge",
+    "name": "Glute Bridge",
+    "aliases": [
+      "Glute Bridge"
+    ],
+    "summary": "A floor-based hip extension exercise for glutes and hamstrings.",
+    "setup": "Lie on your back with knees bent and feet flat, then lift hips.",
+    "cues": [
+      "Brace before lifting.",
+      "Drive through the heels.",
+      "Pause at the top without arching the lower back."
+    ],
+    "visual_note": "",
+    "image_filename": "glute-bridge.png",
+    "source_title": "File:Glute-bridge.png",
+    "source_url": "https://commons.wikimedia.org/wiki/File:Glute-bridge.png",
+    "author": "Marianne Gilbak",
+    "credit": "https://gilbaks.dk/balleoevelser/",
+    "license": "CC BY-SA 4.0",
+    "license_url": "https://creativecommons.org/licenses/by-sa/4.0"
+  }
+]

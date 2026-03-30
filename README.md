@@ -8,6 +8,7 @@ A Markdown-first personal trainer app. The user interacts with the system throug
 - Generates a weekly `plan.md` from that profile
 - Writes `coach_notes.md` with concise guidance
 - Creates `checkins/*.md` templates for weekly progress updates
+- Creates an `exercise_library/` folder with local exercise pictures and reference pages
 - Regenerates the plan based on adherence, difficulty, energy, and soreness
 
 ## Workflow
@@ -17,6 +18,8 @@ A Markdown-first personal trainer app. The user interacts with the system throug
 3. Generate the first plan.
 4. Complete a weekly check-in Markdown file.
 5. Refresh the plan.
+
+The generated `plan.md` embeds local exercise images and links to the matching reference page in `exercise_library/`.
 
 ## Commands
 
@@ -68,6 +71,7 @@ The `Summary` section must include:
 ## Repository layout
 
 - `src/personal_trainer/`: app code
+- `src/personal_trainer/assets/exercise_library/`: bundled exercise images and catalog
 - `tests/`: basic tests
 - `sample_workspace/`: example Markdown workspace
 

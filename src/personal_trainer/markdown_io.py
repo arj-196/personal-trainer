@@ -5,6 +5,7 @@ import re
 from datetime import date
 from pathlib import Path
 
+from personal_trainer.exercise_library import get_reference
 from personal_trainer.models import (
     AppState,
     CheckIn,
@@ -244,7 +245,14 @@ def render_plan(plan: WorkoutPlan, profile: UserProfile) -> str:
                 "- Main work:",
             ]
         )
-        lines.extend([exercise.to_markdown() for exercise in day.exercises])
+        for exercise in day.exercises:
+            lines.append(exercise.to_markdown())
+            reference = get_reference(exercise.name)
+            if reference is not None:
+                lines.append(f"  ![{reference.name}]({reference.image_path})")
+                lines.append(
+                    f"  Reference: [{reference.name}]({reference.markdown_path})"
+                )
         lines.extend(
             [
                 f"- Finisher: {day.finisher}",
