@@ -6,11 +6,13 @@ from personal_trainer.cli import main
 from personal_trainer.markdown_io import load_state
 
 
-def test_init_and_plan_flow(tmp_path) -> None:
-    workspace = tmp_path / "athlete"
+def test_init_and_plan_flow(tmp_path, monkeypatch) -> None:
+    workspaces_root = tmp_path / "workspaces"
+    workspace = workspaces_root / "athlete"
+    monkeypatch.setattr("personal_trainer.cli.WORKSPACES_ROOT", workspaces_root)
     runner = CliRunner()
 
-    result = runner.invoke(main, ["init", str(workspace)])
+    result = runner.invoke(main, ["init", "athlete"])
     assert result.exit_code == 0
     assert (workspace / "profile.md").exists()
     assert (workspace / "exercise_library" / "index.md").exists()
@@ -21,7 +23,7 @@ def test_init_and_plan_flow(tmp_path) -> None:
     )
     (workspace / "profile.md").write_text(profile, encoding="utf-8")
 
-    result = runner.invoke(main, ["plan", str(workspace)])
+    result = runner.invoke(main, ["plan", "athlete"])
     assert result.exit_code == 0
     assert (workspace / "plan.md").exists()
     assert (workspace / "coach_notes.md").exists()
@@ -33,12 +35,14 @@ def test_init_and_plan_flow(tmp_path) -> None:
     assert "Reference: [Dumbbell Bench Press]" in plan_text
 
 
-def test_refresh_updates_state(tmp_path) -> None:
-    workspace = tmp_path / "athlete"
+def test_refresh_updates_state(tmp_path, monkeypatch) -> None:
+    workspaces_root = tmp_path / "workspaces"
+    workspace = workspaces_root / "athlete"
+    monkeypatch.setattr("personal_trainer.cli.WORKSPACES_ROOT", workspaces_root)
     runner = CliRunner()
 
-    assert runner.invoke(main, ["init", str(workspace)]).exit_code == 0
-    assert runner.invoke(main, ["plan", str(workspace)]).exit_code == 0
+    assert runner.invoke(main, ["init", "athlete"]).exit_code == 0
+    assert runner.invoke(main, ["plan", "athlete"]).exit_code == 0
 
     checkin = workspace / "checkins" / "2026-03-30-checkin.md"
     checkin.write_text(
@@ -65,7 +69,7 @@ def test_refresh_updates_state(tmp_path) -> None:
         encoding="utf-8",
     )
 
-    result = runner.invoke(main, ["refresh", str(workspace), str(checkin)])
+    result = runner.invoke(main, ["refresh", "athlete", checkin.name])
     assert result.exit_code == 0
     state = load_state(workspace / ".trainer" / "state.json")
 
@@ -76,11 +80,13 @@ def test_refresh_updates_state(tmp_path) -> None:
     assert (workspace / "exercise_library" / "goblet-squat.md").exists()
 
 
-def test_status_runs(tmp_path) -> None:
-    workspace = tmp_path / "athlete"
+def test_status_runs(tmp_path, monkeypatch) -> None:
+    workspaces_root = tmp_path / "workspaces"
+    workspace = workspaces_root / "athlete"
+    monkeypatch.setattr("personal_trainer.cli.WORKSPACES_ROOT", workspaces_root)
     runner = CliRunner()
 
-    assert runner.invoke(main, ["init", str(workspace)]).exit_code == 0
-    result = runner.invoke(main, ["status", str(workspace)])
+    assert runner.invoke(main, ["init", "athlete"]).exit_code == 0
+    result = runner.invoke(main, ["status", "athlete"])
     assert result.exit_code == 0
     assert "Profile exists: yes" in result.output

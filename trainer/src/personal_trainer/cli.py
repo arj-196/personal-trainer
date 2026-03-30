@@ -19,13 +19,31 @@ from personal_trainer.markdown_io import (
 from personal_trainer.notes_publisher import NotesPublishError, publish_plan_to_notes
 from personal_trainer.planner import build_plan
 
+WORKSPACES_ROOT = Path(__file__).resolve().parents[3] / "workspaces"
+
 
 def _workspace_argument(_: click.Context, __: click.Parameter, value: str) -> Path:
-    return Path(value).expanduser().resolve()
+    workspace_name = Path(value).name
+    return (WORKSPACES_ROOT / workspace_name).resolve()
+
+
+def _resolve_checkin_path(workspace: Path, checkin: str) -> Path:
+    raw_path = Path(checkin).expanduser()
+    if raw_path.is_absolute():
+        return raw_path.resolve()
+
+    candidates = [
+        workspace / "checkins" / raw_path.name,
+        workspace / raw_path,
+    ]
+    for candidate in candidates:
+        if candidate.exists():
+            return candidate.resolve()
+    return candidates[0].resolve()
 
 
 WORKSPACE_ARGUMENT = click.argument("workspace", callback=_workspace_argument)
-CHECKIN_ARGUMENT = click.argument("checkin", callback=_workspace_argument)
+CHECKIN_ARGUMENT = click.argument("checkin")
 
 
 @click.group(help="Markdown-first personal trainer application.")
@@ -43,7 +61,7 @@ def init_command(workspace: Path) -> None:
     save_state(paths.state, load_state(paths.state))
     click.echo(f"Workspace ready at {paths.root}")
     click.echo(
-        f"Fill out {paths.profile.name}, then run: personal-trainer plan {paths.root}"
+        f"Fill out {paths.profile.name}, then run: personal-trainer plan {paths.root.name}"
     )
 
 
@@ -81,16 +99,17 @@ def plan_command(workspace: Path) -> None:
 @main.command("refresh", help="Update the plan using a check-in Markdown file.")
 @WORKSPACE_ARGUMENT
 @CHECKIN_ARGUMENT
-def refresh_command(workspace: Path, checkin: Path) -> None:
+def refresh_command(workspace: Path, checkin: str) -> None:
     paths = ensure_workspace(workspace)
     sync_workspace_library(paths.root)
+    checkin_path = _resolve_checkin_path(paths.root, checkin)
     if not paths.profile.exists():
         raise click.ClickException(f"Missing profile: {paths.profile}")
-    if not checkin.exists():
-        raise click.ClickException(f"Missing check-in: {checkin}")
+    if not checkin_path.exists():
+        raise click.ClickException(f"Missing check-in: {checkin_path}")
 
     profile = load_profile(paths.profile)
-    checkin = load_checkin(checkin)
+    checkin = load_checkin(checkin_path)
     state = load_state(paths.state)
     plan = build_plan(profile, plan_version=state.plan_version + 1, checkin=checkin)
 

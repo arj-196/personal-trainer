@@ -14,7 +14,7 @@ def test_build_notes_document_skips_images(tmp_path: Path) -> None:
     image_dir.mkdir(parents=True)
     (image_dir / "goblet-squat.png").write_bytes(b"fake-image")
 
-    plan_markdown = """# Alex's Training Plan
+    plan_markdown = """# Albert's Training Plan
 
 ## Day 1: Lower
 - **Goblet Squat**: 3 sets x 8-12. Stay tall.
@@ -24,7 +24,7 @@ def test_build_notes_document_skips_images(tmp_path: Path) -> None:
 
     document = build_notes_document(plan_markdown, workspace)
 
-    assert "<b>Alex&#x27;s Training Plan</b>" in document.html_body
+    assert "<b>Albert&#x27;s Training Plan</b>" in document.html_body
     assert (
         "<li><b>Goblet Squat</b>: 3 sets x 8-12. Stay tall.</li>" in document.html_body
     )
@@ -68,18 +68,20 @@ def test_default_note_title_uses_profile_name(tmp_path: Path) -> None:
 
 
 def test_publish_notes_command_calls_publisher(tmp_path: Path, monkeypatch) -> None:
-    workspace = tmp_path / "workspace"
+    workspaces_root = tmp_path / "workspaces"
+    workspace = workspaces_root / "workspace"
+    monkeypatch.setattr("personal_trainer.cli.WORKSPACES_ROOT", workspaces_root)
     runner = CliRunner()
 
-    assert runner.invoke(main, ["init", str(workspace)]).exit_code == 0
-    assert runner.invoke(main, ["plan", str(workspace)]).exit_code == 0
+    assert runner.invoke(main, ["init", "workspace"]).exit_code == 0
+    assert runner.invoke(main, ["plan", "workspace"]).exit_code == 0
 
     captured: dict[str, str] = {}
 
     class StubResult:
         account = "iCloud"
         folder = "Personal Trainer"
-        title = "Current Workout - Alex"
+        title = "Current Workout - Albert"
         note_id = "note-123"
 
     def fake_publish_plan_to_notes(workspace_path, *, account, folder, title):
@@ -93,10 +95,10 @@ def test_publish_notes_command_calls_publisher(tmp_path: Path, monkeypatch) -> N
         "personal_trainer.cli.publish_plan_to_notes", fake_publish_plan_to_notes
     )
 
-    result = runner.invoke(main, ["publish-notes", str(workspace)])
+    result = runner.invoke(main, ["publish-notes", "workspace"])
 
     assert result.exit_code == 0
     assert captured["workspace"] == str(workspace.resolve())
     assert captured["account"] == "iCloud"
     assert captured["folder"] == "Personal Trainer"
-    assert "Published 'Current Workout - Alex' to Apple Notes" in result.output
+    assert "Published 'Current Workout - Albert' to Apple Notes" in result.output

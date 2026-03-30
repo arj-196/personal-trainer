@@ -1,0 +1,101 @@
+# Trainer
+
+The trainer app is the trainer engine for the monorepo.
+
+It generates workout plans, manages workspace files, maintains the bundled exercise library, and can publish the current plan to Apple Notes.
+
+## Stack
+
+- Python
+- Poetry
+
+## Responsibilities
+
+- create workspaces under `../workspaces/<name>`
+- parse `profile.md` and check-in files
+- generate `plan.md` and `coach_notes.md`
+- sync the exercise library into each workspace
+- publish a text-only workout note to Apple Notes on macOS
+
+## Install
+
+```bash
+cd trainer
+poetry install
+```
+
+## CLI usage
+
+Workspaces are always resolved under the repo-level `./workspaces` directory.
+
+```bash
+poetry run personal-trainer init alex
+poetry run personal-trainer plan alex
+poetry run personal-trainer refresh alex 2026-03-30-checkin.md
+poetry run personal-trainer status alex
+poetry run personal-trainer publish-notes alex
+```
+
+These commands read and write files in:
+
+```text
+../workspaces/alex/
+```
+
+## Workflow
+
+1. Initialize a workspace.
+2. Fill out `profile.md`.
+3. Generate the first plan.
+4. Add a weekly check-in file in `checkins/`.
+5. Refresh the plan.
+6. Optionally publish the plan to Apple Notes.
+
+## Markdown contract
+
+### `profile.md`
+
+Required sections:
+
+- `## Basics`
+- `## Goals`
+- `## Schedule`
+- `## Equipment`
+- `## Limitations`
+- `## Preferred Focus`
+- `## Notes`
+
+Use `- Key: Value` bullets for the first three sections.
+Use plain `- item` bullets for list sections.
+
+### `checkin.md`
+
+Required sections:
+
+- `## Summary`
+- `## Wins`
+- `## Struggles`
+- `## Notes`
+
+The `Summary` section must include:
+
+- `- Date: YYYY-MM-DD`
+- `- Workouts completed: N`
+- `- Workouts planned: N`
+- `- Average difficulty (1-10): N`
+- `- Energy (1-10): N`
+- `- Soreness (1-10): N`
+
+## Important paths
+
+- `src/personal_trainer/`: trainer source
+- `templates/`: starter Markdown templates
+- `scripts/build_exercise_library.py`: exercise asset rebuild script
+- `tests/`: trainer tests
+
+## Testing
+
+```bash
+cd trainer
+poetry run pytest -q
+```
