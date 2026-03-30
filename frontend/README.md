@@ -15,6 +15,7 @@ The frontend is a Next.js app for viewing trainer data that already exists in th
 - open a larger workout focus view
 - browse the exercise library with images and coaching cues
 - denser layout with reduced vertical scrolling on dashboard and library views
+- read data from either local repo files or Vercel Blob storage
 
 ## Install
 
@@ -43,13 +44,64 @@ npm run build
 npm test
 ```
 
+## Environment
+
+The frontend supports two data sources:
+
+- `TRAINER_DATA_SOURCE=local` for local repo files
+- `TRAINER_DATA_SOURCE=blob` for Vercel Blob-backed deployments
+
+Relevant variables:
+
+- `TRAINER_DATA_SOURCE`
+- `TRAINER_BLOB_ACCESS`
+- `TRAINER_BLOB_PREFIX`
+- `BLOB_READ_WRITE_TOKEN`
+
+See `.env.example`.
+
+## Deploy to Vercel
+
+1. Create a Vercel project for `frontend/`.
+2. Set the project Root Directory to `frontend`.
+3. Create a Vercel Blob store and attach it to the same Vercel project.
+4. Set the frontend environment variables from `.env.example`.
+5. Publish workout/library data from the trainer app with:
+
+```bash
+cd trainer
+poetry install
+poetry run personal-trainer publish-web wk_arj
+```
+
+6. Deploy the frontend.
+
+After every `plan` or `refresh`, run `publish-web` again so Blob stays in sync with the latest workspace files.
+
+## Local Vercel Build
+
+To test the Vercel build locally from `frontend/`:
+
+```bash
+vercel pull --yes --environment preview
+vercel build --yes
+```
+
+`vercel pull` creates the local `.vercel/` project settings files used by the CLI. Those files are machine-local and should not be committed.
+
 ## Data sources
 
-The frontend reads directly from repo files on the server side:
+In `local` mode the frontend reads directly from repo files on the server side:
 
 - `../workspaces/<name>/plan.md`
 - `../trainer/src/personal_trainer/assets/exercise_library/catalog.json`
 - workspace and library image files served through Next route handlers
+
+In `blob` mode the frontend reads the same logical data from Vercel Blob:
+
+- `personal-trainer/workspaces/<name>/...`
+- `personal-trainer/exercise-library/catalog.json`
+- `personal-trainer/exercise-library/images/...`
 
 ## Routes
 
@@ -61,4 +113,4 @@ The frontend reads directly from repo files on the server side:
 
 - The frontend is currently read-only.
 - Plan generation still happens in the trainer CLI.
-- A workspace must exist before the frontend can display it.
+- A workspace must exist in the selected data source before the frontend can display it.

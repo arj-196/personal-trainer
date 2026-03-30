@@ -15,6 +15,7 @@ It generates workout plans, manages workspace files, maintains the bundled exerc
 - parse `profile.md` and check-in files
 - generate `plan.md` and `coach_notes.md`
 - sync the exercise library into each workspace
+- publish workspace and library assets to Vercel Blob for the hosted frontend
 - publish a text-only workout note to Apple Notes on macOS
 
 ## Install
@@ -33,6 +34,7 @@ poetry run personal-trainer init alex
 poetry run personal-trainer plan alex
 poetry run personal-trainer refresh alex 2026-03-30-checkin.md
 poetry run personal-trainer status alex
+poetry run personal-trainer publish-web alex
 poetry run personal-trainer publish-notes alex
 ```
 
@@ -49,7 +51,8 @@ These commands read and write files in:
 3. Generate the first plan.
 4. Add a weekly check-in file in `checkins/`.
 5. Refresh the plan.
-6. Optionally publish the plan to Apple Notes.
+6. Optionally publish the workspace to Vercel Blob for the hosted frontend.
+7. Optionally publish the plan to Apple Notes.
 
 ## Markdown contract
 
@@ -99,3 +102,27 @@ The `Summary` section must include:
 cd trainer
 poetry run pytest -q
 ```
+
+## Blob publish
+
+To host the frontend on Vercel without relying on local repo files, publish the generated workspace and shared exercise library to Vercel Blob:
+
+```bash
+cd trainer
+poetry install
+poetry run personal-trainer publish-web alex
+```
+
+Optional flags:
+
+- `--prefix` to change the blob pathname prefix
+- `--access public|private` to match the Blob store access mode
+- `--skip-library` to upload only the selected workspace
+
+Required environment variables:
+
+- `BLOB_READ_WRITE_TOKEN`
+- `TRAINER_BLOB_PREFIX`
+- `TRAINER_BLOB_ACCESS`
+
+See `.env.example`.

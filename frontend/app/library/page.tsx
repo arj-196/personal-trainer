@@ -2,6 +2,8 @@ import Link from 'next/link';
 
 import { libraryImageUrl, readExerciseLibrary } from '@/lib/trainer-data';
 
+export const dynamic = 'force-dynamic';
+
 export default async function LibraryPage({
   searchParams,
 }: {
@@ -9,7 +11,7 @@ export default async function LibraryPage({
 }) {
   const params = await searchParams;
   const query = params.q?.trim().toLowerCase() ?? '';
-  const allExercises = readExerciseLibrary();
+  const allExercises = await readExerciseLibrary();
   const exercises = query
     ? allExercises.filter((exercise) => {
         const haystack = [exercise.name, exercise.summary, ...exercise.aliases, ...exercise.cues]

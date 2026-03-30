@@ -1,5 +1,6 @@
-import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { blobPath, getTrainerDataSource } from './storage-config';
+import { listBlobFolders, readBlobText } from './blob-storage';
+import { listLocalWorkspaces, readLocalExerciseCatalogText, readLocalWorkspaceText } from './local-storage';
 
 export type WorkoutExercise = {
   name: string;
@@ -43,38 +44,29 @@ export type ExerciseReference = {
   license_url: string;
 };
 
-const REPO_ROOT = resolve(process.cwd(), '..');
-const WORKSPACES_DIR = join(REPO_ROOT, 'workspaces');
-const EXERCISE_CATALOG = join(
-  REPO_ROOT,
-  'trainer',
-  'src',
-  'personal_trainer',
-  'assets',
-  'exercise_library',
-  'catalog.json'
-);
-
-export function listWorkspaces(): string[] {
-  if (!existsSync(WORKSPACES_DIR)) {
-    return [];
+export async function listWorkspaces(): Promise<string[]> {
+  if (getTrainerDataSource() === 'blob') {
+    const folders = await listBlobFolders(blobPath('workspaces') + '/');
+    return folders
+      .map((folder) => folder.replace(/\/$/, '').split('/').pop())
+      .filter((workspace): workspace is string => Boolean(workspace))
+      .sort();
   }
 
-  return readdirSync(WORKSPACES_DIR)
-    .filter((entry) => {
-      const fullPath = join(WORKSPACES_DIR, entry);
-      return statSync(fullPath).isDirectory() && existsSync(join(fullPath, 'profile.md'));
-    })
-    .sort();
+  return listLocalWorkspaces();
 }
 
-export function readWorkoutPlan(workspace: string): WorkoutPlan | null {
-  const planPath = join(WORKSPACES_DIR, workspace, 'plan.md');
-  if (!existsSync(planPath)) {
+export async function readWorkoutPlan(workspace: string): Promise<WorkoutPlan | null> {
+  const text =
+    getTrainerDataSource() === 'blob'
+      ? await readBlobText(blobPath('workspaces', workspace, 'plan.md'))
+      : readLocalWorkspaceText(workspace, 'plan.md');
+
+  if (!text) {
     return null;
   }
 
-  const lines = readFileSync(planPath, 'utf-8').split(/\r?\n/);
+  const lines = text.split(/\r?\n/);
   const title = lines[0]?.replace(/^#\s+/, '').trim() || 'Training Plan';
 
   const meta: Array<{ label: string; value: string }> = [];
@@ -241,8 +233,13 @@ function skipBlankLines(lines: string[], startIndex: number) {
   return index;
 }
 
-export function readExerciseLibrary(): ExerciseReference[] {
-  return JSON.parse(readFileSync(EXERCISE_CATALOG, 'utf-8')) as ExerciseReference[];
+export async function readExerciseLibrary(): Promise<ExerciseReference[]> {
+  const text =
+    getTrainerDataSource() === 'blob'
+      ? await readBlobText(blobPath('exercise-library', 'catalog.json'))
+      : readLocalExerciseCatalogText();
+
+  return text ? (JSON.parse(text) as ExerciseReference[]) : [];
 }
 
 export function workspaceImageUrl(workspace: string, relativePath: string | null): string | null {
@@ -255,8 +252,4 @@ export function workspaceImageUrl(workspace: string, relativePath: string | null
 
 export function libraryImageUrl(imageFilename: string): string {
   return `/api/library-images/${encodeURIComponent(imageFilename)}`;
-}
-
-export function getWorkspaceRoot(workspace: string): string {
-  return join(WORKSPACES_DIR, workspace);
 }

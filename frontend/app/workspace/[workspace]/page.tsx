@@ -3,13 +3,15 @@ import { notFound } from 'next/navigation';
 
 import { readWorkoutPlan, workspaceImageUrl } from '@/lib/trainer-data';
 
+export const dynamic = 'force-dynamic';
+
 export default async function WorkspacePage({
   params,
 }: {
   params: Promise<{ workspace: string }>;
 }) {
   const { workspace } = await params;
-  const plan = readWorkoutPlan(workspace);
+  const plan = await readWorkoutPlan(workspace);
 
   if (!plan) {
     notFound();

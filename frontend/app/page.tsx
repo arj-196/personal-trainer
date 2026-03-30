@@ -6,18 +6,20 @@ import {
   workspaceImageUrl,
 } from '@/lib/trainer-data';
 
+export const dynamic = 'force-dynamic';
+
 export default async function HomePage({
   searchParams,
 }: {
   searchParams: Promise<{ workspace?: string }>;
 }) {
   const params = await searchParams;
-  const workspaces = listWorkspaces();
+  const workspaces = await listWorkspaces();
   const selectedWorkspace =
     params.workspace && workspaces.includes(params.workspace)
       ? params.workspace
       : workspaces[0];
-  const plan = selectedWorkspace ? readWorkoutPlan(selectedWorkspace) : null;
+  const plan = selectedWorkspace ? await readWorkoutPlan(selectedWorkspace) : null;
 
   return (
     <main className="shell">

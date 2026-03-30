@@ -1,6 +1,8 @@
 .DS_Store
 .idea
 workspaces
+.vercel
+.env*.local
 
 
 # Byte-compiled / optimized / DLL files
@@ -9,3 +11,4 @@ __pycache__/
 *$py.class
 node_modules/
 .next/
+.vercel/

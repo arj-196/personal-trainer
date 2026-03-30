@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from click.testing import CliRunner
 
+from personal_trainer.blob_sync import BlobPublishResult
 from personal_trainer.cli import main
 from personal_trainer.markdown_io import load_state
 
@@ -90,3 +91,29 @@ def test_status_runs(tmp_path, monkeypatch) -> None:
     result = runner.invoke(main, ["status", "athlete"])
     assert result.exit_code == 0
     assert "Profile exists: yes" in result.output
+
+
+def test_publish_web_command_reports_upload_summary(tmp_path, monkeypatch) -> None:
+    workspaces_root = tmp_path / "workspaces"
+    workspace = workspaces_root / "athlete"
+    workspace.mkdir(parents=True)
+    monkeypatch.setattr("personal_trainer.cli.WORKSPACES_ROOT", workspaces_root)
+    monkeypatch.setattr(
+        "personal_trainer.cli.publish_workspace_to_blob",
+        lambda *args, **kwargs: BlobPublishResult(
+            workspace="athlete",
+            prefix="pt-prod",
+            access="private",
+            workspace_files_uploaded=4,
+            library_files_uploaded=2,
+            remote_files_deleted=3,
+        ),
+    )
+    runner = CliRunner()
+
+    result = runner.invoke(main, ["publish-web", "athlete", "--prefix", "pt-prod"])
+
+    assert result.exit_code == 0
+    assert "Published workspace 'athlete' to Blob prefix 'pt-prod'" in result.output
+    assert "Workspace files uploaded: 4" in result.output
+    assert "Library files uploaded: 2" in result.output

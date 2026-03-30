@@ -1,9 +1,17 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import cast
 
 import click
 
+from personal_trainer.blob_sync import (
+    BlobAccess,
+    BlobPublishError,
+    default_blob_access,
+    default_blob_prefix,
+    publish_workspace_to_blob,
+)
 from personal_trainer.exercise_library import sync_workspace_library
 from personal_trainer.markdown_io import (
     ensure_workspace,
@@ -179,6 +187,53 @@ def publish_notes_command(
         f"Published '{result.title}' to Apple Notes in {result.account}/{result.folder}"
     )
     click.echo(f"Note ID: {result.note_id}")
+
+
+@main.command(
+    "publish-web",
+    help="Upload the workspace and shared exercise library to Vercel Blob.",
+)
+@WORKSPACE_ARGUMENT
+@click.option(
+    "--prefix",
+    default=default_blob_prefix,
+    show_default="env TRAINER_BLOB_PREFIX or personal-trainer",
+    help="Blob pathname prefix used by the frontend.",
+)
+@click.option(
+    "--access",
+    type=click.Choice(["public", "private"]),
+    default=default_blob_access,
+    show_default="env TRAINER_BLOB_ACCESS or private",
+    help="Blob access level for the uploaded files.",
+)
+@click.option(
+    "--skip-library",
+    is_flag=True,
+    help="Upload only the selected workspace without refreshing shared library assets.",
+)
+def publish_web_command(
+    workspace: Path, prefix: str, access: str, skip_library: bool
+) -> None:
+    try:
+        result = publish_workspace_to_blob(
+            workspace,
+            prefix=prefix,
+            access=cast(BlobAccess, access),
+            include_library=not skip_library,
+        )
+    except BlobPublishError as error:
+        raise click.ClickException(str(error)) from error
+
+    click.echo(
+        f"Published workspace '{result.workspace}' to Blob prefix '{result.prefix}'"
+    )
+    click.echo(f"Workspace files uploaded: {result.workspace_files_uploaded}")
+    click.echo(f"Library files uploaded: {result.library_files_uploaded}")
+    click.echo(f"Remote files deleted: {result.remote_files_deleted}")
+    click.echo(
+        "Set TRAINER_DATA_SOURCE=blob in the frontend environment before deploying."
+    )
 
 
 if __name__ == "__main__":

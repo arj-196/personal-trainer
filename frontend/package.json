@@ -9,6 +9,7 @@
     "start": "next start"
   },
   "dependencies": {
+    "@vercel/blob": "^2.3.2",
     "next": "latest",
     "react": "latest",
     "react-dom": "latest"

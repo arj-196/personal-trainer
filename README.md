@@ -38,6 +38,7 @@ The frontend reads the existing workspace and library files and provides two cor
 - current workout view
 - exercise library view
 - compact, low-scroll layout for workout and library browsing
+- optional Vercel Blob-backed hosting mode for internet deployment
 
 See [frontend/README.md](/Users/arjun/Personal/apps/personal_trainer/frontend/README.md).
 
@@ -69,8 +70,9 @@ Open `http://localhost:3000`.
 
 1. Create or update a workspace from the trainer CLI.
 2. Generate or refresh the workout plan.
-3. Open the frontend to view the current workout or browse the exercise library.
-4. Optionally publish the current plan to Apple Notes from the trainer app.
+3. If you host the frontend on Vercel, run `poetry run personal-trainer publish-web <workspace>`.
+4. Open the frontend to view the current workout or browse the exercise library.
+5. Optionally publish the current plan to Apple Notes from the trainer app.
 
 ## Workspace model
 
