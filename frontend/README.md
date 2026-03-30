@@ -38,6 +38,27 @@ Open `http://localhost:3000`.
 npm run build
 ```
 
+## Docker
+
+Build the frontend container from `frontend/`:
+
+```bash
+docker build -t personal-trainer-frontend .
+```
+
+Run it locally:
+
+```bash
+docker run --rm -p 3000:3000 \
+  -e TRAINER_DATA_SOURCE=blob \
+  -e TRAINER_BLOB_ACCESS=private \
+  -e TRAINER_BLOB_PREFIX=personal-trainer \
+  -e BLOB_READ_WRITE_TOKEN=your-token \
+  personal-trainer-frontend
+```
+
+For local file mode, replace `TRAINER_DATA_SOURCE=blob` with `TRAINER_DATA_SOURCE=local`.
+
 ## Test
 
 ```bash
