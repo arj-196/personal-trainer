@@ -3,6 +3,7 @@ import Link from 'next/link';
 import {
   getCurrentCommitHash,
   getCurrentEnvVariables,
+  getHeaderCommitId,
   isDebugEnabled,
 } from '@/lib/debug-info';
 import {
@@ -21,6 +22,7 @@ export default async function HomePage({
   const params = await searchParams;
   const workspaces = await listWorkspaces();
   const showDebugPanel = isDebugEnabled();
+  const headerCommitId = getHeaderCommitId();
   const debugCommitHash = showDebugPanel ? getCurrentCommitHash() : null;
   const debugEnvVars = showDebugPanel ? getCurrentEnvVariables() : [];
   const selectedWorkspace =
@@ -32,7 +34,10 @@ export default async function HomePage({
   return (
     <main className="shell">
       <section className="hero">
-        <span className="hero-eyebrow">Personal Trainer</span>
+        <span className="hero-eyebrow">
+          Personal Trainer
+          {headerCommitId ? <code className="hero-commit">{headerCommitId}</code> : null}
+        </span>
         <p className="hero-subtitle">
           Read the active plan from your trainer workspace, move through each day,
           and jump to the exercise library when you need a movement refresher.

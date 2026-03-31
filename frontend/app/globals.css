@@ -61,11 +61,26 @@ img {
 }
 
 .hero-eyebrow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
   font-size: 0.78rem;
   font-weight: 700;
   letter-spacing: 0.18em;
   text-transform: uppercase;
   color: var(--accent-deep);
+}
+
+.hero-commit {
+  padding: 4px 8px;
+  border: 1px solid rgba(166, 62, 39, 0.2);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.6);
+  font-family: "SFMono-Regular", "Menlo", monospace;
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: none;
 }
 
 .hero-title {

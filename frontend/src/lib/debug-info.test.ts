@@ -9,6 +9,7 @@ import { execSync } from 'node:child_process';
 import {
   getCurrentCommitHash,
   getCurrentEnvVariables,
+  getHeaderCommitId,
   isDebugEnabled,
 } from './debug-info';
 
@@ -62,6 +63,27 @@ describe('getCurrentCommitHash', () => {
     });
 
     expect(getCurrentCommitHash()).toBe('unavailable');
+  });
+});
+
+describe('getHeaderCommitId', () => {
+  afterEach(() => {
+    delete process.env.VERCEL_GIT_COMMIT_SHA;
+    mockedExecSync.mockReset();
+  });
+
+  it('returns the short commit id for the current hash', () => {
+    mockedExecSync.mockReturnValue('deadbeef1234\n' as never);
+
+    expect(getHeaderCommitId()).toBe('deadbee');
+  });
+
+  it('returns null when the current hash is unavailable', () => {
+    mockedExecSync.mockImplementation(() => {
+      throw new Error('no git');
+    });
+
+    expect(getHeaderCommitId()).toBeNull();
   });
 });
 

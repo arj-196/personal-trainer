@@ -38,6 +38,7 @@ The frontend reads the existing workspace and library files and provides two cor
 - current workout view
 - exercise library view
 - compact, low-scroll layout for workout and library browsing
+- homepage header shows the current git commit id
 - optional Vercel Blob-backed hosting mode for internet deployment
 - optional `DEBUG=true` homepage debug panel for runtime inspection
 

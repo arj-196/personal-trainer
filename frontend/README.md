@@ -16,6 +16,7 @@ The frontend is a Next.js app for viewing trainer data that already exists in th
 - browse the exercise library with images and coaching cues
 - denser layout with reduced vertical scrolling on dashboard and library views
 - read data from either local repo files or Vercel Blob storage
+- show the current git commit id in the homepage header
 - optionally show a homepage debug panel with the current commit hash and environment variables
 
 ## Install

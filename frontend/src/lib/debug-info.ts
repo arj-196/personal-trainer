@@ -31,6 +31,15 @@ export function getCurrentCommitHash(): string {
   }
 }
 
+export function getHeaderCommitId(): string | null {
+  const commitHash = getCurrentCommitHash();
+  if (commitHash === 'unavailable') {
+    return null;
+  }
+
+  return commitHash.slice(0, 7);
+}
+
 export function getCurrentEnvVariables(): DebugEnvVar[] {
   return Object.entries(process.env)
     .filter((entry): entry is [string, string] => entry[1] !== undefined)
