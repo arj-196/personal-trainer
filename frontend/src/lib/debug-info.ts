@@ -7,6 +7,12 @@ export type DebugEnvVar = {
 
 const REDACTED = '[redacted]';
 const SECRET_KEY_PATTERN = /(SECRET|TOKEN|PASSWORD|PRIVATE_KEY|API_KEY|ACCESS_KEY)/i;
+const TRUE_VALUES = new Set(['true', '1', 'yes', 'on']);
+
+export function isDebugEnabled(): boolean {
+  const raw = process.env.DEBUG?.trim().toLowerCase();
+  return raw ? TRUE_VALUES.has(raw) : false;
+}
 
 export function getCurrentCommitHash(): string {
   const fromEnv = process.env.VERCEL_GIT_COMMIT_SHA?.trim();

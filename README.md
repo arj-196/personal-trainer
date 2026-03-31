@@ -39,6 +39,7 @@ The frontend reads the existing workspace and library files and provides two cor
 - exercise library view
 - compact, low-scroll layout for workout and library browsing
 - optional Vercel Blob-backed hosting mode for internet deployment
+- optional `DEBUG=true` homepage debug panel for runtime inspection
 
 See [frontend/README.md](/Users/arjun/Personal/apps/personal_trainer/frontend/README.md).
 

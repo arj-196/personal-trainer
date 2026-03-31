@@ -16,7 +16,7 @@ The frontend is a Next.js app for viewing trainer data that already exists in th
 - browse the exercise library with images and coaching cues
 - denser layout with reduced vertical scrolling on dashboard and library views
 - read data from either local repo files or Vercel Blob storage
-- show a homepage debug panel with the current commit hash and environment variables
+- optionally show a homepage debug panel with the current commit hash and environment variables
 
 ## Install
 
@@ -79,6 +79,7 @@ Relevant variables:
 - `TRAINER_BLOB_ACCESS`
 - `TRAINER_BLOB_PREFIX`
 - `BLOB_READ_WRITE_TOKEN`
+- `DEBUG=true` to show the homepage debug panel
 
 See `.env.example`.
 

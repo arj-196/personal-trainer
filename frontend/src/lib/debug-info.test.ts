@@ -6,9 +6,35 @@ vi.mock('node:child_process', () => ({
 
 import { execSync } from 'node:child_process';
 
-import { getCurrentCommitHash, getCurrentEnvVariables } from './debug-info';
+import {
+  getCurrentCommitHash,
+  getCurrentEnvVariables,
+  isDebugEnabled,
+} from './debug-info';
 
 const mockedExecSync = vi.mocked(execSync);
+const originalEnv = process.env;
+
+describe('isDebugEnabled', () => {
+  afterEach(() => {
+    process.env = originalEnv;
+  });
+
+  it('returns true for enabled values', () => {
+    process.env = { ...originalEnv, DEBUG: 'True' };
+
+    expect(isDebugEnabled()).toBe(true);
+  });
+
+  it('returns false when DEBUG is absent or disabled', () => {
+    process.env = { ...originalEnv };
+    delete process.env.DEBUG;
+    expect(isDebugEnabled()).toBe(false);
+
+    process.env = { ...originalEnv, DEBUG: 'false' };
+    expect(isDebugEnabled()).toBe(false);
+  });
+});
 
 describe('getCurrentCommitHash', () => {
   afterEach(() => {
@@ -40,8 +66,6 @@ describe('getCurrentCommitHash', () => {
 });
 
 describe('getCurrentEnvVariables', () => {
-  const originalEnv = process.env;
-
   afterEach(() => {
     process.env = originalEnv;
   });
