@@ -1,5 +1,6 @@
 import Link from 'next/link';
 
+import { getCurrentCommitHash, getCurrentEnvVariables } from '@/lib/debug-info';
 import {
   listWorkspaces,
   readWorkoutPlan,
@@ -15,6 +16,8 @@ export default async function HomePage({
 }) {
   const params = await searchParams;
   const workspaces = await listWorkspaces();
+  const debugCommitHash = getCurrentCommitHash();
+  const debugEnvVars = getCurrentEnvVariables();
   const selectedWorkspace =
     params.workspace && workspaces.includes(params.workspace)
       ? params.workspace
@@ -36,6 +39,32 @@ export default async function HomePage({
           <Link className="chip-link" href="/library">
             Exercise Library
           </Link>
+        </div>
+      </section>
+
+      <section className="panel panel-spaced debug-panel">
+        <div className="section-head">
+          <div>
+            <h2 className="section-title">Debug</h2>
+            <p className="section-copy">Server-side runtime details for the current page render.</p>
+          </div>
+        </div>
+        <div className="debug-stack">
+          <div className="text-block">
+            <strong>Current Git Commit Hash</strong>
+            <p className="debug-hash">{debugCommitHash}</p>
+          </div>
+          <div className="text-block">
+            <strong>Current Environment Variables</strong>
+            <div className="debug-env-list">
+              {debugEnvVars.map((item) => (
+                <div key={item.key} className="debug-env-item">
+                  <code>{item.key}</code>
+                  <code>{item.value}</code>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </section>
 

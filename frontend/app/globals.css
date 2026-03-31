@@ -181,6 +181,44 @@ img {
   margin-top: 16px;
 }
 
+.debug-panel {
+  overflow: hidden;
+}
+
+.debug-stack {
+  display: grid;
+  gap: 12px;
+}
+
+.debug-hash {
+  overflow-wrap: anywhere;
+  font-family: "SFMono-Regular", "Menlo", monospace;
+}
+
+.debug-env-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+  max-height: 320px;
+  overflow: auto;
+}
+
+.debug-env-item {
+  display: grid;
+  grid-template-columns: minmax(180px, 260px) minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  padding: 8px 10px;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.55);
+}
+
+.debug-env-item code {
+  overflow-wrap: anywhere;
+  font-size: 0.8rem;
+}
+
 .text-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -386,6 +424,10 @@ img {
   }
 
   .text-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .debug-env-item {
     grid-template-columns: 1fr;
   }
 }
