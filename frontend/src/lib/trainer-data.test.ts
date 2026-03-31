@@ -10,6 +10,8 @@ import { get, list } from '@vercel/blob';
 import {
   libraryImageUrl,
   listWorkspaces,
+  readRecipeCatalog,
+  readUserProfileSummary,
   readExerciseLibrary,
   readWorkoutPlan,
   workspaceImageUrl,
@@ -84,6 +86,25 @@ describe('trainer data integration (local)', () => {
         slug: expect.any(String),
         name: expect.any(String),
         image_filename: expect.any(String),
+      })
+    );
+  });
+
+  it('loads the recipe catalog and profile summary', async () => {
+    const recipes = await readRecipeCatalog();
+    const profile = await readUserProfileSummary('wk_arj');
+
+    expect(recipes.length).toBeGreaterThan(0);
+    expect(recipes[0]).toEqual(
+      expect.objectContaining({
+        title: expect.any(String),
+        ingredients_required: expect.any(Array),
+      })
+    );
+    expect(profile).toEqual(
+      expect.objectContaining({
+        name: expect.any(String),
+        goal: expect.any(String),
       })
     );
   });
@@ -164,6 +185,34 @@ Next Monday.
             license_url: '',
           },
         ]),
+        'pt-prod/workspaces/alpha/profile.md': `# Athlete Profile
+
+## Basics
+- Name: Alpha
+
+## Goals
+- Primary goal: Fat loss
+
+## Schedule
+- Days per week: 3
+`,
+        'pt-prod/recipes/catalog.json': JSON.stringify([
+          {
+            slug: 'egg-veggie-skillet',
+            title: 'Egg and Veggie Skillet',
+            summary: 'Protein-first skillet',
+            meal_type: 'breakfast',
+            goal_tags: ['fat loss'],
+            ingredients_required: ['eggs', 'spinach'],
+            ingredients_optional: ['tomato'],
+            substitutions: ['Swap spinach for kale.'],
+            estimated_prep_minutes: 8,
+            estimated_cook_minutes: 8,
+            instructions: ['Cook the eggs.'],
+            nutrition_summary: 'Lighter calorie density',
+            confidence_note: 'Strong fit',
+          },
+        ]),
       };
 
       const text = textByPath[pathname];
@@ -196,6 +245,8 @@ Next Monday.
 
     const plan = await readWorkoutPlan('alpha');
     const exercises = await readExerciseLibrary();
+    const recipes = await readRecipeCatalog();
+    const profile = await readUserProfileSummary('alpha');
 
     expect(plan).toMatchObject({
       title: 'Blob Plan',
@@ -204,7 +255,11 @@ Next Monday.
     expect(plan?.days[0].exercises[0].imagePath).toBe('exercise_library/images/goblet-squat.png');
     expect(exercises).toHaveLength(1);
     expect(exercises[0].name).toBe('Goblet Squat');
+    expect(recipes[0].title).toBe('Egg and Veggie Skillet');
+    expect(profile?.goal).toBe('Fat loss');
     expect(mockedGet).toHaveBeenCalledWith('pt-prod/workspaces/alpha/plan.md', { access: 'private' });
     expect(mockedGet).toHaveBeenCalledWith('pt-prod/exercise-library/catalog.json', { access: 'private' });
+    expect(mockedGet).toHaveBeenCalledWith('pt-prod/workspaces/alpha/profile.md', { access: 'private' });
+    expect(mockedGet).toHaveBeenCalledWith('pt-prod/recipes/catalog.json', { access: 'private' });
   });
 });

@@ -14,6 +14,7 @@ The frontend is a Next.js app for viewing trainer data that already exists in th
 - switch between generated workspaces
 - open a larger workout focus view
 - browse the exercise library with images and coaching cues
+- suggest recipes from pantry ingredients and the active training goal
 - denser layout with reduced vertical scrolling on dashboard and library views
 - read data from either local repo files or Vercel Blob storage
 - show the current git commit id in the homepage header
@@ -131,6 +132,7 @@ In `blob` mode the frontend reads the same logical data from Vercel Blob:
 
 - `/`: workout dashboard
 - `/workspace/[workspace]`: larger workout view for one workspace
+- `/recipes`: pantry-based, goal-aware recipe suggestions
 - `/library`: exercise library
 
 ## Notes

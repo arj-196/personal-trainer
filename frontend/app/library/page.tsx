@@ -34,6 +34,9 @@ export default async function LibraryPage({
           <Link className="chip-link" href="/">
             Current Workout
           </Link>
+          <Link className="chip-link" href="/recipes">
+            Recipes
+          </Link>
           <Link className="chip-link active" href="/library">
             Exercise Library
           </Link>

@@ -1,0 +1,186 @@
+[
+  {
+    "slug": "chicken-rice-broccoli-bowl",
+    "title": "Chicken, Rice, and Broccoli Bowl",
+    "summary": "A high-protein staple bowl that uses common pantry basics and is easy to batch cook.",
+    "meal_type": "lunch",
+    "goal_tags": ["muscle gain", "higher protein intake", "maintenance", "faster post-workout recovery"],
+    "ingredients_required": ["chicken", "rice", "broccoli"],
+    "ingredients_optional": ["olive oil", "garlic", "soy sauce", "lemon", "onion"],
+    "substitutions": [
+      "Swap chicken for tofu, turkey, or canned tuna.",
+      "Swap broccoli for green beans, spinach, or frozen mixed vegetables."
+    ],
+    "estimated_prep_minutes": 10,
+    "estimated_cook_minutes": 18,
+    "instructions": [
+      "Cook the rice according to package directions.",
+      "Season the chicken with salt, pepper, and garlic if available, then cook until browned and fully done.",
+      "Steam or saute the broccoli until tender-crisp.",
+      "Assemble the bowl and finish with soy sauce or lemon if available."
+    ],
+    "nutrition_summary": "Protein-forward with enough carbohydrates to support training and recovery.",
+    "confidence_note": "Strong fit when you want a simple, repeatable meal with minimal friction."
+  },
+  {
+    "slug": "greek-yogurt-oats-berry-bowl",
+    "title": "Greek Yogurt Oats Bowl",
+    "summary": "A fast breakfast or snack built around protein, fiber, and easy pantry ingredients.",
+    "meal_type": "breakfast",
+    "goal_tags": ["fat loss", "higher protein intake", "maintenance", "faster post-workout recovery"],
+    "ingredients_required": ["greek yogurt", "oats"],
+    "ingredients_optional": ["berries", "banana", "peanut butter", "honey", "chia seeds"],
+    "substitutions": [
+      "Swap Greek yogurt for cottage cheese or skyr.",
+      "Swap oats for granola or overnight oats."
+    ],
+    "estimated_prep_minutes": 5,
+    "estimated_cook_minutes": 0,
+    "instructions": [
+      "Add Greek yogurt to a bowl.",
+      "Stir in oats and let them sit briefly if you want a softer texture.",
+      "Top with fruit and peanut butter if available.",
+      "Adjust sweetness with a small amount of honey if needed."
+    ],
+    "nutrition_summary": "High protein with moderate carbs and strong satiety for a lighter-calorie meal.",
+    "confidence_note": "Strong fit for quick mornings and appetite control."
+  },
+  {
+    "slug": "egg-veggie-skillet",
+    "title": "Egg and Veggie Skillet",
+    "summary": "A fast skillet meal that turns leftover vegetables into a protein-first breakfast or lunch.",
+    "meal_type": "breakfast",
+    "goal_tags": ["fat loss", "maintenance", "higher protein intake"],
+    "ingredients_required": ["eggs", "spinach"],
+    "ingredients_optional": ["mushrooms", "tomato", "onion", "cheese", "olive oil"],
+    "substitutions": [
+      "Swap spinach for kale, peppers, or any quick-cooking vegetable.",
+      "Add egg whites if you want more protein with less fat."
+    ],
+    "estimated_prep_minutes": 8,
+    "estimated_cook_minutes": 8,
+    "instructions": [
+      "Saute the vegetables in a pan with a small amount of oil if available.",
+      "Add beaten eggs and cook gently until just set.",
+      "Finish with cheese if you want extra flavor and calories.",
+      "Serve on its own or with toast if you need more carbohydrates."
+    ],
+    "nutrition_summary": "Protein-forward and lower calorie density, with easy room to scale carbs up or down.",
+    "confidence_note": "Strong fit when vegetables need to be used quickly."
+  },
+  {
+    "slug": "salmon-potato-spinach-plate",
+    "title": "Salmon, Potato, and Spinach Plate",
+    "summary": "A recovery-friendly dinner with protein, carbs, and micronutrient-rich greens.",
+    "meal_type": "dinner",
+    "goal_tags": ["maintenance", "faster post-workout recovery", "muscle gain"],
+    "ingredients_required": ["salmon", "potato", "spinach"],
+    "ingredients_optional": ["olive oil", "lemon", "garlic", "yogurt"],
+    "substitutions": [
+      "Swap salmon for white fish, chicken, or tofu.",
+      "Swap potato for rice or quinoa."
+    ],
+    "estimated_prep_minutes": 10,
+    "estimated_cook_minutes": 22,
+    "instructions": [
+      "Roast or pan-cook the potatoes until tender.",
+      "Cook the salmon until it flakes easily.",
+      "Wilt the spinach with garlic if available.",
+      "Plate everything together and finish with lemon or yogurt sauce if available."
+    ],
+    "nutrition_summary": "Balanced meal with quality protein and recovery-supportive carbohydrates.",
+    "confidence_note": "Strong fit for dinner after a harder training session."
+  },
+  {
+    "slug": "turkey-bean-chili",
+    "title": "Turkey and Bean Chili",
+    "summary": "A hearty one-pot meal that scales well for meal prep and recovery days.",
+    "meal_type": "dinner",
+    "goal_tags": ["muscle gain", "maintenance", "higher protein intake"],
+    "ingredients_required": ["ground turkey", "beans", "tomato"],
+    "ingredients_optional": ["onion", "garlic", "bell pepper", "rice", "cheese"],
+    "substitutions": [
+      "Swap ground turkey for lean beef, chicken, or lentils.",
+      "Swap beans for chickpeas or black beans depending on what you have."
+    ],
+    "estimated_prep_minutes": 12,
+    "estimated_cook_minutes": 30,
+    "instructions": [
+      "Brown the ground turkey with onion and garlic if available.",
+      "Add tomato, beans, and chopped vegetables.",
+      "Simmer until the flavors come together and the chili thickens.",
+      "Serve alone or over rice if you want a larger meal."
+    ],
+    "nutrition_summary": "High-protein and filling, with easy portion scaling for bigger calorie needs.",
+    "confidence_note": "Strong fit for batch cooking and multi-day meal prep."
+  },
+  {
+    "slug": "tofu-veggie-stir-fry",
+    "title": "Tofu Veggie Stir-Fry",
+    "summary": "A flexible skillet meal that works well for lighter eating or plant-forward meals.",
+    "meal_type": "dinner",
+    "goal_tags": ["fat loss", "maintenance", "higher protein intake"],
+    "ingredients_required": ["tofu", "rice", "broccoli"],
+    "ingredients_optional": ["soy sauce", "garlic", "ginger", "carrot", "bell pepper"],
+    "substitutions": [
+      "Swap tofu for chicken, tempeh, or shrimp.",
+      "Swap rice for noodles or cauliflower rice."
+    ],
+    "estimated_prep_minutes": 12,
+    "estimated_cook_minutes": 15,
+    "instructions": [
+      "Press and cube the tofu, then brown it in a hot pan.",
+      "Cook the rice separately if it is not already made.",
+      "Stir-fry the vegetables until crisp-tender.",
+      "Combine everything with soy sauce, garlic, and ginger if available."
+    ],
+    "nutrition_summary": "Lean, protein-aware, and easy to keep moderate in calories while still satisfying.",
+    "confidence_note": "Strong fit when you want a lighter dinner with good pantry coverage."
+  },
+  {
+    "slug": "cottage-cheese-toast-plate",
+    "title": "Cottage Cheese Toast Plate",
+    "summary": "A minimal-prep meal for days when speed matters more than culinary ambition.",
+    "meal_type": "breakfast",
+    "goal_tags": ["fat loss", "higher protein intake", "maintenance"],
+    "ingredients_required": ["cottage cheese", "bread"],
+    "ingredients_optional": ["tomato", "cucumber", "egg", "pepper", "olive oil"],
+    "substitutions": [
+      "Swap cottage cheese for Greek yogurt or ricotta.",
+      "Swap bread for crackers, wraps, or rice cakes."
+    ],
+    "estimated_prep_minutes": 5,
+    "estimated_cook_minutes": 3,
+    "instructions": [
+      "Toast the bread if desired.",
+      "Top with cottage cheese and sliced vegetables if available.",
+      "Add a cooked egg if you want more protein.",
+      "Season with pepper and a small amount of oil if available."
+    ],
+    "nutrition_summary": "Quick, high satiety, and easy to portion for a lighter meal.",
+    "confidence_note": "Decent fit when time and energy are both low."
+  },
+  {
+    "slug": "peanut-butter-banana-protein-smoothie",
+    "title": "Peanut Butter Banana Protein Smoothie",
+    "summary": "A fast blender option for recovery or higher-calorie intake when appetite is low.",
+    "meal_type": "snack",
+    "goal_tags": ["muscle gain", "faster post-workout recovery", "higher protein intake"],
+    "ingredients_required": ["milk", "banana", "protein powder"],
+    "ingredients_optional": ["peanut butter", "oats", "greek yogurt", "cinnamon"],
+    "substitutions": [
+      "Swap milk for soy milk or water plus yogurt.",
+      "Swap banana for frozen berries or dates."
+    ],
+    "estimated_prep_minutes": 5,
+    "estimated_cook_minutes": 0,
+    "instructions": [
+      "Add all ingredients to a blender.",
+      "Blend until smooth, adding liquid to adjust thickness.",
+      "Use oats or yogurt if you want more body and calories.",
+      "Drink immediately or chill briefly."
+    ],
+    "nutrition_summary": "Protein-rich and carb-supportive, useful when recovery speed and convenience matter.",
+    "confidence_note": "Strong fit after training or when solid food is unappealing."
+  }
+]

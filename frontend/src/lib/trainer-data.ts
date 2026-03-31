@@ -1,6 +1,11 @@
 import { blobPath, getTrainerDataSource } from './storage-config';
 import { listBlobFolders, readBlobText } from './blob-storage';
-import { listLocalWorkspaces, readLocalExerciseCatalogText, readLocalWorkspaceText } from './local-storage';
+import {
+  listLocalWorkspaces,
+  readLocalExerciseCatalogText,
+  readLocalRecipeCatalogText,
+  readLocalWorkspaceText,
+} from './local-storage';
 
 export type WorkoutExercise = {
   name: string;
@@ -42,6 +47,27 @@ export type ExerciseReference = {
   credit: string;
   license: string;
   license_url: string;
+};
+
+export type UserProfileSummary = {
+  name: string;
+  goal: string;
+};
+
+export type RecipeCatalogEntry = {
+  slug: string;
+  title: string;
+  summary: string;
+  meal_type: string;
+  goal_tags: string[];
+  ingredients_required: string[];
+  ingredients_optional: string[];
+  substitutions: string[];
+  estimated_prep_minutes: number;
+  estimated_cook_minutes: number;
+  instructions: string[];
+  nutrition_summary: string;
+  confidence_note: string;
 };
 
 export async function listWorkspaces(): Promise<string[]> {
@@ -242,6 +268,35 @@ export async function readExerciseLibrary(): Promise<ExerciseReference[]> {
   return text ? (JSON.parse(text) as ExerciseReference[]) : [];
 }
 
+export async function readRecipeCatalog(): Promise<RecipeCatalogEntry[]> {
+  const text =
+    getTrainerDataSource() === 'blob'
+      ? await readBlobText(blobPath('recipes', 'catalog.json'))
+      : readLocalRecipeCatalogText();
+
+  return text ? (JSON.parse(text) as RecipeCatalogEntry[]) : [];
+}
+
+export async function readUserProfileSummary(workspace: string): Promise<UserProfileSummary | null> {
+  const text =
+    getTrainerDataSource() === 'blob'
+      ? await readBlobText(blobPath('workspaces', workspace, 'profile.md'))
+      : readLocalWorkspaceText(workspace, 'profile.md');
+
+  if (!text) {
+    return null;
+  }
+
+  const sections = splitSections(text);
+  const basics = parseKeyValues(sections.get('basics') ?? '');
+  const goals = parseKeyValues(sections.get('goals') ?? '');
+
+  return {
+    name: basics.get('name') ?? workspace,
+    goal: goals.get('primary goal') ?? goals.get('goal') ?? 'Maintenance',
+  };
+}
+
 export function workspaceImageUrl(workspace: string, relativePath: string | null): string | null {
   if (!relativePath) {
     return null;
@@ -252,4 +307,30 @@ export function workspaceImageUrl(workspace: string, relativePath: string | null
 
 export function libraryImageUrl(imageFilename: string): string {
   return `/api/library-images/${encodeURIComponent(imageFilename)}`;
+}
+
+function splitSections(text: string): Map<string, string> {
+  const sections = new Map<string, string>();
+  const matches = [...text.matchAll(/^##\s+(.+?)\s*$/gm)];
+
+  matches.forEach((match, index) => {
+    const start = match.index! + match[0].length;
+    const end = index + 1 < matches.length ? matches[index + 1].index! : text.length;
+    sections.set(match[1].trim().toLowerCase(), text.slice(start, end).trim());
+  });
+
+  return sections;
+}
+
+function parseKeyValues(block: string): Map<string, string> {
+  const values = new Map<string, string>();
+
+  block.split(/\r?\n/).forEach((line) => {
+    const match = line.trim().match(/^-\s+([^:]+):\s*(.+)$/);
+    if (match) {
+      values.set(match[1].trim().toLowerCase(), match[2].trim());
+    }
+  });
+
+  return values;
 }

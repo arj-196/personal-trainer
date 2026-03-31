@@ -159,7 +159,7 @@ def render_profile_template() -> str:
 Fill in the sections below, then run `personal-trainer plan <workspace>`.
 
 ## Basics
-- Name: Alex
+- Name: Albert
 - Age: 34
 - Sex: male
 - Height cm: 178

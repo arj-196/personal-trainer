@@ -29,6 +29,9 @@ export default async function WorkspacePage({
           <Link className="chip-link" href={`/?workspace=${workspace}`}>
             Back to dashboard
           </Link>
+          <Link className="chip-link" href={`/recipes?workspace=${workspace}`}>
+            Recipes
+          </Link>
           <Link className="chip-link" href="/library">
             Exercise Library
           </Link>

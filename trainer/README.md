@@ -2,7 +2,7 @@
 
 The trainer app is the trainer engine for the monorepo.
 
-It generates workout plans, manages workspace files, maintains the bundled exercise library, and can publish the current plan to Apple Notes.
+It generates workout plans, manages workspace files, maintains the bundled exercise and recipe libraries, and can publish the current plan to Apple Notes.
 
 ## Stack
 
@@ -15,6 +15,7 @@ It generates workout plans, manages workspace files, maintains the bundled exerc
 - parse `profile.md` and check-in files
 - generate `plan.md` and `coach_notes.md`
 - sync the exercise library into each workspace
+- suggest recipes from pantry ingredients and the user's goal
 - publish workspace and library assets to Vercel Blob for the hosted frontend
 - publish a text-only workout note to Apple Notes on macOS
 
@@ -30,18 +31,19 @@ poetry install
 Workspaces are always resolved under the repo-level `./workspaces` directory.
 
 ```bash
-poetry run personal-trainer init alex
-poetry run personal-trainer plan alex
-poetry run personal-trainer refresh alex 2026-03-30-checkin.md
-poetry run personal-trainer status alex
-poetry run personal-trainer publish-web alex
-poetry run personal-trainer publish-notes alex
+poetry run personal-trainer init albert
+poetry run personal-trainer plan albert
+poetry run personal-trainer refresh albert 2026-03-30-checkin.md
+poetry run personal-trainer recipes albert --ingredients "chicken, rice, broccoli"
+poetry run personal-trainer status albert
+poetry run personal-trainer publish-web albert
+poetry run personal-trainer publish-notes albert
 ```
 
 These commands read and write files in:
 
 ```text
-../workspaces/alex/
+../workspaces/albert/
 ```
 
 ## Workflow
@@ -110,7 +112,7 @@ To host the frontend on Vercel without relying on local repo files, publish the 
 ```bash
 cd trainer
 poetry install
-poetry run personal-trainer publish-web alex
+poetry run personal-trainer publish-web albert
 ```
 
 Optional flags:

@@ -1,6 +1,6 @@
 # Personal Trainer Monorepo
 
-Personal Trainer is a multi-app repository for generating workout plans, browsing the exercise library, and publishing a gym-friendly view of the plan.
+Personal Trainer is a multi-app repository for generating workout plans, browsing the exercise library, suggesting recipes from pantry ingredients, and publishing a gym-friendly view of the plan.
 
 ## Apps
 
@@ -12,11 +12,16 @@ Personal Trainer is a multi-app repository for generating workout plans, browsin
 
 ```text
 .
+├── RECIPE_SUGGESTION_PRD.md
 ├── trainer/
 ├── frontend/
 ├── workspaces/
 └── README.md
 ```
+
+## Product docs
+
+- `RECIPE_SUGGESTION_PRD.md`: product requirements for pantry-based, goal-aware recipe suggestions
 
 ## What each app does
 
@@ -26,7 +31,8 @@ The trainer app owns the trainer workflow:
 
 - creates workspaces under `./workspaces/<name>`
 - generates `profile.md`, `plan.md`, `coach_notes.md`, and check-in templates
-- maintains the bundled exercise library
+- maintains the bundled exercise and recipe libraries
+- suggests recipes from pantry ingredients and the user's goal
 - publishes a text-only version of the current plan to Apple Notes
 
 See [trainer/README.md](/Users/arjun/Personal/apps/personal_trainer/trainer/README.md).
@@ -37,6 +43,7 @@ The frontend reads the existing workspace and library files and provides two cor
 
 - current workout view
 - exercise library view
+- recipe suggestions based on pantry ingredients and the active goal
 - compact, low-scroll layout for workout and library browsing
 - homepage header shows the current git commit id
 - optional Vercel Blob-backed hosting mode for internet deployment
@@ -51,11 +58,11 @@ See [frontend/README.md](/Users/arjun/Personal/apps/personal_trainer/frontend/RE
 ```bash
 cd trainer
 poetry install
-poetry run personal-trainer init alex
-poetry run personal-trainer plan alex
+poetry run personal-trainer init albert
+poetry run personal-trainer plan albert
 ```
 
-This creates files under `./workspaces/alex/`.
+This creates files under `./workspaces/albert/`.
 
 ### 2. Run the frontend
 
@@ -73,7 +80,7 @@ Open `http://localhost:3000`.
 1. Create or update a workspace from the trainer CLI.
 2. Generate or refresh the workout plan.
 3. If you host the frontend on Vercel, run `poetry run personal-trainer publish-web <workspace>`.
-4. Open the frontend to view the current workout or browse the exercise library.
+4. Open the frontend to view the current workout, browse the exercise library, or get recipe suggestions.
 5. Optionally publish the current plan to Apple Notes from the trainer app.
 
 ## Workspace model
@@ -87,7 +94,7 @@ workspaces/<workspace-name>/
 Typical contents:
 
 ```text
-workspaces/alex/
+workspaces/albert/
 ├── profile.md
 ├── plan.md
 ├── coach_notes.md

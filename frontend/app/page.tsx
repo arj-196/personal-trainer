@@ -46,6 +46,9 @@ export default async function HomePage({
           <Link className="chip-link active" href={selectedWorkspace ? `/?workspace=${selectedWorkspace}` : '/'}>
             Workout View
           </Link>
+          <Link className="chip-link" href={selectedWorkspace ? `/recipes?workspace=${selectedWorkspace}` : '/recipes'}>
+            Recipes
+          </Link>
           <Link className="chip-link" href="/library">
             Exercise Library
           </Link>
