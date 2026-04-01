@@ -77,13 +77,13 @@ describe('trainer data integration (local)', () => {
     });
     expect(plan?.days[2]).toMatchObject({
       heading: expect.stringContaining('Day 3:'),
-      finisher: expect.stringContaining('Arm tri-set'),
-      recovery: expect.stringContaining('wrist circles'),
+      finisher: expect.stringContaining('density block'),
+      recovery: expect.stringContaining('sleep and hydration'),
     });
     expect(plan?.days[2].exercises[0]).toMatchObject({
       name: 'Dumbbell Bench Press',
       prescription: expect.stringContaining('reps'),
-      notes: expect.stringContaining('smooth tempo'),
+      notes: expect.stringContaining('Slight pause'),
     });
   });
 
