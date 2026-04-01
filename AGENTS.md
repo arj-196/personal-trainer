@@ -11,4 +11,6 @@
 - Always write unit tests for all backend code.
 - Write integration tests for all backend critical components.
 - Do not test frontend components
+- Always use loggers to communicate what is happening.
+
 

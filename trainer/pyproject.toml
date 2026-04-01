@@ -18,6 +18,7 @@ vercel = "^0.5.3"
 pytest = "^8.3.5"
 
 [tool.poetry.scripts]
+personal-trainer = "personal_trainer.cli:main"
 trainer = "personal_trainer.cli:main"
 
 [build-system]

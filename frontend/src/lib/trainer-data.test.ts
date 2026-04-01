@@ -64,16 +64,26 @@ describe('trainer data integration (local)', () => {
     );
     expect(plan?.days).toHaveLength(4);
     expect(plan?.days[0]).toMatchObject({
-      heading: 'Day 1: Upper Strength',
-      warmup: expect.stringContaining('5 minutes easy cardio'),
-      finisher: expect.stringContaining('bike'),
-      recovery: expect.stringContaining('sharp pain'),
+      heading: expect.stringContaining('Day 1:'),
+      warmup: expect.any(String),
+      finisher: expect.any(String),
+      recovery: expect.any(String),
     });
     expect(plan?.days[0].exercises[0]).toMatchObject({
       name: 'Dumbbell Bench Press',
-      prescription: '3 sets x 8-12',
+      prescription: expect.stringContaining('reps'),
       imagePath: 'exercise_library/images/dumbbell-bench-press.png',
       referencePath: 'exercise_library/dumbbell-bench-press.md',
+    });
+    expect(plan?.days[3]).toMatchObject({
+      heading: expect.stringContaining('Day 4:'),
+      finisher: expect.stringContaining('bike'),
+      recovery: expect.stringContaining('stretch'),
+    });
+    expect(plan?.days[3].exercises[0]).toMatchObject({
+      name: 'Circuit (3 rounds)',
+      prescription: expect.stringContaining('Goblet Squat'),
+      notes: expect.stringContaining('Rest 60 sec'),
     });
   });
 
@@ -159,7 +169,7 @@ Add reps first.
 - Warm-up: 5 minutes
 - Main work:
 - **Goblet Squat**: 3 sets x 10. Smooth tempo.
-  ![Goblet Squat](exercise_library/images/goblet-squat.png)
+  <img src="exercise_library/images/goblet-squat.png" alt="Goblet Squat" width="240" />
   Reference: [Goblet Squat](exercise_library/goblet-squat.md)
 - Finisher: 5 minute bike
 - Recovery: Walk and hydrate

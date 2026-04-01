@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 from typing import cast
 
@@ -25,10 +26,12 @@ from personal_trainer.markdown_io import (
     save_state,
 )
 from personal_trainer.notes_publisher import NotesPublishError, publish_plan_to_notes
-from personal_trainer.planner import build_plan
+from personal_trainer.ollama_client import OllamaClientConfig
 from personal_trainer.recipe_suggester import parse_pantry_items, suggest_recipes
+from personal_trainer.workout_planner import WorkoutPlannerError, build_plan
 
 WORKSPACES_ROOT = Path(__file__).resolve().parents[3] / "workspaces"
+LOGGER = logging.getLogger(__name__)
 
 
 def _workspace_argument(_: click.Context, __: click.Parameter, value: str) -> Path:
@@ -55,6 +58,42 @@ WORKSPACE_ARGUMENT = click.argument("workspace", callback=_workspace_argument)
 CHECKIN_ARGUMENT = click.argument("checkin")
 
 
+def planner_options(function):
+    function = click.option(
+        "--ollama-model",
+        "ollama_model",
+        envvar="TRAINER_OLLAMA_MODEL",
+        default="gpt-oss:20b",
+        show_default=True,
+        help="Local Ollama model tag used for plan generation.",
+    )(function)
+    function = click.option(
+        "--ollama-base-url",
+        "ollama_base_url",
+        envvar="TRAINER_OLLAMA_BASE_URL",
+        default="http://localhost:11434",
+        show_default=True,
+        help="Base URL for the local Ollama server.",
+    )(function)
+    function = click.option(
+        "--timeout-seconds",
+        type=int,
+        envvar="TRAINER_OLLAMA_TIMEOUT_SECONDS",
+        default=180,
+        show_default=True,
+        help="Timeout for a single Ollama planner request.",
+    )(function)
+    return function
+
+
+def _configure_progress_logging() -> None:
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s | %(levelname)s | %(message)s",
+        force=True,
+    )
+
+
 @click.group(help="Markdown-first personal trainer application.")
 def main() -> None:
     """Top-level CLI group."""
@@ -76,16 +115,42 @@ def init_command(workspace: Path) -> None:
 
 @main.command("plan", help="Generate the first plan from profile.md.")
 @WORKSPACE_ARGUMENT
-def plan_command(workspace: Path) -> None:
+@planner_options
+def plan_command(
+    workspace: Path,
+    ollama_model: str,
+    ollama_base_url: str,
+    timeout_seconds: int,
+) -> None:
+    _configure_progress_logging()
     paths = ensure_workspace(workspace)
+    LOGGER.info("Preparing workspace '%s' for plan generation", paths.root.name)
     sync_workspace_library(paths.root)
     if not paths.profile.exists():
         raise click.ClickException(f"Missing profile: {paths.profile}")
 
+    LOGGER.info("Loading athlete profile from %s", paths.profile)
     profile = load_profile(paths.profile)
     state = load_state(paths.state)
-    plan = build_plan(profile, plan_version=state.plan_version + 1)
+    LOGGER.info(
+        "Starting plan generation with model '%s' via %s",
+        ollama_model,
+        ollama_base_url,
+    )
+    try:
+        plan = build_plan(
+            profile,
+            plan_version=state.plan_version + 1,
+            client_config=OllamaClientConfig(
+                model=ollama_model,
+                base_url=ollama_base_url,
+                timeout_seconds=max(30, timeout_seconds),
+            ),
+        )
+    except WorkoutPlannerError as error:
+        raise click.ClickException(str(error)) from error
 
+    LOGGER.info("Writing generated plan files")
     paths.plan.write_text(render_plan(plan, profile), encoding="utf-8")
     paths.coach_notes.write_text(render_coach_notes(plan, profile), encoding="utf-8")
     checkin_template_path = (
@@ -99,6 +164,7 @@ def plan_command(workspace: Path) -> None:
     state.plan_version = plan.plan_version
     state.generated_plans += 1
     save_state(paths.state, state)
+    LOGGER.info("Plan generation finished successfully")
 
     click.echo(f"Plan written to {paths.plan}")
     click.echo(f"Coach notes written to {paths.coach_notes}")
@@ -108,8 +174,17 @@ def plan_command(workspace: Path) -> None:
 @main.command("refresh", help="Update the plan using a check-in Markdown file.")
 @WORKSPACE_ARGUMENT
 @CHECKIN_ARGUMENT
-def refresh_command(workspace: Path, checkin: str) -> None:
+@planner_options
+def refresh_command(
+    workspace: Path,
+    checkin: str,
+    ollama_model: str,
+    ollama_base_url: str,
+    timeout_seconds: int,
+) -> None:
+    _configure_progress_logging()
     paths = ensure_workspace(workspace)
+    LOGGER.info("Preparing workspace '%s' for plan refresh", paths.root.name)
     sync_workspace_library(paths.root)
     checkin_path = _resolve_checkin_path(paths.root, checkin)
     if not paths.profile.exists():
@@ -117,11 +192,30 @@ def refresh_command(workspace: Path, checkin: str) -> None:
     if not checkin_path.exists():
         raise click.ClickException(f"Missing check-in: {checkin_path}")
 
+    LOGGER.info("Loading athlete profile and check-in data")
     profile = load_profile(paths.profile)
     checkin = load_checkin(checkin_path)
     state = load_state(paths.state)
-    plan = build_plan(profile, plan_version=state.plan_version + 1, checkin=checkin)
+    LOGGER.info(
+        "Starting refreshed plan generation with model '%s' via %s",
+        ollama_model,
+        ollama_base_url,
+    )
+    try:
+        plan = build_plan(
+            profile,
+            plan_version=state.plan_version + 1,
+            checkin=checkin,
+            client_config=OllamaClientConfig(
+                model=ollama_model,
+                base_url=ollama_base_url,
+                timeout_seconds=max(30, timeout_seconds),
+            ),
+        )
+    except WorkoutPlannerError as error:
+        raise click.ClickException(str(error)) from error
 
+    LOGGER.info("Writing refreshed plan files")
     paths.plan.write_text(render_plan(plan, profile), encoding="utf-8")
     paths.coach_notes.write_text(
         render_coach_notes(plan, profile, checkin=checkin), encoding="utf-8"
@@ -137,6 +231,7 @@ def refresh_command(workspace: Path, checkin: str) -> None:
     state.generated_plans += 1
     state.last_check_in = checkin.check_in_date.isoformat()
     save_state(paths.state, state)
+    LOGGER.info("Plan refresh finished successfully")
 
     click.echo(f"Updated plan written to {paths.plan}")
     click.echo(f"Updated coach notes written to {paths.coach_notes}")

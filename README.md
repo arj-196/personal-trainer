@@ -2,6 +2,8 @@
 
 Personal Trainer is a multi-app repository for generating workout plans, browsing the exercise library, suggesting recipes from pantry ingredients, and publishing a gym-friendly view of the plan.
 
+The workout planner now uses a local Ollama-backed trainer agent instead of hardcoded split and exercise rules. The Python app packages the athlete profile, check-in history, and exercise library context into a structured LLM request, then writes the resulting week plan back to Markdown.
+
 ## Apps
 
 - `trainer/`: Python + Poetry trainer engine and CLI
@@ -30,7 +32,7 @@ Personal Trainer is a multi-app repository for generating workout plans, browsin
 The trainer app owns the trainer workflow:
 
 - creates workspaces under `./workspaces/<name>`
-- generates `profile.md`, `plan.md`, `coach_notes.md`, and check-in templates
+- generates `profile.md`, `plan.md`, `coach_notes.md`, and check-in templates through a local Ollama trainer agent
 - maintains the bundled exercise and recipe libraries
 - suggests recipes from pantry ingredients and the user's goal
 - publishes a text-only version of the current plan to Apple Notes
@@ -58,6 +60,9 @@ See [frontend/README.md](/Users/arjun/Personal/apps/personal_trainer/frontend/RE
 ```bash
 cd trainer
 poetry install
+# run in a separate terminal if Ollama is not already running
+ollama serve
+ollama pull gpt-oss:20b
 poetry run personal-trainer init albert
 poetry run personal-trainer plan albert
 ```
@@ -78,10 +83,11 @@ Open `http://localhost:3000`.
 ## Typical workflow
 
 1. Create or update a workspace from the trainer CLI.
-2. Generate or refresh the workout plan.
-3. If you host the frontend on Vercel, run `poetry run personal-trainer publish-web <workspace>`.
-4. Open the frontend to view the current workout, browse the exercise library, or get recipe suggestions.
-5. Optionally publish the current plan to Apple Notes from the trainer app.
+2. Make sure Ollama is running locally and the selected model is available.
+3. Generate or refresh the workout plan.
+4. If you host the frontend on Vercel, run `poetry run personal-trainer publish-web <workspace>`.
+5. Open the frontend to view the current workout, browse the exercise library, or get recipe suggestions.
+6. Optionally publish the current plan to Apple Notes from the trainer app.
 
 ## Workspace model
 
@@ -106,4 +112,6 @@ workspaces/albert/
 
 - The frontend is currently read-only.
 - The trainer app is the source of truth for plan generation.
+- `plan` and `refresh` use Ollama by default with `gpt-oss:20b`.
+- You can override the local planner target with `--ollama-model`, `--ollama-base-url`, or the corresponding `TRAINER_OLLAMA_*` environment variables.
 - The frontend reads from the generated files rather than maintaining a second database.

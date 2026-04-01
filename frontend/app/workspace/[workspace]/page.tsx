@@ -59,7 +59,7 @@ export default async function WorkspacePage({
                     <div className="exercise-body">
                       <h3 className="exercise-name">{exercise.name}</h3>
                       <p className="exercise-prescription">{exercise.prescription}</p>
-                      <p className="exercise-meta">{exercise.notes}</p>
+                      {exercise.notes ? <p className="exercise-meta">{exercise.notes}</p> : null}
                     </div>
                   </article>
                 ))}

@@ -9,6 +9,7 @@ from pathlib import Path
 from personal_trainer.markdown_io import load_profile, workspace_paths
 
 IMAGE_PATTERN = re.compile(r"!\[(?P<alt>.*?)\]\((?P<path>.+?)\)")
+HTML_IMAGE_PATTERN = re.compile(r"^\s*<img\s+[^>]*src=\"(?P<path>[^\"]+)\"[^>]*>\s*$")
 BOLD_PATTERN = re.compile(r"\*\*(.+?)\*\*")
 REFERENCE_LINE = re.compile(r"^\s*Reference:\s+")
 
@@ -85,6 +86,9 @@ def build_notes_document(plan_markdown: str, workspace: Path) -> NotesDocument:
 
         image_match = IMAGE_PATTERN.fullmatch(stripped)
         if image_match:
+            continue
+        html_image_match = HTML_IMAGE_PATTERN.fullmatch(stripped)
+        if html_image_match:
             continue
 
         if REFERENCE_LINE.match(stripped):

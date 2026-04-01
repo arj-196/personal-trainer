@@ -7,6 +7,8 @@ from functools import lru_cache
 from importlib.resources import as_file, files
 from pathlib import Path
 
+IMAGE_WIDTH_PX = 240
+
 
 @dataclass(frozen=True, slots=True)
 class ExerciseReference:
@@ -113,7 +115,7 @@ def _render_reference(reference: ExerciseReference) -> str:
     lines = [
         f"# {reference.name}",
         "",
-        f"![{reference.name}]({reference.local_image_path})",
+        _render_image(reference.name, reference.local_image_path),
         "",
         "## What It Is",
         reference.summary,
@@ -154,10 +156,14 @@ def _render_index() -> str:
         lines.extend(
             [
                 f"## {reference.name}",
-                f"![{reference.name}]({reference.local_image_path})",
+                _render_image(reference.name, reference.local_image_path),
                 reference.summary,
                 f"Reference: [{reference.name}]({reference.slug}.md)",
                 "",
             ]
         )
     return "\n".join(lines)
+
+
+def _render_image(alt_text: str, path: str) -> str:
+    return f'<img src="{path}" alt="{alt_text}" width="{IMAGE_WIDTH_PX}" />'

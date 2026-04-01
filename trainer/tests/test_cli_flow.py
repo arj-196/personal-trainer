@@ -7,10 +7,62 @@ from personal_trainer.cli import main
 from personal_trainer.markdown_io import load_state
 
 
+def _stub_plan_payload(day_count: int) -> dict[str, object]:
+    days = []
+    for index in range(day_count):
+        days.append(
+            {
+                "day_label": f"Day {index + 1}",
+                "focus": "Upper strength" if index == 0 else f"Session {index + 1}",
+                "warmup": "5 minutes easy cardio and 2 ramp-up sets.",
+                "exercises": [
+                    {
+                        "name": "Dumbbell Bench Press",
+                        "prescription": "3 sets x 8-10 reps",
+                        "notes": "Stop with 1-2 reps in reserve.",
+                    },
+                    {
+                        "name": "1-Arm Dumbbell Row",
+                        "prescription": "3 sets x 8-10 reps",
+                        "notes": "Control the lowering phase.",
+                    },
+                ],
+                "finisher": "8 minutes on the bike at a conversational pace.",
+                "recovery": "Monitor symptoms and keep the next day easy if needed.",
+            }
+        )
+    return {
+        "summary": "This week prioritizes sustainable progress and repeatable sessions.",
+        "progression_note": "Add reps before load when technique stays clean.",
+        "next_checkin_prompt": "At week end, log adherence, energy, soreness, and any pain changes.",
+        "coach_notes_focus": [
+            "Keep effort honest and stop sets before breakdown.",
+            "Use the warm-up to gauge readiness before working sets.",
+        ],
+        "coach_notes_cautions": [
+            "Back off any movement that causes sharp pain."
+        ],
+        "days": days,
+    }
+
+
+def _install_stub_ollama(monkeypatch, *, day_count: int = 3) -> None:
+    payload = _stub_plan_payload(day_count)
+
+    def fake_chat_json(self, *, system_prompt, user_prompt, schema):
+        return payload
+
+    monkeypatch.setattr(
+        "personal_trainer.ollama_client.OllamaChatClient.chat_json",
+        fake_chat_json,
+    )
+
+
 def test_init_and_plan_flow(tmp_path, monkeypatch) -> None:
     workspaces_root = tmp_path / "workspaces"
     workspace = workspaces_root / "athlete"
     monkeypatch.setattr("personal_trainer.cli.WORKSPACES_ROOT", workspaces_root)
+    _install_stub_ollama(monkeypatch, day_count=3)
     runner = CliRunner()
 
     result = runner.invoke(main, ["init", "athlete"])
@@ -40,6 +92,7 @@ def test_refresh_updates_state(tmp_path, monkeypatch) -> None:
     workspaces_root = tmp_path / "workspaces"
     workspace = workspaces_root / "athlete"
     monkeypatch.setattr("personal_trainer.cli.WORKSPACES_ROOT", workspaces_root)
+    _install_stub_ollama(monkeypatch, day_count=3)
     runner = CliRunner()
 
     assert runner.invoke(main, ["init", "athlete"]).exit_code == 0

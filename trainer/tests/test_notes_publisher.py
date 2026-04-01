@@ -8,6 +8,36 @@ from personal_trainer.cli import main
 from personal_trainer.notes_publisher import build_notes_document, default_note_title
 
 
+def _install_stub_ollama(monkeypatch) -> None:
+    def fake_chat_json(self, *, system_prompt, user_prompt, schema):
+        return {
+            "summary": "Plan summary",
+            "progression_note": "Progress slowly",
+            "next_checkin_prompt": "Complete a check-in at the end of the week.",
+            "days": [
+                {
+                    "day_label": "Day 1",
+                    "focus": "Lower",
+                    "warmup": "5 minutes easy cardio",
+                    "exercises": [
+                        {
+                            "name": "Goblet Squat",
+                            "prescription": "3 sets x 8-12 reps",
+                            "notes": "Stay tall.",
+                        }
+                    ],
+                    "finisher": "5 minute bike",
+                    "recovery": "Walk and hydrate",
+                }
+            ],
+        }
+
+    monkeypatch.setattr(
+        "personal_trainer.ollama_client.OllamaChatClient.chat_json",
+        fake_chat_json,
+    )
+
+
 def test_build_notes_document_skips_images(tmp_path: Path) -> None:
     workspace = tmp_path / "workspace"
     image_dir = workspace / "exercise_library" / "images"
@@ -18,7 +48,7 @@ def test_build_notes_document_skips_images(tmp_path: Path) -> None:
 
 ## Day 1: Lower
 - **Goblet Squat**: 3 sets x 8-12. Stay tall.
-  ![Goblet Squat](exercise_library/images/goblet-squat.png)
+  <img src="exercise_library/images/goblet-squat.png" alt="Goblet Squat" width="240" />
   Reference: [Goblet Squat](exercise_library/goblet-squat.md)
 """
 
@@ -71,6 +101,7 @@ def test_publish_notes_command_calls_publisher(tmp_path: Path, monkeypatch) -> N
     workspaces_root = tmp_path / "workspaces"
     workspace = workspaces_root / "workspace"
     monkeypatch.setattr("personal_trainer.cli.WORKSPACES_ROOT", workspaces_root)
+    _install_stub_ollama(monkeypatch)
     runner = CliRunner()
 
     assert runner.invoke(main, ["init", "workspace"]).exit_code == 0

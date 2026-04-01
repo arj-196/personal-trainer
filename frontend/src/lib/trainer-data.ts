@@ -218,23 +218,22 @@ function readDay(lines: string[], startIndex: number, heading: string) {
       continue;
     }
 
-    const exerciseMatch = trimmed.match(/^- \*\*(.+?)\*\*: (.+?)\. (.+)$/);
-    if (exerciseMatch) {
-      const [, name, prescription, notes] = exerciseMatch;
+    const exercise = parseExerciseLine(trimmed);
+    if (exercise) {
       let imagePath: string | null = null;
       let referencePath: string | null = null;
 
-      if (lines[index + 1]?.trim().startsWith('![')) {
-        imagePath = extractMarkdownPath(lines[index + 1].trim());
+      if (isImageLine(lines[index + 1]?.trim())) {
+        imagePath = extractImagePath(lines[index + 1].trim());
         index += 1;
       }
 
       if (lines[index + 1]?.trim().startsWith('Reference:')) {
-        referencePath = extractMarkdownPath(lines[index + 1].trim());
+        referencePath = extractLinkPath(lines[index + 1].trim());
         index += 1;
       }
 
-      exercises.push({ name, prescription, notes, imagePath, referencePath });
+      exercises.push({ ...exercise, imagePath, referencePath });
     }
 
     index += 1;
@@ -246,9 +245,50 @@ function readDay(lines: string[], startIndex: number, heading: string) {
   };
 }
 
-function extractMarkdownPath(value: string): string | null {
+function extractLinkPath(value: string): string | null {
   const match = value.match(/\((.+?)\)/);
   return match ? match[1] : null;
+}
+
+function extractImagePath(value: string): string | null {
+  if (value.startsWith('![')) {
+    return extractLinkPath(value);
+  }
+
+  const htmlMatch = value.match(/<img\s+[^>]*src="([^"]+)"/i);
+  return htmlMatch ? htmlMatch[1] : null;
+}
+
+function isImageLine(value: string | undefined): value is string {
+  if (!value) {
+    return false;
+  }
+
+  return value.startsWith('![') || value.startsWith('<img ');
+}
+
+function parseExerciseLine(value: string): Omit<WorkoutExercise, 'imagePath' | 'referencePath'> | null {
+  const match = value.match(/^- \*\*(.+?)\*\*:\s*(.+)$/);
+  if (!match) {
+    return null;
+  }
+
+  const [, name, remainder] = match;
+  const separatorIndex = remainder.indexOf('. ');
+
+  if (separatorIndex === -1) {
+    return {
+      name: name.trim(),
+      prescription: remainder.trim(),
+      notes: '',
+    };
+  }
+
+  return {
+    name: name.trim(),
+    prescription: remainder.slice(0, separatorIndex).trim(),
+    notes: remainder.slice(separatorIndex + 2).trim(),
+  };
 }
 
 function skipBlankLines(lines: string[], startIndex: number) {

@@ -49,14 +49,11 @@ class CheckIn:
 @dataclass(slots=True)
 class Exercise:
     name: str
-    sets: int
-    reps: str
+    prescription: str
     notes: str
 
     def to_markdown(self) -> str:
-        return (
-            f"- **{self.name}**: {self.sets} sets x {self.reps}. {self.notes}".strip()
-        )
+        return f"- **{self.name}**: {self.prescription}. {self.notes}".strip()
 
 
 @dataclass(slots=True)
@@ -77,6 +74,9 @@ class WorkoutPlan:
     progression_note: str
     days: list[WorkoutDay]
     next_checkin_prompt: str
+    planner_backend: str = ""
+    coach_notes_focus: list[str] = field(default_factory=list)
+    coach_notes_cautions: list[str] = field(default_factory=list)
 
     @property
     def workouts_per_week(self) -> int:

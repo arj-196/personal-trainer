@@ -2,7 +2,7 @@
 
 The trainer app is the trainer engine for the monorepo.
 
-It generates workout plans, manages workspace files, maintains the bundled exercise and recipe libraries, and can publish the current plan to Apple Notes.
+It generates workout plans with a local Ollama-backed trainer agent, manages workspace files, maintains the bundled exercise and recipe libraries, and can publish the current plan to Apple Notes.
 
 ## Stack
 
@@ -13,7 +13,7 @@ It generates workout plans, manages workspace files, maintains the bundled exerc
 
 - create workspaces under `../workspaces/<name>`
 - parse `profile.md` and check-in files
-- generate `plan.md` and `coach_notes.md`
+- generate `plan.md` and `coach_notes.md` from structured LLM output instead of hardcoded split logic
 - sync the exercise library into each workspace
 - suggest recipes from pantry ingredients and the user's goal
 - publish workspace and library assets to Vercel Blob for the hosted frontend
@@ -24,6 +24,9 @@ It generates workout plans, manages workspace files, maintains the bundled exerc
 ```bash
 cd trainer
 poetry install
+# run in a separate terminal if Ollama is not already running
+ollama serve
+ollama pull gpt-oss:20b
 ```
 
 ## CLI usage
@@ -50,11 +53,42 @@ These commands read and write files in:
 
 1. Initialize a workspace.
 2. Fill out `profile.md`.
-3. Generate the first plan.
-4. Add a weekly check-in file in `checkins/`.
-5. Refresh the plan.
-6. Optionally publish the workspace to Vercel Blob for the hosted frontend.
-7. Optionally publish the plan to Apple Notes.
+3. Start Ollama locally and make sure the chosen model is available.
+4. Generate the first plan.
+5. Add a weekly check-in file in `checkins/`.
+6. Refresh the plan.
+7. Optionally publish the workspace to Vercel Blob for the hosted frontend.
+8. Optionally publish the plan to Apple Notes.
+
+## Ollama planner
+
+`plan` and `refresh` call a local Ollama model and ask it to act like a professional trainer. The app sends:
+
+- the parsed athlete profile
+- the latest check-in when present
+- the bundled exercise library metadata so the model can prefer linkable exercise names
+
+The model must return structured JSON, which the app validates before rendering Markdown.
+
+### Planner options
+
+Both `plan` and `refresh` accept:
+
+- `--ollama-model` with default `gpt-oss:20b`
+- `--ollama-base-url` with default `http://localhost:11434`
+- `--timeout-seconds` with default `180`
+
+Matching environment variables are also supported:
+
+- `TRAINER_OLLAMA_MODEL`
+- `TRAINER_OLLAMA_BASE_URL`
+- `TRAINER_OLLAMA_TIMEOUT_SECONDS`
+
+### Recommended local models
+
+- `gpt-oss:20b`: default choice for strong local reasoning with moderate hardware requirements
+- `gpt-oss:120b`: better ceiling if you have the memory and want higher-quality coaching output
+- `qwen3:30b`: worth trying if you want another strong reasoning-oriented local model in the same general class
 
 ## Markdown contract
 
