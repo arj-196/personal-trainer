@@ -2,7 +2,7 @@
 
 The trainer app is the trainer engine for the monorepo.
 
-It generates workout plans with a local Ollama-backed trainer agent, manages workspace files, maintains the bundled exercise and recipe libraries, and can publish the current plan to Apple Notes.
+It generates workout plans with Ollama and OpenAI-backed trainer agents, manages workspace files, maintains the bundled exercise and recipe libraries, and can publish the current plan to Apple Notes.
 
 ## Stack
 
@@ -14,6 +14,7 @@ It generates workout plans with a local Ollama-backed trainer agent, manages wor
 - create workspaces under `../workspaces/<name>`
 - parse `profile.md` and check-in files
 - generate `plan.md` and `coach_notes.md` from structured LLM output instead of hardcoded split logic
+- generate side-by-side comparison plans when you request multiple models
 - sync the exercise library into each workspace
 - suggest recipes from pantry ingredients and the user's goal
 - publish workspace and library assets to Vercel Blob for the hosted frontend
@@ -36,6 +37,8 @@ Workspaces are always resolved under the repo-level `./workspaces` directory.
 ```bash
 poetry run personal-trainer init albert
 poetry run personal-trainer plan albert
+poetry run personal-trainer plan albert --ollama-model gpt-oss:20b --ollama-model qwen3:30b
+poetry run personal-trainer plan albert --ollama-model qwen3:30b --openai-model gpt-5.4-mini
 poetry run personal-trainer refresh albert 2026-03-30-checkin.md
 poetry run personal-trainer recipes albert --ingredients "chicken, rice, broccoli"
 poetry run personal-trainer status albert
@@ -53,36 +56,54 @@ These commands read and write files in:
 
 1. Initialize a workspace.
 2. Fill out `profile.md`.
-3. Start Ollama locally and make sure the chosen model is available.
+3. Start Ollama locally and make sure the chosen model is available, or export `OPENAI_API_KEY` for OpenAI models.
 4. Generate the first plan.
 5. Add a weekly check-in file in `checkins/`.
 6. Refresh the plan.
 7. Optionally publish the workspace to Vercel Blob for the hosted frontend.
 8. Optionally publish the plan to Apple Notes.
 
-## Ollama planner
+## Planner
 
-`plan` and `refresh` call a local Ollama model and ask it to act like a professional trainer. The app sends:
+`plan` and `refresh` call one or more planner models and ask each one to act like a professional trainer. The app sends:
 
 - the parsed athlete profile
 - the latest check-in when present
 - the bundled exercise library metadata so the model can prefer linkable exercise names
 
-The model must return structured JSON, which the app validates before rendering Markdown.
+Each model must return structured JSON, which the app validates before rendering Markdown.
+
+If you pass one model, the trainer writes the usual `plan.md` and `coach_notes.md`.
+
+If you pass multiple models, the trainer writes one plan pair per model in the workspace root, for example:
+
+```text
+../workspaces/albert/
+├── plan-ollama-gpt-oss-20b.md
+├── coach-notes-ollama-gpt-oss-20b.md
+├── plan-openai-gpt-5-4-mini.md
+└── coach-notes-openai-gpt-5-4-mini.md
+```
 
 ### Planner options
 
 Both `plan` and `refresh` accept:
 
-- `--ollama-model` with default `gpt-oss:20b`
+- repeatable `--ollama-model`
+- repeatable `--openai-model`
 - `--ollama-base-url` with default `http://localhost:11434`
+- `--openai-base-url` with default `https://api.openai.com/v1`
+- `--openai-api-key` or `OPENAI_API_KEY` for OpenAI requests
 - `--timeout-seconds` with default `180`
 
 Matching environment variables are also supported:
 
-- `TRAINER_OLLAMA_MODEL`
+- `TRAINER_OLLAMA_MODELS`
+- `TRAINER_OPENAI_MODELS`
 - `TRAINER_OLLAMA_BASE_URL`
 - `TRAINER_OLLAMA_TIMEOUT_SECONDS`
+- `OPENAI_BASE_URL`
+- `OPENAI_API_KEY`
 
 ### Recommended local models
 

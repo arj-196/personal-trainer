@@ -252,11 +252,12 @@ def render_plan(plan: WorkoutPlan, profile: UserProfile) -> str:
             reference = get_reference(exercise.name)
             if reference is not None:
                 lines.append(
-                    f'  <img src="{reference.image_path}" alt="{reference.name}" width="{PLAN_IMAGE_WIDTH_PX}" />'
+                    f'<img src="{reference.image_path}" alt="{reference.name}" style="display: block; max-width: {PLAN_IMAGE_WIDTH_PX}px; width: 100%; height: auto;" />'
                 )
                 lines.append(
-                    f"  Reference: [{reference.name}]({reference.markdown_path})"
+                    f"Reference: [{reference.name}]({reference.markdown_path})"
                 )
+                lines.append("")
         lines.extend(
             [
                 f"- Finisher: {day.finisher}",

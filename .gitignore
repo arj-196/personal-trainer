@@ -3,6 +3,7 @@
 workspaces
 .vercel
 .env*.local
+zsnippets
 
 
 # Byte-compiled / optimized / DLL files

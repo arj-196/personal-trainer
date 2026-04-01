@@ -17,15 +17,21 @@ class StaticAgent:
     def __init__(
         self,
         payload: dict[str, object],
+        provider: str = "ollama",
         model_name: str = "gpt-oss:20b",
     ) -> None:
         self.payload = payload
+        self.provider = provider
         self.model_name = model_name
         self.requests: list[TrainerPlanRequest] = []
 
     def generate_weekly_plan(self, request: TrainerPlanRequest) -> TrainerPlanDraft:
         self.requests.append(request)
-        return TrainerPlanDraft(payload=self.payload, model_name=self.model_name)
+        return TrainerPlanDraft(
+            payload=self.payload,
+            provider=self.provider,
+            model_name=self.model_name,
+        )
 
 
 def test_build_plan_uses_structured_agent_output() -> None:
@@ -121,3 +127,36 @@ def test_build_plan_rejects_invalid_structured_output() -> None:
 
     with pytest.raises(WorkoutPlannerError, match="at least one training day"):
         build_plan(profile, plan_version=1, agent=agent)
+
+
+def test_build_plan_records_openai_backend() -> None:
+    profile = UserProfile(name="Jordan")
+    agent = StaticAgent(
+        {
+            "summary": "Keep the week simple and repeatable.",
+            "progression_note": "Add a rep before load.",
+            "next_checkin_prompt": "Log adherence and recovery.",
+            "days": [
+                {
+                    "day_label": "Day 1",
+                    "focus": "Full body",
+                    "warmup": "5 minutes easy cardio.",
+                    "exercises": [
+                        {
+                            "name": "Push-Up",
+                            "prescription": "3 sets x 8 reps",
+                            "notes": "Leave 2 reps in reserve.",
+                        }
+                    ],
+                    "finisher": "Easy walk.",
+                    "recovery": "Hydrate and sleep well.",
+                }
+            ],
+        },
+        provider="openai",
+        model_name="gpt-5.4-mini",
+    )
+
+    plan = build_plan(profile, plan_version=2, agent=agent)
+
+    assert plan.planner_backend == "openai/gpt-5.4-mini"

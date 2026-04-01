@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import logging
+import re
 from pathlib import Path
+from dataclasses import dataclass
 from typing import cast
 
 import click
@@ -27,6 +29,7 @@ from personal_trainer.markdown_io import (
 )
 from personal_trainer.notes_publisher import NotesPublishError, publish_plan_to_notes
 from personal_trainer.ollama_client import OllamaClientConfig
+from personal_trainer.openai_client import OpenAIClientConfig
 from personal_trainer.recipe_suggester import parse_pantry_items, suggest_recipes
 from personal_trainer.workout_planner import WorkoutPlannerError, build_plan
 
@@ -58,14 +61,58 @@ WORKSPACE_ARGUMENT = click.argument("workspace", callback=_workspace_argument)
 CHECKIN_ARGUMENT = click.argument("checkin")
 
 
+@dataclass(frozen=True, slots=True)
+class PlannerTarget:
+    provider: str
+    model: str
+
+
+def _split_models(value: str | None) -> tuple[str, ...]:
+    if value is None:
+        return ()
+    parts = [item.strip() for item in value.split(",")]
+    return tuple(item for item in parts if item)
+
+
+def _parse_model_option(
+    _: click.Context, __: click.Parameter, value: tuple[str, ...]
+) -> tuple[str, ...]:
+    models: list[str] = []
+    for item in value:
+        models.extend(_split_models(item))
+    return tuple(models)
+
+
+def _sanitize_target_slug(target: PlannerTarget) -> str:
+    slug = f"{target.provider}-{target.model.lower()}"
+    slug = re.sub(r"[^a-z0-9]+", "-", slug).strip("-")
+    return slug or target.provider
+
+
+def _comparison_paths(workspace: Path, target: PlannerTarget) -> tuple[Path, Path]:
+    slug = _sanitize_target_slug(target)
+    return (
+        workspace / f"plan-{slug}.md",
+        workspace / f"coach-notes-{slug}.md",
+    )
+
+
 def planner_options(function):
     function = click.option(
         "--ollama-model",
         "ollama_model",
-        envvar="TRAINER_OLLAMA_MODEL",
-        default="gpt-oss:20b",
-        show_default=True,
-        help="Local Ollama model tag used for plan generation.",
+        multiple=True,
+        envvar="TRAINER_OLLAMA_MODELS",
+        callback=_parse_model_option,
+        help="Repeatable Ollama model tag used for plan generation. Accepts comma-separated values.",
+    )(function)
+    function = click.option(
+        "--openai-model",
+        "openai_model",
+        multiple=True,
+        envvar="TRAINER_OPENAI_MODELS",
+        callback=_parse_model_option,
+        help="Repeatable OpenAI model name used for plan generation. Accepts comma-separated values.",
     )(function)
     function = click.option(
         "--ollama-base-url",
@@ -76,12 +123,27 @@ def planner_options(function):
         help="Base URL for the local Ollama server.",
     )(function)
     function = click.option(
+        "--openai-base-url",
+        "openai_base_url",
+        envvar="OPENAI_BASE_URL",
+        default="https://api.openai.com/v1",
+        show_default=True,
+        help="Base URL for the OpenAI-compatible API.",
+    )(function)
+    function = click.option(
+        "--openai-api-key",
+        "openai_api_key",
+        envvar="OPENAI_API_KEY",
+        default="",
+        help="API key used for OpenAI plan generation.",
+    )(function)
+    function = click.option(
         "--timeout-seconds",
         type=int,
         envvar="TRAINER_OLLAMA_TIMEOUT_SECONDS",
         default=180,
         show_default=True,
-        help="Timeout for a single Ollama planner request.",
+        help="Timeout for a single planner request.",
     )(function)
     return function
 
@@ -118,8 +180,11 @@ def init_command(workspace: Path) -> None:
 @planner_options
 def plan_command(
     workspace: Path,
-    ollama_model: str,
+    ollama_model: tuple[str, ...],
+    openai_model: tuple[str, ...],
     ollama_base_url: str,
+    openai_base_url: str,
+    openai_api_key: str,
     timeout_seconds: int,
 ) -> None:
     _configure_progress_logging()
@@ -132,42 +197,35 @@ def plan_command(
     LOGGER.info("Loading athlete profile from %s", paths.profile)
     profile = load_profile(paths.profile)
     state = load_state(paths.state)
-    LOGGER.info(
-        "Starting plan generation with model '%s' via %s",
-        ollama_model,
-        ollama_base_url,
+    targets = _resolve_planner_targets(
+        ollama_models=ollama_model,
+        openai_models=openai_model,
+        openai_api_key=openai_api_key,
     )
-    try:
-        plan = build_plan(
-            profile,
-            plan_version=state.plan_version + 1,
-            client_config=OllamaClientConfig(
-                model=ollama_model,
-                base_url=ollama_base_url,
-                timeout_seconds=max(30, timeout_seconds),
-            ),
-        )
-    except WorkoutPlannerError as error:
-        raise click.ClickException(str(error)) from error
-
-    LOGGER.info("Writing generated plan files")
-    paths.plan.write_text(render_plan(plan, profile), encoding="utf-8")
-    paths.coach_notes.write_text(render_coach_notes(plan, profile), encoding="utf-8")
-    checkin_template_path = (
-        paths.checkins_dir / f"{plan.generated_on.isoformat()}-checkin.md"
+    plans, outputs = _build_plans(
+        workspace=paths.root,
+        profile=profile,
+        plan_version=state.plan_version + 1,
+        targets=targets,
+        ollama_base_url=ollama_base_url,
+        openai_base_url=openai_base_url,
+        openai_api_key=openai_api_key,
+        timeout_seconds=timeout_seconds,
     )
+    checkin_template_path = paths.checkins_dir / f"{plans[0][1].generated_on.isoformat()}-checkin.md"
     if not checkin_template_path.exists():
         checkin_template_path.write_text(
-            render_checkin_template(plan), encoding="utf-8"
+            render_checkin_template(plans[0][1]), encoding="utf-8"
         )
 
-    state.plan_version = plan.plan_version
-    state.generated_plans += 1
+    state.plan_version = plans[0][1].plan_version
+    state.generated_plans += len(plans)
     save_state(paths.state, state)
     LOGGER.info("Plan generation finished successfully")
 
-    click.echo(f"Plan written to {paths.plan}")
-    click.echo(f"Coach notes written to {paths.coach_notes}")
+    for plan_path, coach_notes_path in outputs:
+        click.echo(f"Plan written to {plan_path}")
+        click.echo(f"Coach notes written to {coach_notes_path}")
     click.echo(f"Check-in template written to {checkin_template_path}")
 
 
@@ -178,8 +236,11 @@ def plan_command(
 def refresh_command(
     workspace: Path,
     checkin: str,
-    ollama_model: str,
+    ollama_model: tuple[str, ...],
+    openai_model: tuple[str, ...],
     ollama_base_url: str,
+    openai_base_url: str,
+    openai_api_key: str,
     timeout_seconds: int,
 ) -> None:
     _configure_progress_logging()
@@ -196,46 +257,128 @@ def refresh_command(
     profile = load_profile(paths.profile)
     checkin = load_checkin(checkin_path)
     state = load_state(paths.state)
-    LOGGER.info(
-        "Starting refreshed plan generation with model '%s' via %s",
-        ollama_model,
-        ollama_base_url,
+    targets = _resolve_planner_targets(
+        ollama_models=ollama_model,
+        openai_models=openai_model,
+        openai_api_key=openai_api_key,
     )
-    try:
-        plan = build_plan(
-            profile,
-            plan_version=state.plan_version + 1,
-            checkin=checkin,
-            client_config=OllamaClientConfig(
-                model=ollama_model,
-                base_url=ollama_base_url,
-                timeout_seconds=max(30, timeout_seconds),
-            ),
-        )
-    except WorkoutPlannerError as error:
-        raise click.ClickException(str(error)) from error
-
-    LOGGER.info("Writing refreshed plan files")
-    paths.plan.write_text(render_plan(plan, profile), encoding="utf-8")
-    paths.coach_notes.write_text(
-        render_coach_notes(plan, profile, checkin=checkin), encoding="utf-8"
+    plans, outputs = _build_plans(
+        workspace=paths.root,
+        profile=profile,
+        plan_version=state.plan_version + 1,
+        checkin=checkin,
+        targets=targets,
+        ollama_base_url=ollama_base_url,
+        openai_base_url=openai_base_url,
+        openai_api_key=openai_api_key,
+        timeout_seconds=timeout_seconds,
     )
 
     next_checkin_path = (
-        paths.checkins_dir / f"{plan.generated_on.isoformat()}-checkin.md"
+        paths.checkins_dir / f"{plans[0][1].generated_on.isoformat()}-checkin.md"
     )
     if not next_checkin_path.exists():
-        next_checkin_path.write_text(render_checkin_template(plan), encoding="utf-8")
+        next_checkin_path.write_text(
+            render_checkin_template(plans[0][1]), encoding="utf-8"
+        )
 
-    state.plan_version = plan.plan_version
-    state.generated_plans += 1
+    state.plan_version = plans[0][1].plan_version
+    state.generated_plans += len(plans)
     state.last_check_in = checkin.check_in_date.isoformat()
     save_state(paths.state, state)
     LOGGER.info("Plan refresh finished successfully")
 
-    click.echo(f"Updated plan written to {paths.plan}")
-    click.echo(f"Updated coach notes written to {paths.coach_notes}")
+    for plan_path, coach_notes_path in outputs:
+        click.echo(f"Updated plan written to {plan_path}")
+        click.echo(f"Updated coach notes written to {coach_notes_path}")
     click.echo(f"Next check-in template written to {next_checkin_path}")
+
+
+def _resolve_planner_targets(
+    *,
+    ollama_models: tuple[str, ...],
+    openai_models: tuple[str, ...],
+    openai_api_key: str,
+) -> list[PlannerTarget]:
+    targets = [PlannerTarget(provider="ollama", model=model) for model in ollama_models]
+    targets.extend(
+        PlannerTarget(provider="openai", model=model) for model in openai_models
+    )
+    if not targets:
+        targets.append(PlannerTarget(provider="ollama", model="gpt-oss:20b"))
+    if openai_models and not openai_api_key.strip():
+        raise click.ClickException(
+            "OpenAI model generation requires OPENAI_API_KEY or --openai-api-key."
+        )
+    return targets
+
+
+def _build_plans(
+    *,
+    workspace: Path,
+    profile,
+    plan_version: int,
+    targets: list[PlannerTarget],
+    ollama_base_url: str,
+    openai_base_url: str,
+    openai_api_key: str,
+    timeout_seconds: int,
+    checkin=None,
+):
+    plans = []
+    outputs: list[tuple[Path, Path]] = []
+    comparison_mode = len(targets) > 1
+    for target in targets:
+        LOGGER.info(
+            "Starting %s plan generation with model '%s'",
+            target.provider,
+            target.model,
+        )
+        try:
+            if target.provider == "openai":
+                plan = build_plan(
+                    profile,
+                    plan_version=plan_version,
+                    checkin=checkin,
+                    openai_client_config=OpenAIClientConfig(
+                        api_key=openai_api_key,
+                        model=target.model,
+                        base_url=openai_base_url,
+                        timeout_seconds=max(30, timeout_seconds),
+                    ),
+                )
+            else:
+                plan = build_plan(
+                    profile,
+                    plan_version=plan_version,
+                    checkin=checkin,
+                    client_config=OllamaClientConfig(
+                        model=target.model,
+                        base_url=ollama_base_url,
+                        timeout_seconds=max(30, timeout_seconds),
+                    ),
+                )
+        except WorkoutPlannerError as error:
+            raise click.ClickException(str(error)) from error
+        plans.append((target, plan))
+        if comparison_mode:
+            plan_path, coach_notes_path = _comparison_paths(workspace, target)
+        else:
+            plan_path = workspace / "plan.md"
+            coach_notes_path = workspace / "coach_notes.md"
+        LOGGER.info(
+            "Writing %s artifacts for model '%s' to %s and %s",
+            target.provider,
+            target.model,
+            plan_path,
+            coach_notes_path,
+        )
+        plan_path.write_text(render_plan(plan, profile), encoding="utf-8")
+        coach_notes_path.write_text(
+            render_coach_notes(plan, profile, checkin=checkin), encoding="utf-8"
+        )
+        outputs.append((plan_path, coach_notes_path))
+    return plans, outputs
 
 
 @main.command("status", help="Show the current workspace state.")

@@ -19,6 +19,11 @@ from personal_trainer.ollama_client import (
     OllamaClientConfig,
     OllamaError,
 )
+from personal_trainer.openai_client import (
+    OpenAIChatClient,
+    OpenAIClientConfig,
+    OpenAIError,
+)
 
 LOGGER = logging.getLogger(__name__)
 
@@ -29,6 +34,8 @@ PLAN_SCHEMA: dict[str, Any] = {
         "summary",
         "progression_note",
         "next_checkin_prompt",
+        "coach_notes_focus",
+        "coach_notes_cautions",
         "days",
     ],
     "properties": {
@@ -99,6 +106,7 @@ class TrainerPlanRequest:
 @dataclass(frozen=True, slots=True)
 class TrainerPlanDraft:
     payload: dict[str, Any]
+    provider: str
     model_name: str
 
 
@@ -135,7 +143,38 @@ Return only JSON that matches the provided schema.
             schema=PLAN_SCHEMA,
         )
         LOGGER.info("Received structured planner response from model '%s'", self.model_name)
-        return TrainerPlanDraft(payload=payload, model_name=self.model_name)
+        return TrainerPlanDraft(
+            payload=payload,
+            provider="ollama",
+            model_name=self.model_name,
+        )
+
+
+class OpenAITrainerAgent:
+    SYSTEM_PROMPT = OllamaTrainerAgent.SYSTEM_PROMPT
+
+    def __init__(self, client: OpenAIChatClient) -> None:
+        self._client = client
+        self.model_name = client.config.model
+
+    def generate_weekly_plan(self, request: TrainerPlanRequest) -> TrainerPlanDraft:
+        LOGGER.info(
+            "Building trainer prompt for %s (%s days, %s minute sessions)",
+            request.profile.name,
+            request.profile.training_days,
+            request.profile.session_length_minutes,
+        )
+        payload = self._client.chat_json(
+            system_prompt=self.SYSTEM_PROMPT,
+            user_prompt=_build_user_prompt(request),
+            schema=PLAN_SCHEMA,
+        )
+        LOGGER.info("Received structured planner response from model '%s'", self.model_name)
+        return TrainerPlanDraft(
+            payload=payload,
+            provider="openai",
+            model_name=self.model_name,
+        )
 
 
 def build_plan(
@@ -145,10 +184,15 @@ def build_plan(
     *,
     agent: TrainerAgent | None = None,
     client_config: OllamaClientConfig | None = None,
+    openai_client_config: OpenAIClientConfig | None = None,
 ) -> WorkoutPlan:
-    planner = agent or OllamaTrainerAgent(
-        OllamaChatClient(client_config or OllamaClientConfig())
-    )
+    planner: TrainerAgent
+    if agent is not None:
+        planner = agent
+    elif openai_client_config is not None:
+        planner = OpenAITrainerAgent(OpenAIChatClient(openai_client_config))
+    else:
+        planner = OllamaTrainerAgent(OllamaChatClient(client_config or OllamaClientConfig()))
     LOGGER.info("Preparing structured request for plan version %s", plan_version)
     request = TrainerPlanRequest(
         profile=profile,
@@ -158,9 +202,9 @@ def build_plan(
 
     try:
         draft = planner.generate_weekly_plan(request)
-    except OllamaError as error:
+    except (OllamaError, OpenAIError) as error:
         raise WorkoutPlannerError(
-            f"Unable to generate a plan with Ollama model '{planner.model_name}': {error}"
+            f"Unable to generate a plan with model '{planner.model_name}': {error}"
         ) from error
 
     return _normalize_plan(
@@ -240,7 +284,7 @@ def _normalize_plan(
         progression_note=progression_note,
         days=days,
         next_checkin_prompt=next_checkin_prompt,
-        planner_backend=f"ollama/{draft.model_name}",
+        planner_backend=f"{draft.provider}/{draft.model_name}",
         coach_notes_focus=_optional_text_list(payload.get("coach_notes_focus")),
         coach_notes_cautions=_optional_text_list(payload.get("coach_notes_cautions")),
     )
