@@ -7,7 +7,9 @@ from pathlib import Path
 
 from personal_trainer.models import UserProfile
 
-RECIPE_CATALOG_PATH = Path(__file__).resolve().parent / "assets" / "recipes" / "catalog.json"
+RECIPE_CATALOG_PATH = (
+    Path(__file__).resolve().parent / "assets" / "recipes" / "catalog.json"
+)
 TOKEN_PATTERN = re.compile(r"[a-z0-9]+")
 INGREDIENT_ALIASES = {
     "chicken breast": "chicken",
@@ -87,7 +89,11 @@ def suggest_recipes(
     goal_override: str | None = None,
     limit: int = 5,
 ) -> list[RecipeSuggestion]:
-    pantry = {normalize_ingredient(item) for item in pantry_items if normalize_ingredient(item)}
+    pantry = {
+        normalize_ingredient(item)
+        for item in pantry_items
+        if normalize_ingredient(item)
+    }
     if not pantry:
         return []
 
@@ -114,11 +120,16 @@ def suggest_recipes(
             RecipeSuggestion(
                 title=recipe.title,
                 summary=recipe.summary,
-                goal_fit_reason=_goal_fit_reason(goal_bucket, recipe.goal_tags, coverage, missing),
+                goal_fit_reason=_goal_fit_reason(
+                    goal_bucket, recipe.goal_tags, coverage, missing
+                ),
                 fit_label=_fit_label(goal_score, coverage, missing),
-                pantry_ingredients_used=used + [item for item in optional_used if item not in used],
+                pantry_ingredients_used=used
+                + [item for item in optional_used if item not in used],
                 missing_ingredients=missing,
-                optional_ingredients=[item for item in optional if item not in optional_used],
+                optional_ingredients=[
+                    item for item in optional if item not in optional_used
+                ],
                 estimated_prep_minutes=recipe.estimated_prep_minutes,
                 estimated_cook_minutes=recipe.estimated_cook_minutes,
                 instructions=recipe.instructions,
@@ -129,7 +140,9 @@ def suggest_recipes(
             )
         )
 
-    suggestions.sort(key=lambda item: (-item.score, len(item.missing_ingredients), item.title))
+    suggestions.sort(
+        key=lambda item: (-item.score, len(item.missing_ingredients), item.title)
+    )
     return suggestions[:limit]
 
 
@@ -139,7 +152,9 @@ def infer_goal_bucket(goal: str) -> str:
         return "fat loss"
     if any(token in normalized for token in ("muscle", "bulk", "gain", "hypertrophy")):
         return "muscle gain"
-    if any(token in normalized for token in ("recovery", "post workout", "postworkout")):
+    if any(
+        token in normalized for token in ("recovery", "post workout", "postworkout")
+    ):
         return "faster post-workout recovery"
     if any(token in normalized for token in ("protein",)):
         return "higher protein intake"

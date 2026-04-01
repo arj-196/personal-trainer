@@ -142,7 +142,9 @@ Return only JSON that matches the provided schema.
             user_prompt=_build_user_prompt(request),
             schema=PLAN_SCHEMA,
         )
-        LOGGER.info("Received structured planner response from model '%s'", self.model_name)
+        LOGGER.info(
+            "Received structured planner response from model '%s'", self.model_name
+        )
         return TrainerPlanDraft(
             payload=payload,
             provider="ollama",
@@ -169,7 +171,9 @@ class OpenAITrainerAgent:
             user_prompt=_build_user_prompt(request),
             schema=PLAN_SCHEMA,
         )
-        LOGGER.info("Received structured planner response from model '%s'", self.model_name)
+        LOGGER.info(
+            "Received structured planner response from model '%s'", self.model_name
+        )
         return TrainerPlanDraft(
             payload=payload,
             provider="openai",
@@ -192,7 +196,9 @@ def build_plan(
     elif openai_client_config is not None:
         planner = OpenAITrainerAgent(OpenAIChatClient(openai_client_config))
     else:
-        planner = OllamaTrainerAgent(OllamaChatClient(client_config or OllamaClientConfig()))
+        planner = OllamaTrainerAgent(
+            OllamaChatClient(client_config or OllamaClientConfig())
+        )
     LOGGER.info("Preparing structured request for plan version %s", plan_version)
     request = TrainerPlanRequest(
         profile=profile,
@@ -225,7 +231,9 @@ def _build_user_prompt(request: TrainerPlanRequest) -> str:
         }
         for reference in all_references()
     ]
-    LOGGER.info("Loaded %s exercise references into the trainer prompt", len(references))
+    LOGGER.info(
+        "Loaded %s exercise references into the trainer prompt", len(references)
+    )
     payload = {
         "today": date.today().isoformat(),
         "target_plan_version": request.plan_version,
@@ -315,9 +323,7 @@ def _normalize_day(value: Any, *, index: int) -> WorkoutDay:
 
 def _normalize_exercise(value: Any, *, day_index: int) -> Exercise:
     if not isinstance(value, dict):
-        raise WorkoutPlannerError(
-            f"Day {day_index} includes an invalid exercise entry"
-        )
+        raise WorkoutPlannerError(f"Day {day_index} includes an invalid exercise entry")
 
     return Exercise(
         name=_require_text(value, "name", scope=f"day {day_index} exercise"),

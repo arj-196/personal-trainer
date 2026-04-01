@@ -21,7 +21,9 @@ class FakeBlobClient:
         fixtures = {
             "pt-test/workspaces/athlete/": [
                 SimpleNamespace(pathname="pt-test/workspaces/athlete/plan.md"),
-                SimpleNamespace(pathname="pt-test/workspaces/athlete/exercise_library/images/old.png"),
+                SimpleNamespace(
+                    pathname="pt-test/workspaces/athlete/exercise_library/images/old.png"
+                ),
             ],
             "pt-test/exercise-library/": [
                 SimpleNamespace(pathname="pt-test/exercise-library/catalog.json"),
@@ -65,9 +67,7 @@ def test_publish_workspace_to_blob_uploads_workspace_and_library(
     (workspace / "exercise_library" / "goblet-squat.md").write_text(
         "# Goblet Squat", encoding="utf-8"
     )
-    (workspace / "exercise_library" / "images" / "goblet-squat.png").write_bytes(
-        b"png"
-    )
+    (workspace / "exercise_library" / "images" / "goblet-squat.png").write_bytes(b"png")
 
     library_root = tmp_path / "library"
     (library_root / "images").mkdir(parents=True)
@@ -110,7 +110,9 @@ def test_publish_workspace_to_blob_uploads_workspace_and_library(
     assert "pt-test/recipes/catalog.json" in uploaded_paths
 
 
-def test_publish_workspace_to_blob_can_skip_shared_library(tmp_path, monkeypatch) -> None:
+def test_publish_workspace_to_blob_can_skip_shared_library(
+    tmp_path, monkeypatch
+) -> None:
     workspace = tmp_path / "athlete"
     workspace.mkdir()
     (workspace / "profile.md").write_text("# Profile", encoding="utf-8")

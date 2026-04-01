@@ -45,7 +45,9 @@ def publish_workspace_to_blob(
 
     try:
         client = _build_blob_client()
-    except Exception as error:  # pragma: no cover - defensive around optional env/runtime failures
+    except (
+        Exception
+    ) as error:  # pragma: no cover - defensive around optional env/runtime failures
         raise BlobPublishError(str(error)) from error
 
     remote_files_deleted = 0

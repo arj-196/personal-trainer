@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import logging
 import re
-from pathlib import Path
 from dataclasses import dataclass
+from pathlib import Path
 from typing import cast
 
 import click
@@ -212,7 +212,9 @@ def plan_command(
         openai_api_key=openai_api_key,
         timeout_seconds=timeout_seconds,
     )
-    checkin_template_path = paths.checkins_dir / f"{plans[0][1].generated_on.isoformat()}-checkin.md"
+    checkin_template_path = (
+        paths.checkins_dir / f"{plans[0][1].generated_on.isoformat()}-checkin.md"
+    )
     if not checkin_template_path.exists():
         checkin_template_path.write_text(
             render_checkin_template(plans[0][1]), encoding="utf-8"
@@ -475,16 +477,24 @@ def publish_web_command(
     )
 
 
-@main.command("recipes", help="Suggest recipes from pantry ingredients and the workspace goal.")
+@main.command(
+    "recipes", help="Suggest recipes from pantry ingredients and the workspace goal."
+)
 @WORKSPACE_ARGUMENT
 @click.option(
     "--ingredients",
     required=True,
     help="Comma-separated pantry ingredients, for example 'chicken, rice, broccoli'.",
 )
-@click.option("--goal", default=None, help="Override the workspace goal for this recipe search.")
-@click.option("--limit", default=5, show_default=True, help="Maximum number of recipes to show.")
-def recipes_command(workspace: Path, ingredients: str, goal: str | None, limit: int) -> None:
+@click.option(
+    "--goal", default=None, help="Override the workspace goal for this recipe search."
+)
+@click.option(
+    "--limit", default=5, show_default=True, help="Maximum number of recipes to show."
+)
+def recipes_command(
+    workspace: Path, ingredients: str, goal: str | None, limit: int
+) -> None:
     paths = ensure_workspace(workspace)
     if not paths.profile.exists():
         raise click.ClickException(f"Missing profile: {paths.profile}")
@@ -494,7 +504,9 @@ def recipes_command(workspace: Path, ingredients: str, goal: str | None, limit: 
     if not pantry_items:
         raise click.ClickException("No pantry ingredients were provided.")
 
-    suggestions = suggest_recipes(profile, pantry_items, goal_override=goal, limit=max(1, limit))
+    suggestions = suggest_recipes(
+        profile, pantry_items, goal_override=goal, limit=max(1, limit)
+    )
     if not suggestions:
         click.echo("No recipe suggestions matched the current pantry input.")
         return
