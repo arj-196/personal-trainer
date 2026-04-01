@@ -1,0 +1,10 @@
+{
+    "python-envs.defaultEnvManager": "ms-python.python:system",
+    "python-envs.defaultPackageManager": "ms-python.python:pip",
+    "python.testing.pytestArgs": [
+        "trainer"
+    ],
+    "python.testing.unittestEnabled": false,
+    "python.testing.pytestEnabled": true,
+    "vitest.rootConfig": "frontend/vitest.config.ts"
+}

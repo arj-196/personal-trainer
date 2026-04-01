@@ -68,6 +68,8 @@ For local file mode, replace `TRAINER_DATA_SOURCE=blob` with `TRAINER_DATA_SOURC
 npm test
 ```
 
+Vitest uses [`vitest.config.ts`](/Users/arjun/Personal/apps/personal_trainer/frontend/vitest.config.ts) for Node-based unit tests and `@/*` path alias resolution.
+
 ## Environment
 
 The frontend supports two data sources:
