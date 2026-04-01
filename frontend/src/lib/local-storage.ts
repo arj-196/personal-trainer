@@ -30,7 +30,7 @@ export function listLocalWorkspaces(): string[] {
   return readdirSync(WORKSPACES_DIR)
     .filter((entry) => {
       const fullPath = join(WORKSPACES_DIR, entry);
-      return statSync(fullPath).isDirectory() && existsSync(join(fullPath, 'profile.md'));
+      return statSync(fullPath).isDirectory() && existsSync(join(fullPath, 'profile.json'));
     })
     .sort();
 }

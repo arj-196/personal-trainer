@@ -144,10 +144,23 @@ def _delete_prefix(client, prefix: str) -> int:
 def _iter_workspace_files(workspace_root: Path) -> list[Path]:
     files: list[Path] = []
 
-    for name in ("profile.md", "plan.md", "coach_notes.md"):
+    for name in (
+        "profile.md",
+        "profile.json",
+        "plan.md",
+        "plan.json",
+        "coach_notes.md",
+    ):
         candidate = workspace_root / name
         if candidate.exists():
             files.append(candidate)
+
+    files.extend(
+        path
+        for pattern in ("plan-*.md", "plan-*.json", "coach-notes-*.md")
+        for path in workspace_root.glob(pattern)
+        if path.is_file() and not path.name.startswith(".")
+    )
 
     library_dir = workspace_root / "exercise_library"
     if library_dir.exists():

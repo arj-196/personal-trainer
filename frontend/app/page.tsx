@@ -191,7 +191,7 @@ export default async function HomePage({
             <section className="empty-state">
               <h2 className="section-title">No plan yet</h2>
               <p>
-                The selected workspace exists, but <code>plan.md</code> is missing.
+                The selected workspace exists, but <code>plan.json</code> is missing.
                 Run <code>personal-trainer plan {selectedWorkspace}</code> in the trainer app.
               </p>
             </section>

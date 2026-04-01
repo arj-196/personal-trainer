@@ -85,218 +85,14 @@ export async function listWorkspaces(): Promise<string[]> {
 export async function readWorkoutPlan(workspace: string): Promise<WorkoutPlan | null> {
   const text =
     getTrainerDataSource() === 'blob'
-      ? await readBlobText(blobPath('workspaces', workspace, 'plan.md'))
-      : readLocalWorkspaceText(workspace, 'plan.md');
+      ? await readBlobText(blobPath('workspaces', workspace, 'plan.json'))
+      : readLocalWorkspaceText(workspace, 'plan.json');
 
   if (!text) {
     return null;
   }
 
-  const lines = text.split(/\r?\n/);
-  const title = lines[0]?.replace(/^#\s+/, '').trim() || 'Training Plan';
-
-  const meta: Array<{ label: string; value: string }> = [];
-  const days: WorkoutDay[] = [];
-  let summary = '';
-  let progression = '';
-  let nextCheckIn = '';
-
-  let index = skipBlankLines(lines, 1);
-  while (index < lines.length && lines[index].startsWith('- ')) {
-    const [label, ...valueParts] = lines[index].slice(2).split(':');
-    meta.push({ label: label.trim(), value: valueParts.join(':').trim() });
-    index += 1;
-  }
-
-  while (index < lines.length) {
-    const line = lines[index];
-
-    if (line === '## Summary') {
-      const block = readParagraph(lines, index + 1);
-      summary = block.text;
-      index = block.nextIndex;
-      continue;
-    }
-
-    if (line === '## Progression') {
-      const block = readParagraph(lines, index + 1);
-      progression = block.text;
-      index = block.nextIndex;
-      continue;
-    }
-
-    if (line === '## Next Check-In') {
-      const block = readParagraph(lines, index + 1);
-      nextCheckIn = block.text;
-      index = block.nextIndex;
-      continue;
-    }
-
-    if (line.startsWith('## Day ')) {
-      const parsed = readDay(lines, index + 1, line.replace(/^##\s+/, '').trim());
-      days.push(parsed.day);
-      index = parsed.nextIndex;
-      continue;
-    }
-
-    index += 1;
-  }
-
-  return {
-    title,
-    meta,
-    summary,
-    progression,
-    days,
-    nextCheckIn,
-  };
-}
-
-function readParagraph(lines: string[], startIndex: number) {
-  const collected: string[] = [];
-  let index = startIndex;
-
-  while (index < lines.length) {
-    const value = lines[index].trim();
-    if (!value) {
-      index += 1;
-      if (collected.length > 0) {
-        break;
-      }
-      continue;
-    }
-    if (value.startsWith('## ')) {
-      break;
-    }
-    collected.push(value);
-    index += 1;
-  }
-
-  return { text: collected.join(' '), nextIndex: index };
-}
-
-function readDay(lines: string[], startIndex: number, heading: string) {
-  let warmup = '';
-  let finisher = '';
-  let recovery = '';
-  const exercises: WorkoutExercise[] = [];
-  let index = startIndex;
-
-  while (index < lines.length) {
-    const raw = lines[index];
-    const trimmed = raw.trim();
-
-    if (trimmed.startsWith('## ')) {
-      break;
-    }
-
-    if (!trimmed) {
-      index += 1;
-      continue;
-    }
-
-    if (trimmed.startsWith('- Warm-up:')) {
-      warmup = trimmed.replace('- Warm-up:', '').trim();
-      index += 1;
-      continue;
-    }
-
-    if (trimmed === '- Main work:') {
-      index += 1;
-      continue;
-    }
-
-    if (trimmed.startsWith('- Finisher:')) {
-      finisher = trimmed.replace('- Finisher:', '').trim();
-      index += 1;
-      continue;
-    }
-
-    if (trimmed.startsWith('- Recovery:')) {
-      recovery = trimmed.replace('- Recovery:', '').trim();
-      index += 1;
-      continue;
-    }
-
-    const exercise = parseExerciseLine(trimmed);
-    if (exercise) {
-      let imagePath: string | null = null;
-      let referencePath: string | null = null;
-
-      if (isImageLine(lines[index + 1]?.trim())) {
-        imagePath = extractImagePath(lines[index + 1].trim());
-        index += 1;
-      }
-
-      if (lines[index + 1]?.trim().startsWith('Reference:')) {
-        referencePath = extractLinkPath(lines[index + 1].trim());
-        index += 1;
-      }
-
-      exercises.push({ ...exercise, imagePath, referencePath });
-    }
-
-    index += 1;
-  }
-
-  return {
-    day: { heading, warmup, exercises, finisher, recovery },
-    nextIndex: index,
-  };
-}
-
-function extractLinkPath(value: string): string | null {
-  const match = value.match(/\((.+?)\)/);
-  return match ? match[1] : null;
-}
-
-function extractImagePath(value: string): string | null {
-  if (value.startsWith('![')) {
-    return extractLinkPath(value);
-  }
-
-  const htmlMatch = value.match(/<img\s+[^>]*src="([^"]+)"/i);
-  return htmlMatch ? htmlMatch[1] : null;
-}
-
-function isImageLine(value: string | undefined): value is string {
-  if (!value) {
-    return false;
-  }
-
-  return value.startsWith('![') || value.startsWith('<img ');
-}
-
-function parseExerciseLine(value: string): Omit<WorkoutExercise, 'imagePath' | 'referencePath'> | null {
-  const match = value.match(/^- \*\*(.+?)\*\*:\s*(.+)$/);
-  if (!match) {
-    return null;
-  }
-
-  const [, name, remainder] = match;
-  const separatorIndex = remainder.indexOf('. ');
-
-  if (separatorIndex === -1) {
-    return {
-      name: name.trim(),
-      prescription: remainder.trim(),
-      notes: '',
-    };
-  }
-
-  return {
-    name: name.trim(),
-    prescription: remainder.slice(0, separatorIndex).trim(),
-    notes: remainder.slice(separatorIndex + 2).trim(),
-  };
-}
-
-function skipBlankLines(lines: string[], startIndex: number) {
-  let index = startIndex;
-  while (index < lines.length && !lines[index].trim()) {
-    index += 1;
-  }
-  return index;
+  return JSON.parse(text) as WorkoutPlan;
 }
 
 export async function readExerciseLibrary(): Promise<ExerciseReference[]> {
@@ -320,20 +116,17 @@ export async function readRecipeCatalog(): Promise<RecipeCatalogEntry[]> {
 export async function readUserProfileSummary(workspace: string): Promise<UserProfileSummary | null> {
   const text =
     getTrainerDataSource() === 'blob'
-      ? await readBlobText(blobPath('workspaces', workspace, 'profile.md'))
-      : readLocalWorkspaceText(workspace, 'profile.md');
+      ? await readBlobText(blobPath('workspaces', workspace, 'profile.json'))
+      : readLocalWorkspaceText(workspace, 'profile.json');
 
   if (!text) {
     return null;
   }
 
-  const sections = splitSections(text);
-  const basics = parseKeyValues(sections.get('basics') ?? '');
-  const goals = parseKeyValues(sections.get('goals') ?? '');
-
+  const payload = JSON.parse(text) as Partial<UserProfileSummary>;
   return {
-    name: basics.get('name') ?? workspace,
-    goal: goals.get('primary goal') ?? goals.get('goal') ?? 'Maintenance',
+    name: payload.name ?? workspace,
+    goal: payload.goal ?? 'Maintenance',
   };
 }
 
@@ -347,30 +140,4 @@ export function workspaceImageUrl(workspace: string, relativePath: string | null
 
 export function libraryImageUrl(imageFilename: string): string {
   return `/api/library-images/${encodeURIComponent(imageFilename)}`;
-}
-
-function splitSections(text: string): Map<string, string> {
-  const sections = new Map<string, string>();
-  const matches = [...text.matchAll(/^##\s+(.+?)\s*$/gm)];
-
-  matches.forEach((match, index) => {
-    const start = match.index! + match[0].length;
-    const end = index + 1 < matches.length ? matches[index + 1].index! : text.length;
-    sections.set(match[1].trim().toLowerCase(), text.slice(start, end).trim());
-  });
-
-  return sections;
-}
-
-function parseKeyValues(block: string): Map<string, string> {
-  const values = new Map<string, string>();
-
-  block.split(/\r?\n/).forEach((line) => {
-    const match = line.trim().match(/^-\s+([^:]+):\s*(.+)$/);
-    if (match) {
-      values.set(match[1].trim().toLowerCase(), match[2].trim());
-    }
-  });
-
-  return values;
 }

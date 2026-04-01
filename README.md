@@ -2,7 +2,7 @@
 
 Personal Trainer is a multi-app repository for generating workout plans, browsing the exercise library, suggesting recipes from pantry ingredients, and publishing a gym-friendly view of the plan.
 
-The workout planner now uses Ollama and OpenAI-backed trainer agents instead of hardcoded split and exercise rules. The Python app packages the athlete profile, check-in history, and exercise library context into a structured LLM request, then writes the resulting week plan back to Markdown.
+The workout planner now uses Ollama and OpenAI-backed trainer agents instead of hardcoded split and exercise rules. The Python app packages the athlete profile, check-in history, and exercise library context into a structured LLM request, then writes the resulting week plan to JSON plus Markdown.
 
 ## Apps
 
@@ -32,7 +32,7 @@ The workout planner now uses Ollama and OpenAI-backed trainer agents instead of 
 The trainer app owns the trainer workflow:
 
 - creates workspaces under `./workspaces/<name>`
-- generates `profile.md`, `plan.md`, `coach_notes.md`, and check-in templates through Ollama or OpenAI trainer agents
+- generates `profile.json`, `plan.json`, `profile.md`, `plan.md`, `coach_notes.md`, and check-in templates through Ollama or OpenAI trainer agents
 - can generate multiple plans in one run so you can compare model outputs side by side
 - maintains the bundled exercise and recipe libraries
 - suggests recipes from pantry ingredients and the user's goal
@@ -42,7 +42,7 @@ See [trainer/README.md](/Users/arjun/Personal/apps/personal_trainer/trainer/READ
 
 ### Frontend
 
-The frontend reads the existing workspace and library files and provides two core views:
+The frontend reads generated workspace JSON plus library assets and provides two core views:
 
 - current workout view
 - exercise library view
@@ -103,7 +103,9 @@ Typical contents:
 
 ```text
 workspaces/albert/
+├── profile.json
 ├── profile.md
+├── plan.json
 ├── plan.md
 ├── coach_notes.md
 ├── checkins/
@@ -118,4 +120,4 @@ workspaces/albert/
 - You can compare multiple models in one run with repeated `--ollama-model` and `--openai-model` flags.
 - Multi-model runs write separate model-specific plan files directly under `workspaces/<workspace>/`.
 - You can override provider settings with `--ollama-base-url`, `--openai-base-url`, `OPENAI_API_KEY`, and the corresponding planner environment variables.
-- The frontend reads from the generated files rather than maintaining a second database.
+- The frontend reads generated JSON files rather than parsing Markdown as a data source.

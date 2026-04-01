@@ -105,7 +105,9 @@ class AppState:
 class WorkspacePaths:
     root: Path
     profile: Path
+    profile_json: Path
     plan: Path
+    plan_json: Path
     coach_notes: Path
     state: Path
     checkins_dir: Path

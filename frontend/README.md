@@ -120,7 +120,8 @@ vercel build --yes
 
 In `local` mode the frontend reads directly from repo files on the server side:
 
-- `../workspaces/<name>/plan.md`
+- `../workspaces/<name>/plan.json`
+- `../workspaces/<name>/profile.json`
 - `../trainer/src/personal_trainer/assets/exercise_library/catalog.json`
 - workspace and library image files served through Next route handlers
 

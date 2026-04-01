@@ -58,11 +58,11 @@ describe('trainer data integration (local)', () => {
     expect(plan?.title).toBe("Arj's Training Plan");
     expect(plan?.meta).toEqual(
       expect.arrayContaining([
-        { label: 'Goal', value: 'Build muscle and improve conditioning' },
-        { label: 'Weekly training days', value: '4' },
+        { label: 'Goal', value: 'Build muscle, espcially in the arms' },
+        { label: 'Weekly training days', value: '3' },
       ])
     );
-    expect(plan?.days).toHaveLength(4);
+    expect(plan?.days).toHaveLength(3);
     expect(plan?.days[0]).toMatchObject({
       heading: expect.stringContaining('Day 1:'),
       warmup: expect.any(String),
@@ -75,15 +75,15 @@ describe('trainer data integration (local)', () => {
       imagePath: 'exercise_library/images/dumbbell-bench-press.png',
       referencePath: 'exercise_library/dumbbell-bench-press.md',
     });
-    expect(plan?.days[3]).toMatchObject({
-      heading: expect.stringContaining('Day 4:'),
-      finisher: expect.stringContaining('bike'),
-      recovery: expect.stringContaining('stretch'),
+    expect(plan?.days[2]).toMatchObject({
+      heading: expect.stringContaining('Day 3:'),
+      finisher: expect.stringContaining('Arm tri-set'),
+      recovery: expect.stringContaining('wrist circles'),
     });
-    expect(plan?.days[3].exercises[0]).toMatchObject({
-      name: 'Circuit (3 rounds)',
-      prescription: expect.stringContaining('Goblet Squat'),
-      notes: expect.stringContaining('Rest 60 sec'),
+    expect(plan?.days[2].exercises[0]).toMatchObject({
+      name: 'Dumbbell Bench Press',
+      prescription: expect.stringContaining('reps'),
+      notes: expect.stringContaining('smooth tempo'),
     });
   });
 
@@ -154,29 +154,33 @@ describe('trainer data integration (blob)', () => {
   it('reads the workout plan and exercise catalog from blob storage', async () => {
     mockedGet.mockImplementation(async (pathname) => {
       const textByPath: Record<string, string> = {
-        'pt-prod/workspaces/alpha/plan.md': `# Blob Plan
-
-- Generated on: 2026-03-30
-- Plan version: 3
-
-## Summary
-Stay consistent.
-
-## Progression
-Add reps first.
-
-## Day 1: Full Body
-- Warm-up: 5 minutes
-- Main work:
-- **Goblet Squat**: 3 sets x 10. Smooth tempo.
-  <img src="exercise_library/images/goblet-squat.png" alt="Goblet Squat" width="240" />
-  Reference: [Goblet Squat](exercise_library/goblet-squat.md)
-- Finisher: 5 minute bike
-- Recovery: Walk and hydrate
-
-## Next Check-In
-Next Monday.
-`,
+        'pt-prod/workspaces/alpha/plan.json': JSON.stringify({
+          title: 'Blob Plan',
+          meta: [
+            { label: 'Generated on', value: '2026-03-30' },
+            { label: 'Plan version', value: '3' },
+          ],
+          summary: 'Stay consistent.',
+          progression: 'Add reps first.',
+          days: [
+            {
+              heading: 'Day 1: Full Body',
+              warmup: '5 minutes',
+              exercises: [
+                {
+                  name: 'Goblet Squat',
+                  prescription: '3 sets x 10',
+                  notes: 'Smooth tempo.',
+                  imagePath: 'exercise_library/images/goblet-squat.png',
+                  referencePath: 'exercise_library/goblet-squat.md',
+                },
+              ],
+              finisher: '5 minute bike',
+              recovery: 'Walk and hydrate',
+            },
+          ],
+          nextCheckIn: 'Next Monday.',
+        }),
         'pt-prod/exercise-library/catalog.json': JSON.stringify([
           {
             slug: 'goblet-squat',
@@ -195,17 +199,10 @@ Next Monday.
             license_url: '',
           },
         ]),
-        'pt-prod/workspaces/alpha/profile.md': `# Athlete Profile
-
-## Basics
-- Name: Alpha
-
-## Goals
-- Primary goal: Fat loss
-
-## Schedule
-- Days per week: 3
-`,
+        'pt-prod/workspaces/alpha/profile.json': JSON.stringify({
+          name: 'Alpha',
+          goal: 'Fat loss',
+        }),
         'pt-prod/recipes/catalog.json': JSON.stringify([
           {
             slug: 'egg-veggie-skillet',
@@ -267,9 +264,9 @@ Next Monday.
     expect(exercises[0].name).toBe('Goblet Squat');
     expect(recipes[0].title).toBe('Egg and Veggie Skillet');
     expect(profile?.goal).toBe('Fat loss');
-    expect(mockedGet).toHaveBeenCalledWith('pt-prod/workspaces/alpha/plan.md', { access: 'private' });
+    expect(mockedGet).toHaveBeenCalledWith('pt-prod/workspaces/alpha/plan.json', { access: 'private' });
     expect(mockedGet).toHaveBeenCalledWith('pt-prod/exercise-library/catalog.json', { access: 'private' });
-    expect(mockedGet).toHaveBeenCalledWith('pt-prod/workspaces/alpha/profile.md', { access: 'private' });
+    expect(mockedGet).toHaveBeenCalledWith('pt-prod/workspaces/alpha/profile.json', { access: 'private' });
     expect(mockedGet).toHaveBeenCalledWith('pt-prod/recipes/catalog.json', { access: 'private' });
   });
 });

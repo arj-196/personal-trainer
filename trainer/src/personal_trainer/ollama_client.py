@@ -18,7 +18,7 @@ class OllamaError(RuntimeError):
 class OllamaClientConfig:
     base_url: str = "http://localhost:11434"
     model: str = "gpt-oss:20b"
-    timeout_seconds: int = 180
+    timeout_seconds: int = 60 * 10
     temperature: float = 0.2
 
 

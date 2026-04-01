@@ -24,6 +24,8 @@ from personal_trainer.markdown_io import (
     render_checkin_template,
     render_coach_notes,
     render_plan,
+    render_plan_json,
+    render_profile_json,
     render_profile_template,
     save_state,
 )
@@ -67,6 +69,13 @@ class PlannerTarget:
     model: str
 
 
+@dataclass(frozen=True, slots=True)
+class PlannerOutputPaths:
+    plan_markdown: Path
+    plan_json: Path
+    coach_notes_markdown: Path
+
+
 def _split_models(value: str | None) -> tuple[str, ...]:
     if value is None:
         return ()
@@ -89,11 +98,21 @@ def _sanitize_target_slug(target: PlannerTarget) -> str:
     return slug or target.provider
 
 
-def _comparison_paths(workspace: Path, target: PlannerTarget) -> tuple[Path, Path]:
+def _planner_output_paths(
+    workspace: Path, target: PlannerTarget, *, comparison_mode: bool
+) -> PlannerOutputPaths:
+    if not comparison_mode:
+        return PlannerOutputPaths(
+            plan_markdown=workspace / "plan.md",
+            plan_json=workspace / "plan.json",
+            coach_notes_markdown=workspace / "coach_notes.md",
+        )
+
     slug = _sanitize_target_slug(target)
-    return (
-        workspace / f"plan-{slug}.md",
-        workspace / f"coach-notes-{slug}.md",
+    return PlannerOutputPaths(
+        plan_markdown=workspace / f"plan-{slug}.md",
+        plan_json=workspace / f"plan-{slug}.json",
+        coach_notes_markdown=workspace / f"coach-notes-{slug}.md",
     )
 
 
@@ -168,6 +187,8 @@ def init_command(workspace: Path) -> None:
     sync_workspace_library(paths.root)
     if not paths.profile.exists():
         paths.profile.write_text(render_profile_template(), encoding="utf-8")
+    profile = load_profile(paths.profile)
+    paths.profile_json.write_text(render_profile_json(profile), encoding="utf-8")
     save_state(paths.state, load_state(paths.state))
     click.echo(f"Workspace ready at {paths.root}")
     click.echo(
@@ -196,6 +217,7 @@ def plan_command(
 
     LOGGER.info("Loading athlete profile from %s", paths.profile)
     profile = load_profile(paths.profile)
+    paths.profile_json.write_text(render_profile_json(profile), encoding="utf-8")
     state = load_state(paths.state)
     targets = _resolve_planner_targets(
         ollama_models=ollama_model,
@@ -225,9 +247,11 @@ def plan_command(
     save_state(paths.state, state)
     LOGGER.info("Plan generation finished successfully")
 
-    for plan_path, coach_notes_path in outputs:
-        click.echo(f"Plan written to {plan_path}")
-        click.echo(f"Coach notes written to {coach_notes_path}")
+    click.echo(f"Profile data written to {paths.profile_json}")
+    for output in outputs:
+        click.echo(f"Plan written to {output.plan_markdown}")
+        click.echo(f"Plan data written to {output.plan_json}")
+        click.echo(f"Coach notes written to {output.coach_notes_markdown}")
     click.echo(f"Check-in template written to {checkin_template_path}")
 
 
@@ -257,6 +281,7 @@ def refresh_command(
 
     LOGGER.info("Loading athlete profile and check-in data")
     profile = load_profile(paths.profile)
+    paths.profile_json.write_text(render_profile_json(profile), encoding="utf-8")
     checkin = load_checkin(checkin_path)
     state = load_state(paths.state)
     targets = _resolve_planner_targets(
@@ -290,9 +315,11 @@ def refresh_command(
     save_state(paths.state, state)
     LOGGER.info("Plan refresh finished successfully")
 
-    for plan_path, coach_notes_path in outputs:
-        click.echo(f"Updated plan written to {plan_path}")
-        click.echo(f"Updated coach notes written to {coach_notes_path}")
+    click.echo(f"Profile data written to {paths.profile_json}")
+    for output in outputs:
+        click.echo(f"Updated plan written to {output.plan_markdown}")
+        click.echo(f"Updated plan data written to {output.plan_json}")
+        click.echo(f"Updated coach notes written to {output.coach_notes_markdown}")
     click.echo(f"Next check-in template written to {next_checkin_path}")
 
 
@@ -328,7 +355,7 @@ def _build_plans(
     checkin=None,
 ):
     plans = []
-    outputs: list[tuple[Path, Path]] = []
+    outputs: list[PlannerOutputPaths] = []
     comparison_mode = len(targets) > 1
     for target in targets:
         LOGGER.info(
@@ -363,23 +390,27 @@ def _build_plans(
         except WorkoutPlannerError as error:
             raise click.ClickException(str(error)) from error
         plans.append((target, plan))
-        if comparison_mode:
-            plan_path, coach_notes_path = _comparison_paths(workspace, target)
-        else:
-            plan_path = workspace / "plan.md"
-            coach_notes_path = workspace / "coach_notes.md"
+        output_paths = _planner_output_paths(
+            workspace, target, comparison_mode=comparison_mode
+        )
         LOGGER.info(
-            "Writing %s artifacts for model '%s' to %s and %s",
+            "Writing %s artifacts for model '%s' to %s, %s, and %s",
             target.provider,
             target.model,
-            plan_path,
-            coach_notes_path,
+            output_paths.plan_markdown,
+            output_paths.plan_json,
+            output_paths.coach_notes_markdown,
         )
-        plan_path.write_text(render_plan(plan, profile), encoding="utf-8")
-        coach_notes_path.write_text(
+        output_paths.plan_markdown.write_text(
+            render_plan(plan, profile), encoding="utf-8"
+        )
+        output_paths.plan_json.write_text(
+            render_plan_json(plan, profile), encoding="utf-8"
+        )
+        output_paths.coach_notes_markdown.write_text(
             render_coach_notes(plan, profile, checkin=checkin), encoding="utf-8"
         )
-        outputs.append((plan_path, coach_notes_path))
+        outputs.append(output_paths)
     return plans, outputs
 
 

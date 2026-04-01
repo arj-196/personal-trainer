@@ -13,7 +13,7 @@ It generates workout plans with Ollama and OpenAI-backed trainer agents, manages
 
 - create workspaces under `../workspaces/<name>`
 - parse `profile.md` and check-in files
-- generate `plan.md` and `coach_notes.md` from structured LLM output instead of hardcoded split logic
+- generate `profile.json`, `plan.json`, `plan.md`, and `coach_notes.md` from structured LLM output instead of hardcoded split logic
 - generate side-by-side comparison plans when you request multiple models
 - sync the exercise library into each workspace
 - suggest recipes from pantry ingredients and the user's goal
@@ -71,17 +71,25 @@ These commands read and write files in:
 - the latest check-in when present
 - the bundled exercise library metadata so the model can prefer linkable exercise names
 
-Each model must return structured JSON, which the app validates before rendering Markdown.
+Each model must return structured JSON, which the app validates before writing both JSON data files and Markdown views.
 
-If you pass one model, the trainer writes the usual `plan.md` and `coach_notes.md`.
+If you pass one model, the trainer writes:
+
+- `profile.json`
+- `plan.json`
+- `plan.md`
+- `coach_notes.md`
 
 If you pass multiple models, the trainer writes one plan pair per model in the workspace root, for example:
 
 ```text
 ../workspaces/albert/
+├── profile.json
 ├── plan-ollama-gpt-oss-20b.md
+├── plan-ollama-gpt-oss-20b.json
 ├── coach-notes-ollama-gpt-oss-20b.md
 ├── plan-openai-gpt-5-4-mini.md
+├── plan-openai-gpt-5-4-mini.json
 └── coach-notes-openai-gpt-5-4-mini.md
 ```
 
