@@ -32,7 +32,7 @@ The workout planner now uses Ollama and OpenAI-backed trainer agents instead of 
 The trainer app owns the trainer workflow:
 
 - creates workspaces under `./workspaces/<name>`
-- generates `profile.json`, `plan.json`, `profile.md`, `plan.md`, `coach_notes.md`, and check-in templates through Ollama or OpenAI trainer agents
+- generates `profile.json`, `plan.json`, `profile.md`, `plan.md`, `plan.pdf`, `coach_notes.md`, and check-in templates through Ollama or OpenAI trainer agents
 - can generate multiple plans in one run so you can compare model outputs side by side
 - maintains the bundled exercise and recipe libraries
 - suggests recipes from pantry ingredients and the user's goal
@@ -107,6 +107,7 @@ workspaces/albert/
 ├── profile.md
 ├── plan.json
 ├── plan.md
+├── plan.pdf
 ├── coach_notes.md
 ├── checkins/
 └── exercise_library/
@@ -116,6 +117,7 @@ workspaces/albert/
 
 - The frontend is currently read-only.
 - The trainer app is the source of truth for plan generation.
+- Every generated plan also writes a PDF copy so it is easier to view offline on a phone.
 - `plan` and `refresh` use Ollama by default with `gpt-oss:20b`.
 - You can compare multiple models in one run with repeated `--ollama-model` and `--openai-model` flags.
 - Multi-model runs write separate model-specific plan files directly under `workspaces/<workspace>/`.

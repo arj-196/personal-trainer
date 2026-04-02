@@ -63,6 +63,7 @@ def test_publish_workspace_to_blob_uploads_workspace_and_library(
     (workspace / "profile.md").write_text("# Profile", encoding="utf-8")
     (workspace / "profile.json").write_text("{}", encoding="utf-8")
     (workspace / "plan.md").write_text("# Plan", encoding="utf-8")
+    (workspace / "plan.pdf").write_bytes(b"%PDF-1.4\n")
     (workspace / "plan.json").write_text("{}", encoding="utf-8")
     (workspace / "coach_notes.md").write_text("# Notes", encoding="utf-8")
     (workspace / "exercise_library" / "images").mkdir(parents=True)
@@ -93,7 +94,7 @@ def test_publish_workspace_to_blob_uploads_workspace_and_library(
 
     assert result.workspace == "athlete"
     assert result.prefix == "pt-test"
-    assert result.workspace_files_uploaded == 7
+    assert result.workspace_files_uploaded == 8
     assert result.library_files_uploaded == 3
     assert result.remote_files_deleted == 4
     assert client.deleted == [
@@ -104,6 +105,7 @@ def test_publish_workspace_to_blob_uploads_workspace_and_library(
     ]
     uploaded_paths = [remote_path for _, remote_path, *_ in client.uploads]
     assert "pt-test/workspaces/athlete/plan.md" in uploaded_paths
+    assert "pt-test/workspaces/athlete/plan.pdf" in uploaded_paths
     assert "pt-test/workspaces/athlete/plan.json" in uploaded_paths
     assert "pt-test/workspaces/athlete/profile.json" in uploaded_paths
     assert (
