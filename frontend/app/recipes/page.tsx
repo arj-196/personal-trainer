@@ -59,6 +59,11 @@ export default async function RecipesPage({
           <Link className="primary-action" href={selectedWorkspace ? `/?workspace=${selectedWorkspace}` : '/'}>
             Workout View
           </Link>
+          {selectedWorkspace ? (
+            <Link className="soft-action" href={`/workout/${selectedWorkspace}`}>
+              Open workout
+            </Link>
+          ) : null}
           <Link className="soft-action" href="/library">
             Exercise Library
           </Link>

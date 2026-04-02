@@ -488,6 +488,23 @@ textarea {
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(246, 248, 251, 0.82));
 }
 
+.workout-day-summary {
+  display: grid;
+  gap: 16px;
+}
+
+.workout-day-summary-list {
+  margin-top: 0;
+}
+
+.summary-exercise-list {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--surface-dark);
+  font-weight: 600;
+  line-height: 1.5;
+}
+
 .workout-block-grid {
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
 }

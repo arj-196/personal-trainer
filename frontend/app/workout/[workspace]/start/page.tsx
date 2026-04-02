@@ -45,8 +45,8 @@ export default async function StartWorkoutPage({
           <Link className="primary-action primary-action-bright" href={`/?workspace=${workspace}`}>
             Back to dashboard
           </Link>
-          <Link className="soft-action soft-action-dark" href={`/workspace/${workspace}`}>
-            Read-only focus mode
+          <Link className="soft-action soft-action-dark" href={`/workout/${workspace}`}>
+            Workout overview
           </Link>
         </div>
       </section>

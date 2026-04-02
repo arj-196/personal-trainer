@@ -139,8 +139,8 @@ In `blob` mode the frontend reads the same logical data from Vercel Blob:
 ## Routes
 
 - `/`: homepage hub with workout summary plus a dedicated Recipes feature entry point
-- `/workspace/[workspace]`: read-only workout focus view for one workspace
-- `/workspace/[workspace]/start`: single-day workout page for one selected workout day, with completion checklist state saved in browser local storage
+- `/workout/[workspace]`: read-only workout overview with day summaries and exercise titles for one workspace
+- `/workout/[workspace]/start`: single-day workout page for one selected workout day, with completion checklist state saved in browser local storage
 - `/recipes`: pantry-based, goal-aware recipe suggestions
 - `/library`: exercise library
 

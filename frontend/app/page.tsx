@@ -98,10 +98,10 @@ export default async function HomePage({
                   <p className="section-copy">Workspace <strong>{selectedWorkspace}</strong></p>
                 </div>
                 <div className="hero-actions">
-                  <Link className="primary-action" href={`/workspace/${selectedWorkspace}`}>
+                  <Link className="primary-action" href={`/workout/${selectedWorkspace}`}>
                     Open workout
                   </Link>
-                  <Link className="soft-action" href={`/workspace/${selectedWorkspace}/start`}>
+                  <Link className="soft-action" href={`/workout/${selectedWorkspace}/start`}>
                     Start session
                   </Link>
                 </div>
