@@ -319,7 +319,7 @@ def render_plan_json(plan: WorkoutPlan, profile: UserProfile) -> str:
                         "name": exercise.name,
                         "prescription": exercise.prescription,
                         "notes": exercise.notes,
-                        "imagePath": (
+                        "imageUrl": (
                             reference.image_path if reference is not None else None
                         ),
                         "referencePath": (

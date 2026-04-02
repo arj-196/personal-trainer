@@ -2,7 +2,10 @@ from __future__ import annotations
 
 import logging
 import re
+import urllib.request
+from io import BytesIO
 from pathlib import Path
+from urllib.parse import urlparse
 from xml.sax.saxutils import escape
 
 from reportlab.lib.colors import HexColor
@@ -25,6 +28,7 @@ _PAGE_MARGIN = 54
 _IMAGE_MAX_WIDTH = 240
 _IMAGE_SPACING = 8
 _PARAGRAPH_SPACING = 8
+_USER_AGENT = "personal-trainer-app/0.1"
 
 
 def write_plan_pdf(markdown_text: str, destination: Path) -> None:
@@ -69,7 +73,7 @@ def _build_story(markdown_text: str, asset_root: Path) -> list[object]:
             flush_paragraph()
             story.extend(
                 _build_image_flowables(
-                    asset_root / image_match.group("src"),
+                    _resolve_markdown_image_source(asset_root, image_match.group("src")),
                     image_match.group("alt"),
                     styles,
                 )
@@ -106,23 +110,52 @@ def _build_story(markdown_text: str, asset_root: Path) -> list[object]:
 
 
 def _build_image_flowables(
-    image_path: Path, alt_text: str, styles: dict[str, ParagraphStyle]
+    image_path: str | Path, alt_text: str, styles: dict[str, ParagraphStyle]
 ) -> list[object]:
-    if not image_path.exists():
+    image_source = _resolve_image_source(image_path)
+    if image_source is None:
         LOGGER.warning("Skipping missing PDF image asset: %s", image_path)
         return [Paragraph(f"[Missing image: {escape(alt_text)}]", styles["caption"])]
 
-    image_width, image_height = ImageReader(str(image_path)).getSize()
+    image_width, image_height = ImageReader(image_source).getSize()
     rendered_width = min(float(image_width), float(_IMAGE_MAX_WIDTH))
     rendered_height = rendered_width * (float(image_height) / float(image_width))
 
     flowable = Image(
-        str(image_path),
+        image_source,
         width=rendered_width,
         height=rendered_height,
         hAlign="LEFT",
     )
     return [flowable, Spacer(1, _IMAGE_SPACING)]
+
+
+def _resolve_image_source(image_path: str | Path) -> str | BytesIO | None:
+    source = str(image_path)
+    parsed = urlparse(source)
+    if parsed.scheme in {"http", "https"}:
+        try:
+            request = urllib.request.Request(
+                source,
+                headers={"User-Agent": _USER_AGENT},
+            )
+            with urllib.request.urlopen(request, timeout=30) as response:
+                return BytesIO(response.read())
+        except Exception:
+            LOGGER.exception("Failed to fetch remote PDF image asset: %s", source)
+            return None
+
+    local_path = Path(source)
+    if local_path.exists():
+        return source
+    return None
+
+
+def _resolve_markdown_image_source(asset_root: Path, source: str) -> str | Path:
+    parsed = urlparse(source)
+    if parsed.scheme in {"http", "https"}:
+        return source
+    return asset_root / source
 
 
 def _styles() -> dict[str, ParagraphStyle]:

@@ -8,7 +8,6 @@ vi.mock('@vercel/blob', () => ({
 import { get, list } from '@vercel/blob';
 
 import {
-  libraryImageUrl,
   listWorkspaces,
   readRecipeCatalog,
   readUserProfileSummary,
@@ -29,12 +28,6 @@ describe('workspaceImageUrl', () => {
     expect(workspaceImageUrl('team alpha', 'exercise_library/images/my photo #1.png')).toBe(
       '/api/workspace-images/team%20alpha/exercise_library/images/my%20photo%20%231.png'
     );
-  });
-});
-
-describe('libraryImageUrl', () => {
-  it('encodes the image filename', () => {
-    expect(libraryImageUrl('split squat 1.png')).toBe('/api/library-images/split%20squat%201.png');
   });
 });
 
@@ -72,18 +65,18 @@ describe('trainer data integration (local)', () => {
     expect(plan?.days[0].exercises[0]).toMatchObject({
       name: 'Dumbbell Bench Press',
       prescription: expect.stringContaining('reps'),
-      imagePath: 'exercise_library/images/dumbbell-bench-press.png',
+      imageUrl: expect.stringContaining('https://'),
       referencePath: 'exercise_library/dumbbell-bench-press.md',
     });
     expect(plan?.days[2]).toMatchObject({
       heading: expect.stringContaining('Day 3:'),
-      finisher: expect.stringContaining('density block'),
-      recovery: expect.stringContaining('sleep and hydration'),
+      finisher: expect.stringContaining('Arm superset'),
+      recovery: expect.stringContaining('light lats and triceps stretching'),
     });
     expect(plan?.days[2].exercises[0]).toMatchObject({
-      name: 'Dumbbell Bench Press',
+      name: 'Pull-Ups',
       prescription: expect.stringContaining('reps'),
-      notes: expect.stringContaining('Slight pause'),
+      notes: expect.stringContaining('slow negative'),
     });
   });
 
@@ -95,7 +88,7 @@ describe('trainer data integration (local)', () => {
       expect.objectContaining({
         slug: expect.any(String),
         name: expect.any(String),
-        image_filename: expect.any(String),
+        image_url: expect.stringContaining('https://'),
       })
     );
   });
@@ -171,7 +164,7 @@ describe('trainer data integration (blob)', () => {
                   name: 'Goblet Squat',
                   prescription: '3 sets x 10',
                   notes: 'Smooth tempo.',
-                  imagePath: 'exercise_library/images/goblet-squat.png',
+                  imageUrl: 'https://wger.de/media/exercise-images/1542/dumbbell-goblet-squat.jpeg',
                   referencePath: 'exercise_library/goblet-squat.md',
                 },
               ],
@@ -190,7 +183,7 @@ describe('trainer data integration (blob)', () => {
             setup: 'Hold a dumbbell',
             cues: ['Brace'],
             visual_note: '',
-            image_filename: 'goblet-squat.png',
+            image_url: 'https://wger.de/media/exercise-images/1542/dumbbell-goblet-squat.jpeg',
             source_title: '',
             source_url: '',
             author: '',
@@ -259,7 +252,9 @@ describe('trainer data integration (blob)', () => {
       title: 'Blob Plan',
       meta: expect.arrayContaining([{ label: 'Plan version', value: '3' }]),
     });
-    expect(plan?.days[0].exercises[0].imagePath).toBe('exercise_library/images/goblet-squat.png');
+    expect(plan?.days[0].exercises[0].imageUrl).toBe(
+      'https://wger.de/media/exercise-images/1542/dumbbell-goblet-squat.jpeg'
+    );
     expect(exercises).toHaveLength(1);
     expect(exercises[0].name).toBe('Goblet Squat');
     expect(recipes[0].title).toBe('Egg and Veggie Skillet');

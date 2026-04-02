@@ -100,13 +100,11 @@ def test_init_and_plan_flow(tmp_path, monkeypatch) -> None:
     plan_text = (workspace / "plan.md").read_text(encoding="utf-8")
     plan_pdf = (workspace / "plan.pdf").read_bytes()
     plan_json = (workspace / "plan.json").read_text(encoding="utf-8")
-    assert "exercise_library/images/" in plan_text
+    assert "https://wger.de/media/exercise-images/" in plan_text
     assert plan_pdf.startswith(b"%PDF-1.4")
     assert "Reference: [Dumbbell Bench Press]" in plan_text
     assert '"days": [' in plan_json
-    assert (
-        '"imagePath": "exercise_library/images/dumbbell-bench-press.png"' in plan_json
-    )
+    assert '"imageUrl": "https://wger.de/media/exercise-images/' in plan_json
 
 
 def test_refresh_updates_state(tmp_path, monkeypatch) -> None:
@@ -154,7 +152,7 @@ def test_refresh_updates_state(tmp_path, monkeypatch) -> None:
     assert "Plan version: 2" in (workspace / "plan.md").read_text(encoding="utf-8")
     assert (workspace / "plan.pdf").read_bytes().startswith(b"%PDF-1.4")
     assert '"value": "2"' in (workspace / "plan.json").read_text(encoding="utf-8")
-    assert (workspace / "exercise_library" / "goblet-squat.md").exists()
+    assert (workspace / "exercise_library" / "index.md").exists()
 
 
 def test_plan_writes_comparison_files_for_multiple_models(

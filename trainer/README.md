@@ -162,8 +162,32 @@ The `Summary` section must include:
 
 - `src/personal_trainer/`: trainer source
 - `templates/`: starter Markdown templates
-- `scripts/build_exercise_library.py`: exercise asset rebuild script
+- `scripts/fetch_wger_catalog.py`: fetch a raw `wger` dump into `zsnippets/`
+- `scripts/build_exercise_library.py`: build the exercise library catalog from a `wger` dump
 - `tests/`: trainer tests
+
+## Exercise catalog conversion
+
+To fetch a fresh raw `wger` dump:
+
+```bash
+cd trainer
+python scripts/fetch_wger_catalog.py
+```
+
+To rebuild the trainer exercise library catalog from a `wger` dump:
+
+```bash
+cd trainer
+python scripts/build_exercise_library.py \
+  ../zsnippets/wger_exercise_catalog.json
+```
+
+Notes:
+
+- by default the builder skips exercises that do not include an image URL in the dump
+- the resulting catalog stores remote `wger` image URLs instead of downloading local image files
+- use `--include-without-images` if you want a fuller catalog and will handle missing images separately
 
 ## Testing
 

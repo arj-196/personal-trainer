@@ -14,7 +14,6 @@ const EXERCISE_LIBRARY_DIR = join(
   'exercise_library'
 );
 const EXERCISE_CATALOG = join(EXERCISE_LIBRARY_DIR, 'catalog.json');
-const LIBRARY_IMAGES_DIR = join(EXERCISE_LIBRARY_DIR, 'images');
 const RECIPE_CATALOG = join(REPO_ROOT, 'trainer', 'src', 'personal_trainer', 'assets', 'recipes', 'catalog.json');
 
 export type StoredFile = {
@@ -50,10 +49,6 @@ export function readLocalRecipeCatalogText(): string | null {
 
 export function readLocalWorkspaceAsset(workspace: string, pathParts: string[]): StoredFile | null {
   return readLocalFile(join(WORKSPACES_DIR, workspace, ...pathParts));
-}
-
-export function readLocalLibraryImage(imageFilename: string): StoredFile | null {
-  return readLocalFile(join(LIBRARY_IMAGES_DIR, imageFilename));
 }
 
 function readLocalFile(targetPath: string): StoredFile | null {

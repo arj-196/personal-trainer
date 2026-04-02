@@ -12,5 +12,5 @@
 - Write integration tests for all backend critical components.
 - Do not test frontend components
 - Always use loggers to communicate what is happening.
-
-
+- Create all cli using the click library
+- When creating standalone scripts, include a brief documentation at the top of the file explaining what it does.

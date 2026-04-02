@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
-import { readWorkoutPlan, workspaceImageUrl } from '@/lib/trainer-data';
+import { readWorkoutPlan } from '@/lib/trainer-data';
 
 export const dynamic = 'force-dynamic';
 
@@ -49,10 +49,10 @@ export default async function WorkspacePage({
               <div className="exercise-grid">
                 {day.exercises.map((exercise) => (
                   <article key={`${day.heading}-${exercise.name}`} className="exercise-card">
-                    {exercise.imagePath ? (
+                    {exercise.imageUrl ? (
                       <img
                         className="exercise-image"
-                        src={workspaceImageUrl(workspace, exercise.imagePath) ?? ''}
+                        src={exercise.imageUrl ?? ''}
                         alt={exercise.name}
                       />
                     ) : null}

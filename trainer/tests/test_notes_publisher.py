@@ -40,15 +40,13 @@ def _install_stub_ollama(monkeypatch) -> None:
 
 def test_build_notes_document_skips_images(tmp_path: Path) -> None:
     workspace = tmp_path / "workspace"
-    image_dir = workspace / "exercise_library" / "images"
-    image_dir.mkdir(parents=True)
-    (image_dir / "goblet-squat.png").write_bytes(b"fake-image")
+    (workspace / "exercise_library").mkdir(parents=True)
 
     plan_markdown = """# Albert's Training Plan
 
 ## Day 1: Lower
 - **Goblet Squat**: 3 sets x 8-12. Stay tall.
-  <img src="exercise_library/images/goblet-squat.png" alt="Goblet Squat" width="240" />
+  <img src="https://wger.de/media/exercise-images/1542/dumbbell-goblet-squat.jpeg" alt="Goblet Squat" width="240" />
   Reference: [Goblet Squat](exercise_library/goblet-squat.md)
 """
 

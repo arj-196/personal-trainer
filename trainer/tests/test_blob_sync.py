@@ -21,9 +21,7 @@ class FakeBlobClient:
         fixtures = {
             "pt-test/workspaces/athlete/": [
                 SimpleNamespace(pathname="pt-test/workspaces/athlete/plan.md"),
-                SimpleNamespace(
-                    pathname="pt-test/workspaces/athlete/exercise_library/images/old.png"
-                ),
+                SimpleNamespace(pathname="pt-test/workspaces/athlete/exercise_library/index.md"),
             ],
             "pt-test/exercise-library/": [
                 SimpleNamespace(pathname="pt-test/exercise-library/catalog.json"),
@@ -66,16 +64,14 @@ def test_publish_workspace_to_blob_uploads_workspace_and_library(
     (workspace / "plan.pdf").write_bytes(b"%PDF-1.4\n")
     (workspace / "plan.json").write_text("{}", encoding="utf-8")
     (workspace / "coach_notes.md").write_text("# Notes", encoding="utf-8")
-    (workspace / "exercise_library" / "images").mkdir(parents=True)
+    (workspace / "exercise_library").mkdir(parents=True)
     (workspace / "exercise_library" / "goblet-squat.md").write_text(
         "# Goblet Squat", encoding="utf-8"
     )
-    (workspace / "exercise_library" / "images" / "goblet-squat.png").write_bytes(b"png")
 
     library_root = tmp_path / "library"
-    (library_root / "images").mkdir(parents=True)
+    library_root.mkdir(parents=True)
     (library_root / "catalog.json").write_text("[]", encoding="utf-8")
-    (library_root / "images" / "goblet-squat.png").write_bytes(b"png")
     recipe_root = tmp_path / "recipes"
     recipe_root.mkdir(parents=True)
     (recipe_root / "catalog.json").write_text("[]", encoding="utf-8")
@@ -94,12 +90,12 @@ def test_publish_workspace_to_blob_uploads_workspace_and_library(
 
     assert result.workspace == "athlete"
     assert result.prefix == "pt-test"
-    assert result.workspace_files_uploaded == 8
-    assert result.library_files_uploaded == 3
+    assert result.workspace_files_uploaded == 7
+    assert result.library_files_uploaded == 2
     assert result.remote_files_deleted == 4
     assert client.deleted == [
         "pt-test/workspaces/athlete/plan.md",
-        "pt-test/workspaces/athlete/exercise_library/images/old.png",
+        "pt-test/workspaces/athlete/exercise_library/index.md",
         "pt-test/exercise-library/catalog.json",
         "pt-test/recipes/catalog.json",
     ]
@@ -108,10 +104,7 @@ def test_publish_workspace_to_blob_uploads_workspace_and_library(
     assert "pt-test/workspaces/athlete/plan.pdf" in uploaded_paths
     assert "pt-test/workspaces/athlete/plan.json" in uploaded_paths
     assert "pt-test/workspaces/athlete/profile.json" in uploaded_paths
-    assert (
-        "pt-test/workspaces/athlete/exercise_library/images/goblet-squat.png"
-        in uploaded_paths
-    )
+    assert "pt-test/workspaces/athlete/exercise_library/goblet-squat.md" in uploaded_paths
     assert "pt-test/exercise-library/catalog.json" in uploaded_paths
     assert "pt-test/recipes/catalog.json" in uploaded_paths
 

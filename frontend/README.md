@@ -123,13 +123,13 @@ In `local` mode the frontend reads directly from repo files on the server side:
 - `../workspaces/<name>/plan.json`
 - `../workspaces/<name>/profile.json`
 - `../trainer/src/personal_trainer/assets/exercise_library/catalog.json`
-- workspace and library image files served through Next route handlers
+- workout reference markdown from the workspace
+- remote `wger` image URLs directly from the plan and shared exercise catalog
 
 In `blob` mode the frontend reads the same logical data from Vercel Blob:
 
 - `personal-trainer/workspaces/<name>/...`
 - `personal-trainer/exercise-library/catalog.json`
-- `personal-trainer/exercise-library/images/...`
 
 ## Routes
 

@@ -40,7 +40,7 @@ def test_render_plan_renders_reference_image_as_block() -> None:
     rendered = render_plan(plan, profile)
 
     assert (
-        '<img src="exercise_library/images/dumbbell-bench-press.png" '
+        '<img src="https://wger.de/media/exercise-images/1676/ac441fa8-cf11-45a5-9633-18ae49fb9320.webp" '
         'alt="Dumbbell Bench Press" '
         'style="display: block; max-width: 240px; width: 100%; height: auto;" />'
     ) in rendered

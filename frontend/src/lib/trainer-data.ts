@@ -11,7 +11,7 @@ export type WorkoutExercise = {
   name: string;
   prescription: string;
   notes: string;
-  imagePath: string | null;
+  imageUrl: string | null;
   referencePath: string | null;
 };
 
@@ -40,7 +40,7 @@ export type ExerciseReference = {
   setup: string;
   cues: string[];
   visual_note: string;
-  image_filename: string;
+  image_url: string;
   source_title: string;
   source_url: string;
   author: string;
@@ -92,7 +92,26 @@ export async function readWorkoutPlan(workspace: string): Promise<WorkoutPlan | 
     return null;
   }
 
-  return JSON.parse(text) as WorkoutPlan;
+  const plan = normalizeWorkoutPlan(JSON.parse(text) as Record<string, unknown>);
+  const needsCatalogLookup = plan.days.some((day) =>
+    day.exercises.some((exercise) => !exercise.imageUrl)
+  );
+  if (!needsCatalogLookup) {
+    return plan;
+  }
+
+  const references = await readExerciseLibrary();
+  const referenceMap = new Map(references.map((reference) => [reference.name, reference]));
+  return {
+    ...plan,
+    days: plan.days.map((day) => ({
+      ...day,
+      exercises: day.exercises.map((exercise) => ({
+        ...exercise,
+        imageUrl: exercise.imageUrl ?? referenceMap.get(exercise.name)?.image_url ?? null,
+      })),
+    })),
+  };
 }
 
 export async function readExerciseLibrary(): Promise<ExerciseReference[]> {
@@ -101,7 +120,11 @@ export async function readExerciseLibrary(): Promise<ExerciseReference[]> {
       ? await readBlobText(blobPath('exercise-library', 'catalog.json'))
       : readLocalExerciseCatalogText();
 
-  return text ? (JSON.parse(text) as ExerciseReference[]) : [];
+  if (!text) {
+    return [];
+  }
+
+  return (JSON.parse(text) as Array<Record<string, unknown>>).map(normalizeExerciseReference);
 }
 
 export async function readRecipeCatalog(): Promise<RecipeCatalogEntry[]> {
@@ -138,6 +161,38 @@ export function workspaceImageUrl(workspace: string, relativePath: string | null
   return `/api/workspace-images/${encodeURIComponent(workspace)}/${encodedParts}`;
 }
 
-export function libraryImageUrl(imageFilename: string): string {
-  return `/api/library-images/${encodeURIComponent(imageFilename)}`;
+function normalizeWorkoutPlan(payload: Record<string, unknown>): WorkoutPlan {
+  const days = Array.isArray(payload.days) ? payload.days : [];
+  return {
+    ...(payload as WorkoutPlan),
+    days: days.map((day) => {
+      const typedDay = day as WorkoutDay & {
+        exercises?: Array<
+          WorkoutExercise & {
+            imagePath?: string | null;
+            imageUrl?: string | null;
+          }
+        >;
+      };
+      return {
+        ...typedDay,
+        exercises: Array.isArray(typedDay.exercises)
+          ? typedDay.exercises.map((exercise) => ({
+              ...exercise,
+              imageUrl:
+                typeof exercise.imageUrl === 'string' && /^https?:\/\//.test(exercise.imageUrl)
+                  ? exercise.imageUrl
+                  : null,
+            }))
+          : [],
+      };
+    }),
+  };
+}
+
+function normalizeExerciseReference(payload: Record<string, unknown>): ExerciseReference {
+  return {
+    ...(payload as ExerciseReference),
+    image_url: typeof payload.image_url === 'string' ? payload.image_url : '',
+  };
 }

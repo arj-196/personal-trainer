@@ -1,6 +1,6 @@
 import Link from 'next/link';
 
-import { libraryImageUrl, readExerciseLibrary } from '@/lib/trainer-data';
+import { readExerciseLibrary } from '@/lib/trainer-data';
 
 export const dynamic = 'force-dynamic';
 
@@ -61,7 +61,7 @@ export default async function LibraryPage({
             <article key={exercise.slug} className="library-card">
               <img
                 className="library-image"
-                src={libraryImageUrl(exercise.image_filename)}
+                src={exercise.image_url}
                 alt={exercise.name}
               />
               <div className="library-body">

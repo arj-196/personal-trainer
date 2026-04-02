@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import shutil
 from dataclasses import dataclass
 from functools import lru_cache
 from importlib.resources import as_file, files
@@ -19,7 +18,7 @@ class ExerciseReference:
     setup: str
     cues: tuple[str, ...]
     visual_note: str
-    image_filename: str
+    image_url: str
     source_title: str
     source_url: str
     author: str
@@ -29,15 +28,11 @@ class ExerciseReference:
 
     @property
     def image_path(self) -> str:
-        return f"exercise_library/images/{self.image_filename}"
+        return self.image_url
 
     @property
     def markdown_path(self) -> str:
         return f"exercise_library/{self.slug}.md"
-
-    @property
-    def local_image_path(self) -> str:
-        return f"images/{self.image_filename}"
 
 
 @lru_cache(maxsize=1)
@@ -56,7 +51,7 @@ def _catalog() -> tuple[ExerciseReference, ...]:
             setup=item["setup"],
             cues=tuple(item["cues"]),
             visual_note=item.get("visual_note", ""),
-            image_filename=item["image_filename"],
+            image_url=item.get("image_url", ""),
             source_title=item["source_title"],
             source_url=item["source_url"],
             author=item.get("author", ""),
@@ -91,18 +86,7 @@ def all_references() -> tuple[ExerciseReference, ...]:
 
 def sync_workspace_library(workspace_root: Path) -> None:
     library_dir = workspace_root / "exercise_library"
-    image_dir = library_dir / "images"
     library_dir.mkdir(parents=True, exist_ok=True)
-    image_dir.mkdir(parents=True, exist_ok=True)
-
-    for reference in _catalog():
-        source_resource = files("personal_trainer").joinpath(
-            f"assets/exercise_library/images/{reference.image_filename}"
-        )
-        with as_file(source_resource) as source:
-            target = image_dir / reference.image_filename
-            if not target.exists() or source.stat().st_mtime > target.stat().st_mtime:
-                shutil.copyfile(source, target)
 
     for reference in _catalog():
         (library_dir / f"{reference.slug}.md").write_text(
@@ -115,7 +99,7 @@ def _render_reference(reference: ExerciseReference) -> str:
     lines = [
         f"# {reference.name}",
         "",
-        _render_image(reference.name, reference.local_image_path),
+        _render_image(reference.name, reference.image_path),
         "",
         "## What It Is",
         reference.summary,
@@ -156,7 +140,7 @@ def _render_index() -> str:
         lines.extend(
             [
                 f"## {reference.name}",
-                _render_image(reference.name, reference.local_image_path),
+                _render_image(reference.name, reference.image_path),
                 reference.summary,
                 f"Reference: [{reference.name}]({reference.slug}.md)",
                 "",
