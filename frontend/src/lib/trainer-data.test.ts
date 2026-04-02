@@ -15,6 +15,7 @@ import {
   readWorkoutPlan,
   workspaceImageUrl,
 } from './trainer-data';
+import { buildWorkoutDayBlocks, googleImagesSearchUrl } from './workout-helpers';
 
 const mockedGet = vi.mocked(get);
 const mockedList = vi.mocked(list);
@@ -28,6 +29,41 @@ describe('workspaceImageUrl', () => {
     expect(workspaceImageUrl('team alpha', 'exercise_library/images/my photo #1.png')).toBe(
       '/api/workspace-images/team%20alpha/exercise_library/images/my%20photo%20%231.png'
     );
+  });
+});
+
+describe('googleImagesSearchUrl', () => {
+  it('encodes the exercise name into a Google Images query url', () => {
+    expect(googleImagesSearchUrl('Incline Dumbbell Press')).toBe(
+      'https://www.google.com/search?tbm=isch&q=Incline%20Dumbbell%20Press'
+    );
+  });
+});
+
+describe('buildWorkoutDayBlocks', () => {
+  it('prepends warm-up and appends finisher and recovery blocks', () => {
+    const blocks = buildWorkoutDayBlocks({
+      heading: 'Day 1',
+      warmup: '5 minute bike',
+      exercises: [
+        {
+          name: 'Goblet Squat',
+          prescription: '3 x 10',
+          notes: 'Smooth reps',
+          imageUrl: 'https://example.test/squat.jpg',
+          referencePath: 'exercise_library/goblet-squat.md',
+        },
+      ],
+      finisher: 'Bike sprints',
+      recovery: 'Walk and stretch',
+    });
+
+    expect(blocks.map((block) => block.kind)).toEqual(['warmup', 'exercise', 'finisher', 'recovery']);
+    expect(blocks[1]).toMatchObject({
+      name: 'Goblet Squat',
+      imageUrl: 'https://example.test/squat.jpg',
+      referencePath: 'exercise_library/goblet-squat.md',
+    });
   });
 });
 
@@ -63,20 +99,20 @@ describe('trainer data integration (local)', () => {
       recovery: expect.any(String),
     });
     expect(plan?.days[0].exercises[0]).toMatchObject({
-      name: 'Dumbbell Bench Press',
+      name: 'Incline Dumbbell Press',
       prescription: expect.stringContaining('reps'),
       imageUrl: expect.stringContaining('https://'),
-      referencePath: 'exercise_library/dumbbell-bench-press.md',
+      referencePath: 'exercise_library/incline-dumbbell-press-1277.md',
     });
     expect(plan?.days[2]).toMatchObject({
       heading: expect.stringContaining('Day 3:'),
-      finisher: expect.stringContaining('Arm superset'),
-      recovery: expect.stringContaining('light lats and triceps stretching'),
+      finisher: expect.stringContaining('Arm tri-set'),
+      recovery: expect.stringContaining('Standing biceps stretch'),
     });
     expect(plan?.days[2].exercises[0]).toMatchObject({
-      name: 'Pull-Ups',
+      name: 'Dumbbell Romanian Deadlift',
       prescription: expect.stringContaining('reps'),
-      notes: expect.stringContaining('slow negative'),
+      notes: expect.stringContaining('stretch and control'),
     });
   });
 

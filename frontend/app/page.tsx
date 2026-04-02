@@ -32,30 +32,8 @@ export default async function HomePage({
 
   return (
     <main className="shell">
-      <section className="hero">
-        <span className="hero-eyebrow">
-          Personal Trainer
-          {headerCommitId ? <code className="hero-commit">{headerCommitId}</code> : null}
-        </span>
-        <p className="hero-subtitle">
-          Read the active plan from your trainer workspace, move through each day,
-          and jump to the exercise library when you need a movement refresher.
-        </p>
-        <div className="hero-links">
-          <Link className="chip-link active" href={selectedWorkspace ? `/?workspace=${selectedWorkspace}` : '/'}>
-            Workout View
-          </Link>
-          <Link className="chip-link" href={selectedWorkspace ? `/recipes?workspace=${selectedWorkspace}` : '/recipes'}>
-            Recipes
-          </Link>
-          <Link className="chip-link" href="/library">
-            Exercise Library
-          </Link>
-        </div>
-      </section>
-
       {showDebugPanel ? (
-        <section className="panel panel-spaced debug-panel">
+        <section className="panel-card debug-panel">
           <div className="section-head">
             <div>
               <h2 className="section-title">Debug</h2>
@@ -91,99 +69,90 @@ export default async function HomePage({
           </p>
         </section>
       ) : (
-        <div className="content-grid">
-          <aside className="sidebar">
-            <h2 className="sidebar-title">Workspaces</h2>
-            <div className="sidebar-stack">
+        <div className="panel-stack">
+          <section className="panel-card">
+            <div className="section-head">
+              <div>
+                <p className="section-kicker">Workspace</p>
+                <h2 className="section-title">Pick your active plan</h2>
+              </div>
+            </div>
+            <div className="workspace-strip">
               {workspaces.map((workspace) => (
                 <Link
                   key={workspace}
-                  className={`workspace-link ${workspace === selectedWorkspace ? 'active' : ''}`}
+                  className={`workspace-chip ${workspace === selectedWorkspace ? 'active' : ''}`}
                   href={`/?workspace=${workspace}`}
                 >
                   {workspace}
                 </Link>
               ))}
             </div>
-          </aside>
-
+          </section>
           {plan ? (
-            <section className="panel">
-              <div className="section-head">
+            <section className="panel-card">
+              <div className="section-head panel-head">
                 <div>
+                  <p className="section-kicker">Current plan</p>
                   <h2 className="section-title">{plan.title}</h2>
+                  <p className="section-copy">Workspace <strong>{selectedWorkspace}</strong></p>
+                </div>
+                <div className="hero-actions">
+                  <Link className="primary-action" href={`/workspace/${selectedWorkspace}`}>
+                    Open workout
+                  </Link>
+                  <Link className="soft-action" href={`/workspace/${selectedWorkspace}/start`}>
+                    Start session
+                  </Link>
+                </div>
+              </div>
+
+              <div className="homepage-feature-grid">
+                <div className="homepage-feature-card homepage-feature-card-primary">
+                  <div className="stat-tile-grid">
+                    {plan.meta.map((item) => (
+                      <article key={item.label} className="stat-tile">
+                        <span className="stat-label">{item.label}</span>
+                        <span className="stat-value">{item.value}</span>
+                      </article>
+                    ))}
+                  </div>
+
+                  <div className="story-grid">
+                    <div className="story-card">
+                      <strong>Summary</strong>
+                      <p>{plan.summary}</p>
+                    </div>
+                    <div className="story-card story-card-soft">
+                      <strong>Progression</strong>
+                      <p>{plan.progression}</p>
+                    </div>
+                  </div>
+
+                  <div className="story-card">
+                    <strong>Next Check-In</strong>
+                    <p>{plan.nextCheckIn}</p>
+                  </div>
+                </div>
+
+                <aside className="homepage-feature-card homepage-feature-card-recipes">
+                  <p className="section-kicker">Recipes</p>
+                  <h3 className="section-title">Use your pantry for recovery-friendly meals.</h3>
                   <p className="section-copy">
-                    Workspace <strong>{selectedWorkspace}</strong>
+                    The recipe feature ranks meals against your active training goal and the ingredients you
+                    already have on hand.
                   </p>
-                </div>
-                <Link className="chip-link" href={`/workspace/${selectedWorkspace}`}>
-                  Focus Mode
-                </Link>
-              </div>
-
-              <div className="stat-grid">
-                {plan.meta.map((item) => (
-                  <article key={item.label} className="stat">
-                    <span className="stat-label">{item.label}</span>
-                    <span className="stat-value">{item.value}</span>
-                  </article>
-                ))}
-              </div>
-
-              <div className="text-grid">
-                <div className="text-block">
-                  <strong>Summary</strong>
-                  <p>{plan.summary}</p>
-                </div>
-                <div className="text-block">
-                  <strong>Progression</strong>
-                  <p>{plan.progression}</p>
-                </div>
-              </div>
-
-              <div className="day-stack">
-                {plan.days.map((day) => (
-                  <article key={day.heading} className="day-card">
-                    <h3 className="day-title">{day.heading}</h3>
-                    <p className="day-subtext">
-                      <strong>Warm-up:</strong> {day.warmup}
-                    </p>
-                    <div className="exercise-grid">
-                      {day.exercises.map((exercise) => (
-                        <article key={`${day.heading}-${exercise.name}`} className="exercise-card">
-                          {exercise.imageUrl ? (
-                            <img
-                              className="exercise-image"
-                              src={exercise.imageUrl ?? ''}
-                              alt={exercise.name}
-                            />
-                          ) : null}
-                          <div className="exercise-body">
-                            <h4 className="exercise-name">{exercise.name}</h4>
-                            <p className="exercise-prescription">{exercise.prescription}</p>
-                            <p className="exercise-meta">{exercise.notes}</p>
-                            {exercise.referencePath ? (
-                              <div className="badge-row">
-                                <Link className="badge" href="/library">
-                                  Open in library
-                                </Link>
-                              </div>
-                            ) : null}
-                          </div>
-                        </article>
-                      ))}
-                    </div>
-                    <div className="badge-row">
-                      <span className="badge">Finisher: {day.finisher}</span>
-                      <span className="badge">Recovery: {day.recovery}</span>
-                    </div>
-                  </article>
-                ))}
-              </div>
-
-              <div className="text-block">
-                <strong>Next Check-In</strong>
-                <p>{plan.nextCheckIn}</p>
+                  <div className="badge-row">
+                    <span className="badge">Goal-aware</span>
+                    <span className="badge">Pantry-based</span>
+                    <span className="badge">Workspace-linked</span>
+                  </div>
+                  <div className="hero-actions">
+                    <Link className="primary-action" href={`/recipes?workspace=${encodeURIComponent(selectedWorkspace)}`}>
+                      Open recipes
+                    </Link>
+                  </div>
+                </aside>
               </div>
             </section>
           ) : (
@@ -193,6 +162,21 @@ export default async function HomePage({
                 The selected workspace exists, but <code>plan.json</code> is missing.
                 Run <code>personal-trainer plan {selectedWorkspace}</code> in the trainer app.
               </p>
+              <div className="homepage-feature-grid homepage-feature-grid-single">
+                <aside className="homepage-feature-card homepage-feature-card-recipes">
+                  <p className="section-kicker">Recipes</p>
+                  <h3 className="section-title">Recipes are still available.</h3>
+                  <p className="section-copy">
+                    Open the recipe feature from the homepage even if this workspace does not have a generated
+                    workout plan yet.
+                  </p>
+                  <div className="hero-actions">
+                    <Link className="primary-action" href={`/recipes?workspace=${encodeURIComponent(selectedWorkspace)}`}>
+                      Open recipes
+                    </Link>
+                  </div>
+                </aside>
+              </div>
             </section>
           )}
         </div>

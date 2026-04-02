@@ -10,12 +10,17 @@ The frontend is a Next.js app for viewing trainer data that already exists in th
 
 ## Current features
 
-- view the current workout plan
+- use the homepage as the hub for both workout and recipe flows
 - switch between generated workspaces
-- open a larger workout focus view
+- view a high-level workout summary on the homepage instead of the full exercise list
+- open a larger read-only workout focus view
+- start a single-day workout session from a specific workout day with a persistent per-device checklist
 - browse the exercise library with images and coaching cues
 - suggest recipes from pantry ingredients and the active training goal
-- denser layout with reduced vertical scrolling on dashboard and library views
+- open Google Images for each exercise card when you need a quick visual lookup
+- use compact icon actions on read-only workout cards and expanded actions in the start-workout flow
+- collapse completed workout cards in the start-workout flow so finished exercises take much less space
+- render warm-up, finisher, and recovery as full workout blocks inside the workout flows
 - read data from either local repo files or Vercel Blob storage
 - show the current git commit id in the homepage header
 - optionally show a homepage debug panel with the current commit hash and environment variables
@@ -133,13 +138,16 @@ In `blob` mode the frontend reads the same logical data from Vercel Blob:
 
 ## Routes
 
-- `/`: workout dashboard
-- `/workspace/[workspace]`: larger workout view for one workspace
+- `/`: homepage hub with workout summary plus a dedicated Recipes feature entry point
+- `/workspace/[workspace]`: read-only workout focus view for one workspace
+- `/workspace/[workspace]/start`: single-day workout page for one selected workout day, with completion checklist state saved in browser local storage
 - `/recipes`: pantry-based, goal-aware recipe suggestions
 - `/library`: exercise library
 
 ## Notes
 
-- The frontend is currently read-only.
+- The workout checklist state is browser-local and does not sync across devices.
+- The start workout route accepts `?day=<1-based index>` so each workout day card can open its own fixed session view.
+- The frontend is read-only with the exception of browser-local workout progress state.
 - Plan generation still happens in the trainer CLI.
 - A workspace must exist in the selected data source before the frontend can display it.

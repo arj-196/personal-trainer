@@ -1,9 +1,12 @@
 # Repository Guidelines
 
-# Tech Stack
+# General
 
-- Use Python as the main backend language.
+- Do not make any changes until you have 95% confidence in what you need to build. Ask me follow-up questions until you reach that confidence.
 
+# Repo Structure
+- The web app is located in frontend
+- The trainer logic is located in trainer
 
 # Coding standards
 

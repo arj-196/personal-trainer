@@ -43,21 +43,23 @@ export default async function RecipesPage({
 
   return (
     <main className="shell">
-      <section className="hero">
-        <span className="hero-eyebrow">Recipe Coach</span>
-        <h1 className="hero-title">Cook from what you already have.</h1>
+      <section className="hero-panel hero-panel-compact">
+        <div className="hero-topline">
+          <div>
+            <p className="section-kicker">Recipe coach</p>
+            <h1 className="hero-title">Cook from what you already have.</h1>
+          </div>
+          <div className="hero-avatar" aria-hidden="true">RF</div>
+        </div>
         <p className="hero-subtitle">
           Enter the ingredients in your kitchen and Personal Trainer will rank recipes against your pantry
           and your current goal.
         </p>
-        <div className="hero-links">
-          <Link className="chip-link" href={selectedWorkspace ? `/?workspace=${selectedWorkspace}` : '/'}>
+        <div className="hero-actions">
+          <Link className="primary-action" href={selectedWorkspace ? `/?workspace=${selectedWorkspace}` : '/'}>
             Workout View
           </Link>
-          <Link className="chip-link active" href="/recipes">
-            Recipes
-          </Link>
-          <Link className="chip-link" href="/library">
+          <Link className="soft-action" href="/library">
             Exercise Library
           </Link>
         </div>
@@ -69,7 +71,7 @@ export default async function RecipesPage({
           <p>Create a workspace first so the recipe engine can read your current training goal.</p>
         </section>
       ) : (
-        <section className="panel panel-spaced">
+        <section className="panel-card">
           <div className="section-head">
             <div>
               <h2 className="section-title">Recipe Suggestions</h2>
@@ -112,11 +114,11 @@ export default async function RecipesPage({
               />
             </label>
 
-            <div className="hero-links">
-              <button className="chip-link chip-button active" type="submit">
+            <div className="hero-actions">
+              <button className="primary-action chip-button" type="submit">
                 Suggest Recipes
               </button>
-              <Link className="chip-link" href={selectedWorkspace ? `/recipes?workspace=${selectedWorkspace}` : '/recipes'}>
+              <Link className="soft-action" href={selectedWorkspace ? `/recipes?workspace=${selectedWorkspace}` : '/recipes'}>
                 Clear
               </Link>
             </div>

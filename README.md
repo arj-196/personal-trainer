@@ -44,10 +44,15 @@ See [trainer/README.md](/Users/arjun/Personal/apps/personal_trainer/trainer/READ
 
 The frontend reads generated workspace JSON plus library assets and provides two core views:
 
-- current workout view
+- homepage hub with workout summary and a dedicated Recipes entry point
+- single-day workout view with per-device checklist persistence
 - exercise library view
 - recipe suggestions based on pantry ingredients and the active goal
-- compact, low-scroll layout for workout and library browsing
+- explicit page-to-page navigation through the homepage instead of a persistent bottom nav
+- Google Images lookups for each exercise card
+- compact read-only workout card actions with larger start-workout controls
+- completed exercises collapse in the start-workout view to reduce distraction
+- finisher and recovery rendered as workout blocks instead of labels
 - homepage header shows the current git commit id
 - optional Vercel Blob-backed hosting mode for internet deployment
 - optional `DEBUG=true` homepage debug panel for runtime inspection

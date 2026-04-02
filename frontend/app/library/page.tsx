@@ -23,34 +23,36 @@ export default async function LibraryPage({
 
   return (
     <main className="shell">
-      <section className="hero">
-        <span className="hero-eyebrow">Exercise Library</span>
-        <h1 className="hero-title">Movement references that are actually usable.</h1>
+      <section className="hero-panel hero-panel-compact">
+        <div className="hero-topline">
+          <div>
+            <p className="section-kicker">Exercise library</p>
+            <h1 className="hero-title">Movement references that are actually usable.</h1>
+          </div>
+          <div className="hero-avatar" aria-hidden="true">EX</div>
+        </div>
         <p className="hero-subtitle">
           Browse the trainer&apos;s exercise library, see the image reference, and use the setup and cue notes
           when you forget what a movement means in the middle of training.
         </p>
-        <div className="hero-links">
-          <Link className="chip-link" href="/">
-            Current Workout
+        <div className="hero-actions">
+          <Link className="primary-action" href="/">
+            Current workout
           </Link>
-          <Link className="chip-link" href="/recipes">
+          <Link className="soft-action" href="/recipes">
             Recipes
-          </Link>
-          <Link className="chip-link active" href="/library">
-            Exercise Library
           </Link>
         </div>
       </section>
 
-      <section className="panel panel-spaced">
+      <section className="panel-card">
         <div className="library-toolbar">
           <div>
             <h2 className="library-title section-title">{exercises.length} exercise references</h2>
             <p className="section-copy">Use the query string like <code>?q=squat</code> to filter.</p>
           </div>
           {query ? (
-            <Link className="chip-link" href="/library">
+            <Link className="soft-action" href="/library">
               Clear filter
             </Link>
           ) : null}
