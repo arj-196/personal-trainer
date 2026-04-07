@@ -10,7 +10,6 @@ BlobAccess = Literal["public", "private"]
 
 DEFAULT_BLOB_PREFIX = "personal-trainer"
 LIBRARY_ASSETS_ROOT = Path(__file__).resolve().parent / "assets" / "exercise_library"
-RECIPE_ASSETS_ROOT = Path(__file__).resolve().parent / "assets" / "recipes"
 
 
 class BlobPublishError(RuntimeError):
@@ -41,7 +40,6 @@ def publish_workspace_to_blob(
     workspace_name = workspace_root.name
     workspace_blob_root = _blob_path(normalized_prefix, "workspaces", workspace_name)
     library_blob_root = _blob_path(normalized_prefix, "exercise-library")
-    recipes_blob_root = _blob_path(normalized_prefix, "recipes")
 
     try:
         client = _build_blob_client()
@@ -58,7 +56,6 @@ def publish_workspace_to_blob(
         remote_files_deleted += _delete_prefix(client, f"{workspace_blob_root}/")
         if include_library:
             remote_files_deleted += _delete_prefix(client, f"{library_blob_root}/")
-            remote_files_deleted += _delete_prefix(client, f"{recipes_blob_root}/")
 
         for file_path in _iter_workspace_files(workspace_root):
             relative_path = file_path.relative_to(workspace_root).as_posix()
@@ -79,18 +76,6 @@ def publish_workspace_to_blob(
                 client.upload_file(
                     file_path,
                     _blob_path(library_blob_root, relative_path),
-                    access=access,
-                    content_type=_content_type_for(file_path),
-                    overwrite=True,
-                    add_random_suffix=False,
-                    cache_control_max_age=_cache_control_max_age(file_path),
-                )
-                library_files_uploaded += 1
-            for file_path in _iter_recipe_files():
-                relative_path = file_path.relative_to(RECIPE_ASSETS_ROOT).as_posix()
-                client.upload_file(
-                    file_path,
-                    _blob_path(recipes_blob_root, relative_path),
                     access=access,
                     content_type=_content_type_for(file_path),
                     overwrite=True,
@@ -178,14 +163,6 @@ def _iter_library_files() -> list[Path]:
     return sorted(
         path
         for path in LIBRARY_ASSETS_ROOT.rglob("*")
-        if path.is_file() and not path.name.startswith(".")
-    )
-
-
-def _iter_recipe_files() -> list[Path]:
-    return sorted(
-        path
-        for path in RECIPE_ASSETS_ROOT.rglob("*")
         if path.is_file() and not path.name.startswith(".")
     )
 

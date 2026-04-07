@@ -1,6 +1,6 @@
 # Frontend
 
-The frontend is a Next.js app for viewing trainer data that already exists in the repo.
+The frontend is a Next.js app for the workout UI, exercise library, and Jeff the Cook recipe workspace.
 
 ## Stack
 
@@ -16,7 +16,8 @@ The frontend is a Next.js app for viewing trainer data that already exists in th
 - open a larger read-only workout focus view
 - start a single-day workout session from a specific workout day with a persistent per-device checklist
 - browse the exercise library with images and coaching cues
-- suggest recipes from pantry ingredients and the active training goal
+- use Jeff the Cook as a voice-first recipe workspace with draft review before generation
+- save immutable recipe snapshots to Vercel Blob and reopen or delete them later
 - open Google Images for each exercise card when you need a quick visual lookup
 - use compact icon actions on read-only workout cards and expanded actions in the start-workout flow
 - collapse completed workout cards in the start-workout flow so finished exercises take much less space
@@ -88,6 +89,10 @@ Relevant variables:
 - `TRAINER_BLOB_ACCESS`
 - `TRAINER_BLOB_PREFIX`
 - `BLOB_READ_WRITE_TOKEN`
+- `OPENAI_API_KEY`
+- `OPENAI_BASE_URL`
+- `OPENAI_RECIPE_MODEL`
+- `OPENAI_TRANSCRIPTION_MODEL`
 - `DEBUG=true` to show the homepage debug panel
 
 See `.env.example`.
@@ -135,19 +140,23 @@ In `blob` mode the frontend reads the same logical data from Vercel Blob:
 
 - `personal-trainer/workspaces/<name>/...`
 - `personal-trainer/exercise-library/catalog.json`
+- `personal-trainer/saved-recipes/YYYY/MM/recipe_<id>.json`
 
 ## Routes
 
 - `/`: homepage hub with workout summary plus a dedicated Recipes feature entry point
 - `/workout/[workspace]`: read-only workout overview with day summaries and exercise titles for one workspace
 - `/workout/[workspace]/start`: single-day workout page for one selected workout day, with completion checklist state saved in browser local storage
-- `/recipes`: pantry-based, goal-aware recipe suggestions
+- `/recipes`: Jeff the Cook recipe workspace with voice input, draft review, and explicit generation
+- `/saved-recipes`: saved recipe snapshot list
+- `/saved-recipes/[id]`: saved recipe snapshot detail
 - `/library`: exercise library
 
 ## Notes
 
 - The workout checklist state is browser-local and does not sync across devices.
 - The start workout route accepts `?day=<1-based index>` so each workout day card can open its own fixed session view.
-- The frontend is read-only with the exception of browser-local workout progress state.
+- The frontend is read-only for workout data, but Jeff the Cook can save immutable recipe snapshots to Blob.
+- Jeff the Cook interpretation requests use strict JSON schema with nullable patch fields so `gpt-5.4-mini` accepts the payload while still returning partial state updates.
 - Plan generation still happens in the trainer CLI.
 - A workspace must exist in the selected data source before the frontend can display it.

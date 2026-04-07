@@ -33,7 +33,6 @@ from personal_trainer.notes_publisher import NotesPublishError, publish_plan_to_
 from personal_trainer.ollama_client import OllamaClientConfig
 from personal_trainer.openai_client import OpenAIClientConfig
 from personal_trainer.pdf_io import write_plan_pdf
-from personal_trainer.recipe_suggester import parse_pantry_items, suggest_recipes
 from personal_trainer.workout_planner import WorkoutPlannerError, build_plan
 
 WORKSPACES_ROOT = Path(__file__).resolve().parents[3] / "workspaces"
@@ -513,58 +512,6 @@ def publish_web_command(
     click.echo(
         "Set TRAINER_DATA_SOURCE=blob in the frontend environment before deploying."
     )
-
-
-@main.command(
-    "recipes", help="Suggest recipes from pantry ingredients and the workspace goal."
-)
-@WORKSPACE_ARGUMENT
-@click.option(
-    "--ingredients",
-    required=True,
-    help="Comma-separated pantry ingredients, for example 'chicken, rice, broccoli'.",
-)
-@click.option(
-    "--goal", default=None, help="Override the workspace goal for this recipe search."
-)
-@click.option(
-    "--limit", default=5, show_default=True, help="Maximum number of recipes to show."
-)
-def recipes_command(
-    workspace: Path, ingredients: str, goal: str | None, limit: int
-) -> None:
-    paths = ensure_workspace(workspace)
-    if not paths.profile.exists():
-        raise click.ClickException(f"Missing profile: {paths.profile}")
-
-    profile = load_profile(paths.profile)
-    pantry_items = parse_pantry_items(ingredients)
-    if not pantry_items:
-        raise click.ClickException("No pantry ingredients were provided.")
-
-    suggestions = suggest_recipes(
-        profile, pantry_items, goal_override=goal, limit=max(1, limit)
-    )
-    if not suggestions:
-        click.echo("No recipe suggestions matched the current pantry input.")
-        return
-
-    active_goal = goal or profile.goal
-    click.echo(f"Recipe suggestions for {paths.root.name}")
-    click.echo(f"Goal: {active_goal}")
-    click.echo(f"Pantry: {', '.join(pantry_items)}")
-
-    for index, suggestion in enumerate(suggestions, start=1):
-        click.echo("")
-        click.echo(f"{index}. {suggestion.title} [{suggestion.fit_label}]")
-        click.echo(f"   Why: {suggestion.goal_fit_reason}")
-        click.echo(f"   Uses: {', '.join(suggestion.pantry_ingredients_used)}")
-        click.echo(
-            f"   Missing: {', '.join(suggestion.missing_ingredients) if suggestion.missing_ingredients else 'none'}"
-        )
-        click.echo(
-            f"   Time: {suggestion.estimated_prep_minutes} min prep + {suggestion.estimated_cook_minutes} min cook"
-        )
 
 
 if __name__ == "__main__":

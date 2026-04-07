@@ -249,26 +249,3 @@ def test_publish_web_command_reports_upload_summary(tmp_path, monkeypatch) -> No
     assert "Published workspace 'athlete' to Blob prefix 'pt-prod'" in result.output
     assert "Workspace files uploaded: 4" in result.output
     assert "Library files uploaded: 2" in result.output
-
-
-def test_recipes_command_suggests_goal_aligned_meals(tmp_path, monkeypatch) -> None:
-    workspaces_root = tmp_path / "workspaces"
-    workspace = workspaces_root / "athlete"
-    monkeypatch.setattr("personal_trainer.cli.WORKSPACES_ROOT", workspaces_root)
-    runner = CliRunner()
-
-    assert runner.invoke(main, ["init", "athlete"]).exit_code == 0
-
-    profile = (workspace / "profile.md").read_text(encoding="utf-8")
-    profile = profile.replace("Build muscle and improve conditioning", "Build muscle")
-    (workspace / "profile.md").write_text(profile, encoding="utf-8")
-
-    result = runner.invoke(
-        main,
-        ["recipes", "athlete", "--ingredients", "chicken, rice, broccoli, garlic"],
-    )
-
-    assert result.exit_code == 0
-    assert "Recipe suggestions for athlete" in result.output
-    assert "Chicken, Rice, and Broccoli Bowl" in result.output
-    assert "[strong fit]" in result.output

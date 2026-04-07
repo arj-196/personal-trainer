@@ -3,7 +3,6 @@ import { listBlobFolders, readBlobText } from './blob-storage';
 import {
   listLocalWorkspaces,
   readLocalExerciseCatalogText,
-  readLocalRecipeCatalogText,
   readLocalWorkspaceText,
 } from './local-storage';
 
@@ -52,22 +51,6 @@ export type ExerciseReference = {
 export type UserProfileSummary = {
   name: string;
   goal: string;
-};
-
-export type RecipeCatalogEntry = {
-  slug: string;
-  title: string;
-  summary: string;
-  meal_type: string;
-  goal_tags: string[];
-  ingredients_required: string[];
-  ingredients_optional: string[];
-  substitutions: string[];
-  estimated_prep_minutes: number;
-  estimated_cook_minutes: number;
-  instructions: string[];
-  nutrition_summary: string;
-  confidence_note: string;
 };
 
 export async function listWorkspaces(): Promise<string[]> {
@@ -125,15 +108,6 @@ export async function readExerciseLibrary(): Promise<ExerciseReference[]> {
   }
 
   return (JSON.parse(text) as Array<Record<string, unknown>>).map(normalizeExerciseReference);
-}
-
-export async function readRecipeCatalog(): Promise<RecipeCatalogEntry[]> {
-  const text =
-    getTrainerDataSource() === 'blob'
-      ? await readBlobText(blobPath('recipes', 'catalog.json'))
-      : readLocalRecipeCatalogText();
-
-  return text ? (JSON.parse(text) as RecipeCatalogEntry[]) : [];
 }
 
 export async function readUserProfileSummary(workspace: string): Promise<UserProfileSummary | null> {

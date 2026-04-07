@@ -1,6 +1,6 @@
 # Personal Trainer Monorepo
 
-Personal Trainer is a multi-app repository for generating workout plans, browsing the exercise library, suggesting recipes from pantry ingredients, and publishing a gym-friendly view of the plan.
+Personal Trainer is a multi-app repository for generating workout plans, browsing the exercise library, running the Jeff the Cook recipe workspace, and publishing a gym-friendly view of the plan.
 
 The workout planner now uses Ollama and OpenAI-backed trainer agents instead of hardcoded split and exercise rules. The Python app packages the athlete profile, check-in history, and exercise library context into a structured LLM request, then writes the resulting week plan to JSON plus Markdown.
 
@@ -14,7 +14,8 @@ The workout planner now uses Ollama and OpenAI-backed trainer agents instead of 
 
 ```text
 .
-├── RECIPE_SUGGESTION_PRD.md
+├── jeff_the_cook_prd.md
+├── jeff_the_cook.png
 ├── trainer/
 ├── frontend/
 ├── workspaces/
@@ -23,7 +24,8 @@ The workout planner now uses Ollama and OpenAI-backed trainer agents instead of 
 
 ## Product docs
 
-- `RECIPE_SUGGESTION_PRD.md`: product requirements for pantry-based, goal-aware recipe suggestions
+- `jeff_the_cook_prd.md`: product requirements for the Jeff the Cook recipe workspace
+- `jeff_the_cook.png`: UI mockup for the recipe workspace
 
 ## What each app does
 
@@ -34,21 +36,20 @@ The trainer app owns the trainer workflow:
 - creates workspaces under `./workspaces/<name>`
 - generates `profile.json`, `plan.json`, `profile.md`, `plan.md`, `plan.pdf`, `coach_notes.md`, and check-in templates through Ollama or OpenAI trainer agents
 - can generate multiple plans in one run so you can compare model outputs side by side
-- maintains the bundled exercise and recipe libraries
-- suggests recipes from pantry ingredients and the user's goal
+- maintains the bundled exercise library
 - publishes a text-only version of the current plan to Apple Notes
 
 See [trainer/README.md](/Users/arjun/Personal/apps/personal_trainer/trainer/README.md).
 
 ### Frontend
 
-The frontend reads generated workspace JSON plus library assets and provides two core views:
+The frontend reads generated workspace JSON plus library assets and provides the user-facing app:
 
 - homepage hub with workout summary and a dedicated Recipes entry point
 - read-only workout overview with per-day summaries before the session starts
 - single-day workout view with per-device checklist persistence
 - exercise library view
-- recipe suggestions based on pantry ingredients and the active goal
+- Jeff the Cook recipe workspace with voice-first draft updates, explicit generation, and saved recipe snapshots
 - explicit page-to-page navigation through the homepage instead of a persistent bottom nav
 - Google Images lookups for each exercise card
 - detailed exercise cards reserved for the start-workout view
@@ -94,7 +95,7 @@ Open `http://localhost:3000`.
 2. Make sure Ollama is running locally for Ollama targets, or set `OPENAI_API_KEY` for OpenAI targets.
 3. Generate or refresh the workout plan.
 4. If you host the frontend on Vercel, run `poetry run personal-trainer publish-web <workspace>`.
-5. Open the frontend to view the current workout, browse the exercise library, or get recipe suggestions.
+5. Open the frontend to view the current workout, browse the exercise library, or use Jeff the Cook.
 6. Optionally publish the current plan to Apple Notes from the trainer app.
 
 ## Workspace model
@@ -121,7 +122,7 @@ workspaces/albert/
 
 ## Notes
 
-- The frontend is currently read-only.
+- The frontend now owns recipe generation and saved recipe persistence.
 - The trainer app is the source of truth for plan generation.
 - Every generated plan also writes a PDF copy so it is easier to view offline on a phone.
 - `plan` and `refresh` use Ollama by default with `gpt-oss:20b`.

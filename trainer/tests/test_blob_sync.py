@@ -26,9 +26,6 @@ class FakeBlobClient:
             "pt-test/exercise-library/": [
                 SimpleNamespace(pathname="pt-test/exercise-library/catalog.json"),
             ],
-            "pt-test/recipes/": [
-                SimpleNamespace(pathname="pt-test/recipes/catalog.json"),
-            ],
         }
         return iter(fixtures.get(prefix, []))
 
@@ -72,14 +69,10 @@ def test_publish_workspace_to_blob_uploads_workspace_and_library(
     library_root = tmp_path / "library"
     library_root.mkdir(parents=True)
     (library_root / "catalog.json").write_text("[]", encoding="utf-8")
-    recipe_root = tmp_path / "recipes"
-    recipe_root.mkdir(parents=True)
-    (recipe_root / "catalog.json").write_text("[]", encoding="utf-8")
 
     client = FakeBlobClient()
     monkeypatch.setattr("personal_trainer.blob_sync._build_blob_client", lambda: client)
     monkeypatch.setattr("personal_trainer.blob_sync.LIBRARY_ASSETS_ROOT", library_root)
-    monkeypatch.setattr("personal_trainer.blob_sync.RECIPE_ASSETS_ROOT", recipe_root)
 
     result = publish_workspace_to_blob(
         workspace,
@@ -91,13 +84,12 @@ def test_publish_workspace_to_blob_uploads_workspace_and_library(
     assert result.workspace == "athlete"
     assert result.prefix == "pt-test"
     assert result.workspace_files_uploaded == 7
-    assert result.library_files_uploaded == 2
-    assert result.remote_files_deleted == 4
+    assert result.library_files_uploaded == 1
+    assert result.remote_files_deleted == 3
     assert client.deleted == [
         "pt-test/workspaces/athlete/plan.md",
         "pt-test/workspaces/athlete/exercise_library/index.md",
         "pt-test/exercise-library/catalog.json",
-        "pt-test/recipes/catalog.json",
     ]
     uploaded_paths = [remote_path for _, remote_path, *_ in client.uploads]
     assert "pt-test/workspaces/athlete/plan.md" in uploaded_paths
@@ -106,7 +98,6 @@ def test_publish_workspace_to_blob_uploads_workspace_and_library(
     assert "pt-test/workspaces/athlete/profile.json" in uploaded_paths
     assert "pt-test/workspaces/athlete/exercise_library/goblet-squat.md" in uploaded_paths
     assert "pt-test/exercise-library/catalog.json" in uploaded_paths
-    assert "pt-test/recipes/catalog.json" in uploaded_paths
 
 
 def test_publish_workspace_to_blob_can_skip_shared_library(
@@ -130,4 +121,3 @@ def test_publish_workspace_to_blob_can_skip_shared_library(
     assert result.library_files_uploaded == 0
     assert result.remote_files_deleted == 2
     assert all("exercise-library/" not in path for path in client.deleted)
-    assert all("recipes/" not in path for path in client.deleted)

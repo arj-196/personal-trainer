@@ -137,19 +137,19 @@ export default async function HomePage({
 
                 <aside className="homepage-feature-card homepage-feature-card-recipes">
                   <p className="section-kicker">Recipes</p>
-                  <h3 className="section-title">Use your pantry for recovery-friendly meals.</h3>
+                  <h3 className="section-title">Jeff the Cook is ready for voice-led recipe runs.</h3>
                   <p className="section-copy">
-                    The recipe feature ranks meals against your active training goal and the ingredients you
-                    already have on hand.
+                    Speak ingredients and constraints, review the draft workspace, then generate and save three
+                    recipe options.
                   </p>
                   <div className="badge-row">
-                    <span className="badge">Goal-aware</span>
-                    <span className="badge">Pantry-based</span>
-                    <span className="badge">Workspace-linked</span>
+                    <span className="badge">Voice-first</span>
+                    <span className="badge">Draft review</span>
+                    <span className="badge">Blob snapshots</span>
                   </div>
                   <div className="hero-actions">
-                    <Link className="primary-action" href={`/recipes?workspace=${encodeURIComponent(selectedWorkspace)}`}>
-                      Open recipes
+                    <Link className="primary-action" href="/recipes">
+                      Open Jeff the Cook
                     </Link>
                   </div>
                 </aside>
@@ -165,14 +165,14 @@ export default async function HomePage({
               <div className="homepage-feature-grid homepage-feature-grid-single">
                 <aside className="homepage-feature-card homepage-feature-card-recipes">
                   <p className="section-kicker">Recipes</p>
-                  <h3 className="section-title">Recipes are still available.</h3>
+                  <h3 className="section-title">Jeff the Cook still works without a generated plan.</h3>
                   <p className="section-copy">
-                    Open the recipe feature from the homepage even if this workspace does not have a generated
-                    workout plan yet.
+                    Open the recipe workspace directly, speak your ingredients, and save snapshots independently
+                    from the trainer flow.
                   </p>
                   <div className="hero-actions">
-                    <Link className="primary-action" href={`/recipes?workspace=${encodeURIComponent(selectedWorkspace)}`}>
-                      Open recipes
+                    <Link className="primary-action" href="/recipes">
+                      Open Jeff the Cook
                     </Link>
                   </div>
                 </aside>

@@ -2,7 +2,7 @@
 
 The trainer app is the trainer engine for the monorepo.
 
-It generates workout plans with Ollama and OpenAI-backed trainer agents, manages workspace files, maintains the bundled exercise and recipe libraries, and can publish the current plan to Apple Notes.
+It generates workout plans with Ollama and OpenAI-backed trainer agents, manages workspace files, maintains the bundled exercise library, and can publish the current plan to Apple Notes.
 
 ## Stack
 
@@ -17,7 +17,6 @@ It generates workout plans with Ollama and OpenAI-backed trainer agents, manages
 - render `plan.pdf` with the same document structure as `plan.md`, including embedded exercise images
 - generate side-by-side comparison plans when you request multiple models
 - sync the exercise library into each workspace
-- suggest recipes from pantry ingredients and the user's goal
 - publish workspace and library assets to Vercel Blob for the hosted frontend
 - publish a text-only workout note to Apple Notes on macOS
 
@@ -41,7 +40,6 @@ poetry run personal-trainer plan albert
 poetry run personal-trainer plan albert --ollama-model gpt-oss:20b --ollama-model qwen3:30b
 poetry run personal-trainer plan albert --ollama-model qwen3:30b --openai-model gpt-5.4-mini
 poetry run personal-trainer refresh albert 2026-03-30-checkin.md
-poetry run personal-trainer recipes albert --ingredients "chicken, rice, broccoli"
 poetry run personal-trainer status albert
 poetry run personal-trainer publish-web albert
 poetry run personal-trainer publish-notes albert
@@ -217,5 +215,9 @@ Required environment variables:
 - `BLOB_READ_WRITE_TOKEN`
 - `TRAINER_BLOB_PREFIX`
 - `TRAINER_BLOB_ACCESS`
+
+## Jeff the Cook
+
+Recipe generation no longer lives in the Python trainer module. The Next.js frontend owns Jeff the Cook end to end, including voice interpretation, recommendation generation, and saved recipe snapshots in Vercel Blob.
 
 See `.env.example`.

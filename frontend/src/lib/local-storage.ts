@@ -14,7 +14,6 @@ const EXERCISE_LIBRARY_DIR = join(
   'exercise_library'
 );
 const EXERCISE_CATALOG = join(EXERCISE_LIBRARY_DIR, 'catalog.json');
-const RECIPE_CATALOG = join(REPO_ROOT, 'trainer', 'src', 'personal_trainer', 'assets', 'recipes', 'catalog.json');
 
 export type StoredFile = {
   body: Buffer;
@@ -41,10 +40,6 @@ export function readLocalWorkspaceText(workspace: string, filename: string): str
 
 export function readLocalExerciseCatalogText(): string | null {
   return existsSync(EXERCISE_CATALOG) ? readFileSync(EXERCISE_CATALOG, 'utf-8') : null;
-}
-
-export function readLocalRecipeCatalogText(): string | null {
-  return existsSync(RECIPE_CATALOG) ? readFileSync(RECIPE_CATALOG, 'utf-8') : null;
 }
 
 export function readLocalWorkspaceAsset(workspace: string, pathParts: string[]): StoredFile | null {

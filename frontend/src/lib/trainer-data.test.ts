@@ -9,7 +9,6 @@ import { get, list } from '@vercel/blob';
 
 import {
   listWorkspaces,
-  readRecipeCatalog,
   readUserProfileSummary,
   readExerciseLibrary,
   readWorkoutPlan,
@@ -76,44 +75,13 @@ describe('trainer data integration (local)', () => {
     vi.clearAllMocks();
   });
 
-  it('lists fixture workspaces that contain a profile', async () => {
-    await expect(listWorkspaces()).resolves.toContain('wk_arj');
+  it('returns an empty local workspace list when no repo fixtures exist', async () => {
+    await expect(listWorkspaces()).resolves.toEqual([]);
   });
 
-  it('parses a generated workout plan from the repo workspace fixtures', async () => {
-    const plan = await readWorkoutPlan('wk_arj');
-
-    expect(plan).not.toBeNull();
-    expect(plan?.title).toBe("Arj's Training Plan");
-    expect(plan?.meta).toEqual(
-      expect.arrayContaining([
-        { label: 'Goal', value: 'Build muscle, espcially in the arms' },
-        { label: 'Weekly training days', value: '3' },
-      ])
-    );
-    expect(plan?.days).toHaveLength(3);
-    expect(plan?.days[0]).toMatchObject({
-      heading: expect.stringContaining('Day 1:'),
-      warmup: expect.any(String),
-      finisher: expect.any(String),
-      recovery: expect.any(String),
-    });
-    expect(plan?.days[0].exercises[0]).toMatchObject({
-      name: 'Incline Dumbbell Press',
-      prescription: expect.stringContaining('reps'),
-      imageUrl: expect.stringContaining('https://'),
-      referencePath: 'exercise_library/incline-dumbbell-press-1277.md',
-    });
-    expect(plan?.days[2]).toMatchObject({
-      heading: expect.stringContaining('Day 3:'),
-      finisher: expect.stringContaining('Arm tri-set'),
-      recovery: expect.stringContaining('Standing biceps stretch'),
-    });
-    expect(plan?.days[2].exercises[0]).toMatchObject({
-      name: 'Dumbbell Romanian Deadlift',
-      prescription: expect.stringContaining('reps'),
-      notes: expect.stringContaining('stretch and control'),
-    });
+  it('returns null for missing local workspace files', async () => {
+    await expect(readWorkoutPlan('wk_arj')).resolves.toBeNull();
+    await expect(readUserProfileSummary('wk_arj')).resolves.toBeNull();
   });
 
   it('loads exercise references from the bundled catalog', async () => {
@@ -125,25 +93,6 @@ describe('trainer data integration (local)', () => {
         slug: expect.any(String),
         name: expect.any(String),
         image_url: expect.stringContaining('https://'),
-      })
-    );
-  });
-
-  it('loads the recipe catalog and profile summary', async () => {
-    const recipes = await readRecipeCatalog();
-    const profile = await readUserProfileSummary('wk_arj');
-
-    expect(recipes.length).toBeGreaterThan(0);
-    expect(recipes[0]).toEqual(
-      expect.objectContaining({
-        title: expect.any(String),
-        ingredients_required: expect.any(Array),
-      })
-    );
-    expect(profile).toEqual(
-      expect.objectContaining({
-        name: expect.any(String),
-        goal: expect.any(String),
       })
     );
   });
@@ -232,23 +181,6 @@ describe('trainer data integration (blob)', () => {
           name: 'Alpha',
           goal: 'Fat loss',
         }),
-        'pt-prod/recipes/catalog.json': JSON.stringify([
-          {
-            slug: 'egg-veggie-skillet',
-            title: 'Egg and Veggie Skillet',
-            summary: 'Protein-first skillet',
-            meal_type: 'breakfast',
-            goal_tags: ['fat loss'],
-            ingredients_required: ['eggs', 'spinach'],
-            ingredients_optional: ['tomato'],
-            substitutions: ['Swap spinach for kale.'],
-            estimated_prep_minutes: 8,
-            estimated_cook_minutes: 8,
-            instructions: ['Cook the eggs.'],
-            nutrition_summary: 'Lighter calorie density',
-            confidence_note: 'Strong fit',
-          },
-        ]),
       };
 
       const text = textByPath[pathname];
@@ -281,7 +213,6 @@ describe('trainer data integration (blob)', () => {
 
     const plan = await readWorkoutPlan('alpha');
     const exercises = await readExerciseLibrary();
-    const recipes = await readRecipeCatalog();
     const profile = await readUserProfileSummary('alpha');
 
     expect(plan).toMatchObject({
@@ -293,11 +224,9 @@ describe('trainer data integration (blob)', () => {
     );
     expect(exercises).toHaveLength(1);
     expect(exercises[0].name).toBe('Goblet Squat');
-    expect(recipes[0].title).toBe('Egg and Veggie Skillet');
     expect(profile?.goal).toBe('Fat loss');
     expect(mockedGet).toHaveBeenCalledWith('pt-prod/workspaces/alpha/plan.json', { access: 'private' });
     expect(mockedGet).toHaveBeenCalledWith('pt-prod/exercise-library/catalog.json', { access: 'private' });
     expect(mockedGet).toHaveBeenCalledWith('pt-prod/workspaces/alpha/profile.json', { access: 'private' });
-    expect(mockedGet).toHaveBeenCalledWith('pt-prod/recipes/catalog.json', { access: 'private' });
   });
 });
