@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { createPortal } from 'react-dom';
 import { useEffect, useMemo, useState } from 'react';
 
 import {
@@ -44,6 +45,7 @@ export function RecipeWorkspace() {
   const [editField, setEditField] = useState<'ingredients' | 'notes' | null>(null);
   const [editValue, setEditValue] = useState('');
   const [isBusy, setIsBusy] = useState(false);
+  const [isClient, setIsClient] = useState(false);
   const [deletingSaved, setDeletingSaved] = useState<string | null>(null);
   const {
     error: micError,
@@ -69,6 +71,10 @@ export function RecipeWorkspace() {
       setStatus('Ready to generate');
     }
   }, [micError]);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   function beginEdit(field: 'ingredients' | 'notes') {
     setEditField(field);
@@ -202,7 +208,7 @@ export function RecipeWorkspace() {
   }
 
   return (
-    <main className="shell">
+    <main className="shell shell-with-mic-fab">
       <section className="hero-panel hero-panel-compact">
         <div className="hero-topline">
           <div>
@@ -379,6 +385,9 @@ export function RecipeWorkspace() {
           </section>
         </div>
 
+      </section>
+
+      {isClient ? createPortal(
         <div className="recipe-mic-dock">
           <button
             type="button"
@@ -387,11 +396,32 @@ export function RecipeWorkspace() {
             disabled={isBusy && !isRecording}
             aria-label={isRecording ? 'Stop listening' : 'Start listening'}
           >
-            {isRecording ? 'Stop' : 'Mic'}
+            <MicIcon />
           </button>
-        </div>
-      </section>
+        </div>,
+        document.body
+      ) : null}
     </main>
+  );
+}
+
+function MicIcon() {
+  return (
+    <svg
+      className="recipe-mic-icon"
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path
+        d="M12 3.5a3.5 3.5 0 0 0-3.5 3.5v5a3.5 3.5 0 1 0 7 0V7A3.5 3.5 0 0 0 12 3.5Z"
+        fill="currentColor"
+      />
+      <path
+        d="M6 11.5a1 1 0 1 1 2 0 4 4 0 1 0 8 0 1 1 0 1 1 2 0 6 6 0 0 1-5 5.91V20h2a1 1 0 1 1 0 2H9a1 1 0 1 1 0-2h2v-2.59a6 6 0 0 1-5-5.91Z"
+        fill="currentColor"
+      />
+    </svg>
   );
 }
 

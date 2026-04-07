@@ -50,14 +50,7 @@ The frontend reads generated workspace JSON plus library assets and provides the
 - single-day workout view with per-device checklist persistence
 - exercise library view
 - Jeff the Cook recipe workspace with voice-first draft updates, explicit generation, and saved recipe snapshots
-- explicit page-to-page navigation through the homepage instead of a persistent bottom nav
-- Google Images lookups for each exercise card
-- detailed exercise cards reserved for the start-workout view
-- completed exercises collapse in the start-workout view to reduce distraction
-- finisher and recovery rendered as workout blocks instead of labels
-- homepage header shows the current git commit id
-- optional Vercel Blob-backed hosting mode for internet deployment
-- optional `DEBUG=true` homepage debug panel for runtime inspection
+
 
 See [frontend/README.md](/Users/arjun/Personal/apps/personal_trainer/frontend/README.md).
 

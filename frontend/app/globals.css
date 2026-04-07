@@ -840,6 +840,10 @@ textarea {
   padding-bottom: 88px;
 }
 
+.shell-with-mic-fab {
+  padding-bottom: calc(68px + 22px + 24px + env(safe-area-inset-bottom));
+}
+
 .recipe-panel-grid,
 .recipe-state-grid,
 .recipe-recommendation-stack,
@@ -950,15 +954,22 @@ textarea {
 }
 
 .recipe-mic-dock {
-  position: absolute;
-  left: 50%;
-  bottom: 22px;
-  transform: translateX(-50%);
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: calc(22px + env(safe-area-inset-bottom));
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 2147483647;
 }
 
 .recipe-mic-button {
   width: 68px;
   height: 68px;
+  display: grid;
+  place-items: center;
+  pointer-events: auto;
   border: 0;
   border-radius: 50%;
   background: var(--surface-dark);
@@ -968,7 +979,12 @@ textarea {
 }
 
 .recipe-mic-button.is-live {
-  background: var(--accent);
+  background: #c8362f;
+}
+
+.recipe-mic-icon {
+  width: 28px;
+  height: 28px;
 }
 
 .saved-layout {
@@ -1051,6 +1067,10 @@ textarea {
     padding-bottom: 20px;
   }
 
+  .shell-with-mic-fab {
+    padding-bottom: calc(68px + 18px + 24px + env(safe-area-inset-bottom));
+  }
+
   .hero-panel,
   .panel-card,
   .empty-state,
@@ -1076,6 +1096,6 @@ textarea {
   }
 
   .recipe-mic-dock {
-    bottom: 18px;
+    bottom: calc(18px + env(safe-area-inset-bottom));
   }
 }
