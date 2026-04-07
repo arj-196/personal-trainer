@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import {
   applyRecipeStatePatch,
@@ -16,6 +16,7 @@ import type {
   RecipeMode,
   RecipeState,
 } from '@/lib/recipes/types';
+import { useMicrophoneRecorder } from '@/lib/recipes/use-microphone-recorder';
 
 const MODE_OPTIONS: Array<{ value: RecipeMode; label: string }> = [
   { value: 'strict', label: 'Strict' },
@@ -43,8 +44,15 @@ export function RecipeWorkspace() {
   const [editValue, setEditValue] = useState('');
   const [isBusy, setIsBusy] = useState(false);
   const [deletingSaved, setDeletingSaved] = useState<string | null>(null);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const chunksRef = useRef<Blob[]>([]);
+  const {
+    error: micError,
+    isRecording,
+    startRecording,
+    stopRecording,
+  } = useMicrophoneRecorder({
+    onRecordingComplete: handleCapturedAudio,
+    onRecordingStart: () => setStatus('Listening...'),
+  });
 
   const hasPendingChanges = !recipeStatesEqual(draft, committed);
   const canGenerate = draft.ingredients.length > 0 && !isBusy;
@@ -53,6 +61,13 @@ export function RecipeWorkspace() {
     () => `${draft.ingredients.length} ingredients, ${draft.mode} mode`,
     [draft.ingredients.length, draft.mode]
   );
+
+  useEffect(() => {
+    if (micError) {
+      setFeedback(micError);
+      setStatus('Ready to generate');
+    }
+  }, [micError]);
 
   function beginEdit(field: 'ingredients' | 'notes') {
     setEditField(field);
@@ -108,41 +123,11 @@ export function RecipeWorkspace() {
 
   async function startListening() {
     setFeedback(null);
-    if (!navigator.mediaDevices?.getUserMedia) {
-      setFeedback('This browser does not support microphone capture.');
-      return;
-    }
-
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const recorder = new MediaRecorder(stream);
-      chunksRef.current = [];
-      mediaRecorderRef.current = recorder;
-
-      recorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          chunksRef.current.push(event.data);
-        }
-      };
-
-      recorder.onstop = async () => {
-        stream.getTracks().forEach((track) => track.stop());
-        const audioBlob = new Blob(chunksRef.current, { type: recorder.mimeType || 'audio/webm' });
-        await handleCapturedAudio(audioBlob);
-      };
-
-      recorder.start();
-      setStatus('Listening...');
-    } catch (error) {
-      setFeedback(error instanceof Error ? error.message : 'Could not start microphone.');
-      setStatus('Ready to generate');
-    }
+    await startRecording();
   }
 
   function stopListening() {
-    if (mediaRecorderRef.current?.state === 'recording') {
-      mediaRecorderRef.current.stop();
-    }
+    stopRecording();
   }
 
   async function handleCapturedAudio(audioBlob: Blob) {
@@ -394,12 +379,12 @@ export function RecipeWorkspace() {
         <div className="recipe-mic-dock">
           <button
             type="button"
-            className={`recipe-mic-button ${status === 'Listening...' ? 'is-live' : ''}`}
-            onClick={status === 'Listening...' ? stopListening : startListening}
-            disabled={isBusy && status !== 'Listening...'}
-            aria-label={status === 'Listening...' ? 'Stop listening' : 'Start listening'}
+            className={`recipe-mic-button ${isRecording ? 'is-live' : ''}`}
+            onClick={isRecording ? stopListening : startListening}
+            disabled={isBusy && !isRecording}
+            aria-label={isRecording ? 'Stop listening' : 'Start listening'}
           >
-            {status === 'Listening...' ? 'Stop' : 'Mic'}
+            {isRecording ? 'Stop' : 'Mic'}
           </button>
         </div>
       </section>
