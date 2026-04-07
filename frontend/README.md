@@ -159,6 +159,7 @@ In `blob` mode the frontend reads the same logical data from Vercel Blob:
 - The start workout route accepts `?day=<1-based index>` so each workout day card can open its own fixed session view.
 - The frontend is read-only for workout data, but Jeff the Cook can save immutable recipe snapshots to Blob.
 - Jeff the Cook interpretation requests use strict JSON schema with nullable patch fields so `gpt-5.4-mini` accepts the payload while still returning partial state updates.
+- Jeff the Cook microphone uploads now preserve browser-native audio MIME/container and extension (including iPhone/WebKit `audio/mp4`/`.m4a`) instead of forcing `.webm`.
 - `/debug` is intentionally unlinked from the homepage and is meant for manual device verification workflows.
 - Plan generation still happens in the trainer CLI.
 - A workspace must exist in the selected data source before the frontend can display it.

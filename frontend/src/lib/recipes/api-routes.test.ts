@@ -1,7 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+const { transcribeAudioMock } = vi.hoisted(() => ({
+  transcribeAudioMock: vi.fn(async () => 'potatoes and chicken'),
+}));
+
 vi.mock('@/lib/recipes/openai', () => ({
-  transcribeAudio: vi.fn(async () => 'potatoes and chicken'),
+  transcribeAudio: transcribeAudioMock,
 }));
 
 vi.mock('@/lib/recipes/service', () => ({
@@ -111,13 +115,17 @@ describe('recipe API routes', () => {
 
   it('returns a transcript from the transcribe route', async () => {
     const formData = new FormData();
-    formData.set('audio', new File(['audio'], 'clip.webm', { type: 'audio/webm' }));
+    formData.set('audio', new File(['audio'], 'clip.m4a', { type: 'audio/mp4' }));
     const response = await transcribePost(new Request('http://localhost/api/transcribe', {
       method: 'POST',
       body: formData,
     }));
 
     await expect(response.json()).resolves.toEqual({ transcript: 'potatoes and chicken' });
+    expect(transcribeAudioMock).toHaveBeenCalledTimes(1);
+    const [uploadedFile] = transcribeAudioMock.mock.calls[0] as [File];
+    expect(uploadedFile.name).toBe('clip.m4a');
+    expect(uploadedFile.type).toBe('audio/mp4');
   });
 
   it('returns interpreted draft updates', async () => {

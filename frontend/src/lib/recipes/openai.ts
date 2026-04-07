@@ -94,7 +94,11 @@ export async function chatJson<T extends Record<string, unknown>>(
 }
 
 export async function transcribeAudio(audioFile: File): Promise<string> {
-  logger.info('Sending recipe transcription request to OpenAI', { filename: audioFile.name, size: audioFile.size });
+  logger.info('Sending recipe transcription request to OpenAI', {
+    filename: audioFile.name,
+    contentType: audioFile.type,
+    size: audioFile.size,
+  });
   const form = new FormData();
   form.set('file', audioFile);
   form.set('model', transcriptionModel());
@@ -108,7 +112,7 @@ export async function transcribeAudio(audioFile: File): Promise<string> {
   });
 
   if (!response.ok) {
-    throw new RecipeAiError(`OpenAI transcription failed with HTTP ${response.status}`);
+    throw new RecipeAiError(`OpenAI transcription failed with HTTP ${await response.text()}`);
   }
 
   const payload = await response.json() as { text?: string };

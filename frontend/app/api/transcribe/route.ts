@@ -11,6 +11,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Audio file is required.' }, { status: 400 });
     }
 
+    logger.info('Received recipe transcription upload', {
+      filename: audio.name,
+      contentType: audio.type,
+      size: audio.size,
+    });
     const transcript = await transcribeAudio(audio);
     return NextResponse.json({ transcript });
   } catch (error) {

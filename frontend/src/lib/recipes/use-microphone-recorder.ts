@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { normalizeAudioMimeType } from './audio-format';
 
 type UseMicrophoneRecorderOptions = {
   onRecordingComplete?: (audioBlob: Blob) => Promise<void> | void;
@@ -84,7 +85,9 @@ export function useMicrophoneRecorder({
         stopActiveStream();
         setIsRecording(false);
 
-        const audioBlob = new Blob(chunksRef.current, { type: recorder.mimeType || 'audio/webm' });
+        const chunkMimeType = chunksRef.current.find((chunk) => chunk.type)?.type;
+        const resolvedMimeType = normalizeAudioMimeType(chunkMimeType || recorder.mimeType);
+        const audioBlob = new Blob(chunksRef.current, { type: resolvedMimeType });
         setLatestRecording(audioBlob);
         chunksRef.current = [];
         mediaRecorderRef.current = null;

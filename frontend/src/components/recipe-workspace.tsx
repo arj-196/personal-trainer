@@ -16,6 +16,7 @@ import type {
   RecipeMode,
   RecipeState,
 } from '@/lib/recipes/types';
+import { audioFileExtensionForMimeType, normalizeAudioMimeType } from '@/lib/recipes/audio-format';
 import { useMicrophoneRecorder } from '@/lib/recipes/use-microphone-recorder';
 
 const MODE_OPTIONS: Array<{ value: RecipeMode; label: string }> = [
@@ -134,7 +135,9 @@ export function RecipeWorkspace() {
     setIsBusy(true);
     setStatus('Transcribing...');
     try {
-      const audioFile = new File([audioBlob], 'jeff-the-cook.webm', { type: audioBlob.type || 'audio/webm' });
+      const mimeType = normalizeAudioMimeType(audioBlob.type);
+      const extension = audioFileExtensionForMimeType(mimeType);
+      const audioFile = new File([audioBlob], `jeff-the-cook.${extension}`, { type: mimeType });
       const transcriptionForm = new FormData();
       transcriptionForm.set('audio', audioFile);
       const transcriptionResponse = await fetch('/api/transcribe', {
