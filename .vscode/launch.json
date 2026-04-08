@@ -16,5 +16,16 @@
             ],
             "console": "internalConsole"
         },
+        {
+            "name": "Debug Next.js – Frontend (Chrome)",
+            "type": "chrome",
+            "request": "launch",
+            "url": "http://localhost:3000",
+            "webRoot": "${workspaceFolder}", // the folder that contains the source files
+            "sourceMaps": true, // use source maps for better breakpoint mapping
+            "trace": true, // optional: prints debug logs to the Debug Console
+            "runtimeExecutable": "stable", // change if you use another browser
+            "port": 9222
+        },
     ]
 }
