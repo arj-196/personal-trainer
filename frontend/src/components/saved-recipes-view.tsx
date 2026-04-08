@@ -6,6 +6,16 @@ import { useState } from 'react';
 import type { SavedRecipeListItem } from '@/lib/recipes/blob-store';
 import type { SavedRecipeSnapshot } from '@/lib/recipes/types';
 
+const shellClass = 'mx-auto w-full max-w-6xl px-4 pb-8 pt-4 sm:px-6 sm:pt-5';
+const heroClass = 'rounded-[1.75rem] border border-white/70 bg-[linear-gradient(150deg,rgba(255,255,255,0.94),rgba(255,244,234,0.9)),linear-gradient(180deg,#fff,#f6f0e8)] p-5 shadow-[0_20px_45px_rgba(41,51,64,0.08)] backdrop-blur-xl sm:p-6';
+const cardClass = 'rounded-[1.75rem] border border-white/70 bg-white/80 p-5 shadow-[0_20px_45px_rgba(41,51,64,0.08)] backdrop-blur-xl sm:p-6';
+const kickerClass = 'mb-2 text-xs font-bold uppercase tracking-[0.16em] text-[#ff6359]';
+const heroTitleClass = 'm-0 font-["Avenir_Next_Condensed","Arial_Narrow",sans-serif] leading-[0.95] tracking-[-0.03em] text-[clamp(2rem,10vw,3.4rem)]';
+const sectionTitleClass = 'm-0 font-["Avenir_Next_Condensed","Arial_Narrow",sans-serif] leading-none tracking-[-0.03em] text-[clamp(1.4rem,5vw,2rem)]';
+const copyClass = 'm-0 text-sm leading-relaxed text-slate-500';
+const softActionClass = 'inline-flex min-h-11 items-center justify-center rounded-full border border-slate-300/60 bg-white/75 px-4 py-2.5 text-sm font-bold text-slate-800 transition hover:-translate-y-0.5';
+const errorClass = 'rounded-2xl bg-[#ffe4df] px-4 py-3 text-sm text-[#8f2d1f]';
+
 export function SavedRecipesView({
   initialItems,
   snapshot,
@@ -28,51 +38,51 @@ export function SavedRecipesView({
   }
 
   return (
-    <main className="shell">
-      <section className="hero-panel hero-panel-compact">
-        <div className="hero-topline">
+    <main className={shellClass}>
+      <section className={heroClass}>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <p className="section-kicker">Saved snapshots</p>
-            <h1 className="hero-title recipe-hero-title">Saved Recipes</h1>
+            <p className={kickerClass}>Saved snapshots</p>
+            <h1 className={heroTitleClass}>Saved Recipes</h1>
           </div>
-          <div className="hero-avatar" aria-hidden="true">SV</div>
+          <div className="grid h-16 w-16 shrink-0 place-items-center rounded-full bg-gradient-to-br from-white/95 to-slate-100/90 text-sm font-extrabold tracking-[0.08em] text-slate-800 shadow-[0_12px_24px_rgba(43,52,61,0.1)]">SV</div>
         </div>
-        <p className="hero-subtitle">Immutable recipe snapshots stored in Vercel Blob.</p>
-        <div className="hero-actions">
-          <Link className="soft-action" href="/recipes">
+        <p className="mt-3 text-sm leading-relaxed text-slate-500">Immutable recipe snapshots stored in Vercel Blob.</p>
+        <div className="mt-4 flex flex-wrap gap-2.5">
+          <Link className={softActionClass} href="/recipes">
             Back to Jeff the Cook
           </Link>
         </div>
       </section>
 
-      {error ? <div className="recipe-feedback is-error">{error}</div> : null}
+      {error ? <div className={`${errorClass} mt-4`}>{error}</div> : null}
 
-      <div className="saved-layout">
-        <section className="panel-card">
-          <div className="section-head">
+      <div className="mt-4 grid gap-4 lg:grid-cols-[1.1fr_1fr]">
+        <section className={cardClass}>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
-              <h2 className="section-title">Saved List</h2>
-              <p className="section-copy">{items.length} snapshot{items.length === 1 ? '' : 's'}</p>
+              <h2 className={sectionTitleClass}>Saved List</h2>
+              <p className={copyClass}>{items.length} snapshot{items.length === 1 ? '' : 's'}</p>
             </div>
           </div>
-          <div className="saved-list">
+          <div className="mt-4 grid gap-3">
             {items.length === 0 ? (
-              <div className="empty-state">
-                <h3 className="section-title">No saved recipes</h3>
-                <p>Save a generated recommendation from the main recipe workspace.</p>
+              <div className="rounded-[1.5rem] border border-white/70 bg-white/80 p-4">
+                <h3 className={sectionTitleClass}>No saved recipes</h3>
+                <p className="mt-2 text-sm leading-relaxed text-slate-600">Save a generated recommendation from the main recipe workspace.</p>
               </div>
             ) : items.map((item) => (
-              <article key={item.id} className="saved-item-card">
+              <article key={item.id} className="flex flex-col gap-3 rounded-[1.5rem] border border-slate-200/70 bg-white/75 p-4 sm:flex-row sm:justify-between">
                 <div>
-                  <h3 className="library-title">{item.title}</h3>
-                  <p className="library-copy">{item.summary}</p>
-                  <p className="section-copy">{new Date(item.savedAt).toLocaleString()}</p>
+                  <h3 className="m-0 font-[Avenir_Next_Condensed,Arial_Narrow,sans-serif] text-[1.4rem] leading-none tracking-[-0.03em]">{item.title}</h3>
+                  <p className="mt-1 text-sm leading-relaxed text-slate-500">{item.summary}</p>
+                  <p className="mt-1 text-sm leading-relaxed text-slate-500">{new Date(item.savedAt).toLocaleString()}</p>
                 </div>
-                <div className="hero-actions">
-                  <Link className="soft-action" href={`/saved-recipes/${encodeURIComponent(item.id)}`}>
+                <div className="flex flex-wrap gap-2.5">
+                  <Link className={softActionClass} href={`/saved-recipes/${encodeURIComponent(item.id)}`}>
                     Open
                   </Link>
-                  <button type="button" className="soft-action" onClick={() => handleDelete(item.id)}>
+                  <button type="button" className={softActionClass} onClick={() => handleDelete(item.id)}>
                     Delete
                   </button>
                 </div>
@@ -81,40 +91,40 @@ export function SavedRecipesView({
           </div>
         </section>
 
-        <section className="panel-card">
-          <div className="section-head">
+        <section className={cardClass}>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
-              <h2 className="section-title">Snapshot Detail</h2>
-              <p className="section-copy">
+              <h2 className={sectionTitleClass}>Snapshot Detail</h2>
+              <p className={copyClass}>
                 {snapshot ? 'Selected saved recipe.' : 'Open a snapshot to inspect its frozen recipe state.'}
               </p>
             </div>
           </div>
           {snapshot ? (
-            <div className="detail-list">
-              <section className="detail-section">
-                <span className="detail-label">Title</span>
-                <p className="library-copy">{snapshot.recommendation.title}</p>
+            <div className="mt-4 grid gap-3">
+              <section className="border-t border-slate-200/70 pt-3">
+                <span className="mb-1 block text-[0.72rem] uppercase tracking-[0.1em] text-slate-500">Title</span>
+                <p className={copyClass}>{snapshot.recommendation.title}</p>
               </section>
-              <section className="detail-section">
-                <span className="detail-label">Summary</span>
-                <p className="library-copy">{snapshot.recommendation.summary}</p>
+              <section className="border-t border-slate-200/70 pt-3">
+                <span className="mb-1 block text-[0.72rem] uppercase tracking-[0.1em] text-slate-500">Summary</span>
+                <p className={copyClass}>{snapshot.recommendation.summary}</p>
               </section>
-              <section className="detail-section">
-                <span className="detail-label">Saved At</span>
-                <p className="library-copy">{new Date(snapshot.savedAt).toLocaleString()}</p>
+              <section className="border-t border-slate-200/70 pt-3">
+                <span className="mb-1 block text-[0.72rem] uppercase tracking-[0.1em] text-slate-500">Saved At</span>
+                <p className={copyClass}>{new Date(snapshot.savedAt).toLocaleString()}</p>
               </section>
-              <section className="detail-section">
-                <span className="detail-label">State</span>
-                <p className="library-copy">
+              <section className="border-t border-slate-200/70 pt-3">
+                <span className="mb-1 block text-[0.72rem] uppercase tracking-[0.1em] text-slate-500">State</span>
+                <p className={copyClass}>
                   Ingredients: {snapshot.recipeState.ingredients.join(', ') || 'none'}<br />
                   Notes: {snapshot.recipeState.notesRaw || 'none'}<br />
                   Mode: {snapshot.recipeState.mode}
                 </p>
               </section>
-              <section className="detail-section">
-                <span className="detail-label">Steps</span>
-                <ol className="recipe-steps">
+              <section className="border-t border-slate-200/70 pt-3">
+                <span className="mb-1 block text-[0.72rem] uppercase tracking-[0.1em] text-slate-500">Steps</span>
+                <ol className="m-0 list-decimal pl-5 text-sm leading-relaxed text-slate-600">
                   {snapshot.recommendation.steps.map((step) => (
                     <li key={step}>{step}</li>
                   ))}
@@ -122,9 +132,9 @@ export function SavedRecipesView({
               </section>
             </div>
           ) : (
-            <div className="empty-state">
-              <h3 className="section-title">Nothing selected</h3>
-              <p>Choose an item from the saved list to inspect the immutable snapshot.</p>
+            <div className="mt-4 rounded-[1.5rem] border border-white/70 bg-white/80 p-4">
+              <h3 className={sectionTitleClass}>Nothing selected</h3>
+              <p className="mt-2 text-sm leading-relaxed text-slate-600">Choose an item from the saved list to inspect the immutable snapshot.</p>
             </div>
           )}
         </section>

@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import type { WorkoutDay } from '@/lib/trainer-data';
-import { buildWorkoutDayBlocks, type WorkoutBlock } from '@/lib/workout-helpers';
+import { buildWorkoutDayBlocks } from '@/lib/workout-helpers';
 import {
   readWorkoutProgress,
   toggleWorkoutBlock,
@@ -20,7 +20,7 @@ type StartWorkoutViewProps = {
 
 function PlayIcon() {
   return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
+    <svg viewBox="0 0 24 24" aria-hidden="true" className="h-6 w-6">
       <path d="M8 6v12l10-6-10-6Z" fill="currentColor" />
     </svg>
   );
@@ -28,7 +28,7 @@ function PlayIcon() {
 
 function PauseIcon() {
   return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
+    <svg viewBox="0 0 24 24" aria-hidden="true" className="h-6 w-6">
       <path d="M7 5h4v14H7V5Zm6 0h4v14h-4V5Z" fill="currentColor" />
     </svg>
   );
@@ -171,29 +171,36 @@ export function StartWorkoutView({ day, workspace }: StartWorkoutViewProps) {
         : 'Tap Start when you begin the next exercise.';
 
   return (
-    <section className="panel-stack">
-      <section className="workout-timer-panel" aria-live="polite">
-        <div className="workout-timer-grid">
-          <div className="workout-timer-main">
-            <h2 className="workout-timer-title">{currentBlock?.name ?? 'No block selected'}</h2>
-            <div className="workout-timer-stats-line">
-              <p className="workout-timer-clock">{formatDuration(remainingSeconds)}</p>
+    <section className="grid gap-4 sm:gap-5">
+      <section className="sticky top-1 z-20 rounded-[1.5rem] border border-white/50 bg-[radial-gradient(circle_at_top_right,rgba(34,184,199,0.28),transparent_35%),linear-gradient(160deg,#15171c_0%,#21252d_65%,#191d24_100%)] p-2 text-white shadow-[0_22px_60px_rgba(20,24,30,0.16)] sm:p-2.5">
+        <div className="grid grid-cols-[minmax(0,1fr)_96px] items-stretch gap-2 sm:grid-cols-[minmax(0,1fr)_102px] md:grid-cols-[minmax(0,1fr)_112px] md:gap-2.5">
+          <div className="min-w-0">
+            <h2 className="m-0 truncate font-[Avenir_Next_Condensed,Arial_Narrow,sans-serif] text-[clamp(1rem,2.5vw,1.28rem)] leading-tight">{currentBlock?.name ?? 'No block selected'}</h2>
+            <div className="mt-1.5 flex items-baseline gap-2">
+              <p className="m-0 text-[clamp(1.55rem,6vw,2.3rem)] font-extrabold leading-none tracking-[0.04em]">{formatDuration(remainingSeconds)}</p>
               {isCurrentExercise && currentBlock ? (
-                <p className="workout-timer-set">
-                  Set <strong>{currentSet}/{currentBlock.setCount}</strong>
+                <p className="m-0 text-[0.92rem] text-white/82">
+                  Set <strong className="text-[1.06rem] text-white">{currentSet}/{currentBlock.setCount}</strong>
                 </p>
               ) : null}
             </div>
-            <aside className={`workout-timer-coach workout-timer-coach-${coachMode.toLowerCase()}`}>
-              <p className="workout-timer-coach-mode">{coachMode}</p>
-              <p className="workout-timer-coach-copy">{coachCopy}</p>
+            <aside className={[
+              'mt-2 grid content-center gap-0.5 rounded-[14px] border p-2 text-white',
+              coachMode === 'Exercise'
+                ? 'border-[#ff6359]/50 bg-[#ff6359]/20'
+                : coachMode === 'Rest'
+                  ? 'border-cyan-400/50 bg-cyan-400/20'
+                  : 'border-white/20 bg-white/10',
+            ].join(' ')}>
+              <p className="m-0 text-[0.72rem] font-extrabold uppercase tracking-[0.13em]">{coachMode}</p>
+              <p className="m-0 text-[0.74rem] leading-[1.3] text-white/86 sm:text-[0.79rem]">{coachCopy}</p>
             </aside>
           </div>
-          <aside className="workout-timer-controls">
-            <div className="workout-timer-nav-row">
+          <aside className="flex min-h-0 flex-col items-stretch gap-2 self-stretch">
+            <div className="flex justify-center gap-1.5">
               <button
                 type="button"
-                className="timer-nav-button"
+                className="h-8 w-8 rounded-[10px] border border-white/20 bg-white/10 p-0 text-white"
                 onClick={() => jumpToBlock(-1)}
                 disabled={currentBlockIndex === 0}
                 aria-label="Previous block"
@@ -203,7 +210,7 @@ export function StartWorkoutView({ day, workspace }: StartWorkoutViewProps) {
               </button>
               <button
                 type="button"
-                className="timer-nav-button"
+                className="h-8 w-8 rounded-[10px] border border-white/20 bg-white/10 p-0 text-white disabled:opacity-40"
                 onClick={() => jumpToBlock(1)}
                 disabled={currentBlockIndex >= blocks.length - 1}
                 aria-label="Next block"
@@ -212,10 +219,10 @@ export function StartWorkoutView({ day, workspace }: StartWorkoutViewProps) {
                 ▶
               </button>
             </div>
-            <div className="workout-timer-actions">
+            <div className="flex min-h-0 flex-1">
               <button
                 type="button"
-                className="primary-action workout-timer-primary"
+                className="inline-flex h-full min-h-[84px] w-full flex-1 items-center justify-center rounded-2xl border border-transparent bg-gradient-to-br from-[#ff6a60] to-[#ff7f5d] p-2 text-white shadow-[0_12px_24px_rgba(255,99,89,0.24)] transition hover:-translate-y-0.5 sm:min-h-[84px] md:min-h-[90px]"
                 onClick={handleStartPauseToggle}
                 aria-label={startPauseLabel}
                 title={startPauseLabel}
@@ -227,24 +234,24 @@ export function StartWorkoutView({ day, workspace }: StartWorkoutViewProps) {
         </div>
       </section>
 
-      <section className="focus-day-card">
-        <div className="focus-day-head">
+      <section className="rounded-[1.75rem] border border-white/70 bg-[linear-gradient(180deg,rgba(255,255,255,0.95),rgba(248,249,251,0.88)),linear-gradient(180deg,#fff,#fff)] p-5 shadow-[0_20px_45px_rgba(41,51,64,0.08)] backdrop-blur-xl sm:p-6">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <p className="section-kicker">Current session</p>
-            <h2 className="section-title">{day.heading}</h2>
-            <p className="section-copy">Work through one block at a time and keep the phone on this screen.</p>
+            <p className="mb-2 text-xs font-bold uppercase tracking-[0.16em] text-[#ff6359]">Current session</p>
+            <h2 className="m-0 font-[Avenir_Next_Condensed,Arial_Narrow,sans-serif] text-[clamp(1.45rem,5.5vw,2.1rem)] leading-none tracking-[-0.03em]">{day.heading}</h2>
+            <p className="mt-1 text-sm leading-relaxed text-slate-500">Work through one block at a time and keep the phone on this screen.</p>
           </div>
-          <div className="progress-pill">
-            <strong>{progressLabel}</strong>
-            <span>completed</span>
+          <div className="grid min-w-[88px] gap-0.5 rounded-[22px] bg-[#17181c] px-3.5 py-3 text-center text-white">
+            <strong className="text-[1.2rem] leading-none">{progressLabel}</strong>
+            <span className="text-[0.72rem] uppercase tracking-[0.08em] text-white/72">completed</span>
           </div>
         </div>
 
-        <div className="focus-progress-bar" aria-hidden="true">
-          <span style={{ width: `${(completedCount / Math.max(totalCount, 1)) * 100}%` }} />
+        <div className="my-[18px] h-2.5 overflow-hidden rounded-full bg-slate-900/10" aria-hidden="true">
+          <span className="block h-full rounded-full bg-gradient-to-br from-cyan-500 to-cyan-300" style={{ width: `${(completedCount / Math.max(totalCount, 1)) * 100}%` }} />
         </div>
 
-        <div className="focus-block-list">
+        <div className="grid gap-4">
           {blocks.map((block) => (
             <WorkoutBlockCard
               key={block.id}
@@ -261,8 +268,8 @@ export function StartWorkoutView({ day, workspace }: StartWorkoutViewProps) {
 }
 
 function formatDuration(totalSeconds: number): string {
-  const safeSeconds = Math.max(0, Math.floor(totalSeconds));
+  const safeSeconds = Math.max(0, totalSeconds);
   const minutes = Math.floor(safeSeconds / 60);
   const seconds = safeSeconds % 60;
-  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+  return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
 }

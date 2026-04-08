@@ -208,45 +208,45 @@ export function RecipeWorkspace() {
   }
 
   return (
-    <main className="shell shell-with-mic-fab">
-      <section className="hero-panel hero-panel-compact">
-        <div className="hero-topline">
+    <main className="mx-auto w-full max-w-6xl px-4 pb-[calc(68px+22px+24px+env(safe-area-inset-bottom))] pt-4 sm:px-6 sm:pt-5">
+      <section className="rounded-[1.75rem] border border-white/70 bg-[linear-gradient(150deg,rgba(255,255,255,0.94),rgba(255,244,234,0.9)),linear-gradient(180deg,#fff,#f6f0e8)] p-5 shadow-[0_20px_45px_rgba(41,51,64,0.08)] backdrop-blur-xl sm:p-6">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <p className="section-kicker">Recipe workspace</p>
-            <h1 className="hero-title recipe-hero-title">Jeff the Cook!</h1>
+            <p className="mb-2 text-xs font-bold uppercase tracking-[0.16em] text-[#ff6359]">Recipe workspace</p>
+            <h1 className="m-0 font-[Avenir_Next_Condensed,Arial_Narrow,sans-serif] text-[clamp(2rem,10vw,3.4rem)] leading-[0.95] tracking-[-0.03em]">Jeff the Cook!</h1>
           </div>
-          <div className="hero-avatar" aria-hidden="true">JC</div>
+          <div className="grid h-16 w-16 shrink-0 place-items-center rounded-full bg-gradient-to-br from-white/95 to-slate-100/90 text-sm font-extrabold tracking-[0.08em] text-slate-800 shadow-[0_12px_24px_rgba(43,52,61,0.1)]" aria-hidden="true">JC</div>
         </div>
-        <p className="hero-subtitle">
+        <p className="mt-3 text-sm leading-relaxed text-slate-500">
           Voice-first recipe generation with a draft workspace you can review before you commit.
         </p>
-        <div className="hero-actions">
-          <Link className="soft-action" href="/">
+        <div className="mt-4 flex flex-wrap gap-2.5">
+          <Link className="inline-flex min-h-11 items-center justify-center rounded-full border border-slate-300/60 bg-white/75 px-4 py-2.5 text-sm font-bold text-slate-800 transition hover:-translate-y-0.5" href="/">
             Workout View
           </Link>
-          <Link className="soft-action" href="/saved-recipes">
+          <Link className="inline-flex min-h-11 items-center justify-center rounded-full border border-slate-300/60 bg-white/75 px-4 py-2.5 text-sm font-bold text-slate-800 transition hover:-translate-y-0.5" href="/saved-recipes">
             Saved Recipes
           </Link>
         </div>
       </section>
 
-      <section className="panel-card recipe-workspace-card">
-        <div className="section-head">
+      <section className="relative mt-4 overflow-hidden rounded-[1.75rem] border border-white/70 bg-white/80 p-5 pb-[88px] shadow-[0_20px_45px_rgba(41,51,64,0.08)] backdrop-blur-xl sm:p-6 sm:pb-[88px]">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <h2 className="section-title">Main View</h2>
-            <p className="section-copy">Status: <strong>{status}</strong></p>
+            <h2 className="m-0 font-[Avenir_Next_Condensed,Arial_Narrow,sans-serif] text-[clamp(1.45rem,5.5vw,2.1rem)] leading-none tracking-[-0.03em]">Main View</h2>
+            <p className="m-0 text-sm leading-relaxed text-slate-500">Status: <strong>{status}</strong></p>
           </div>
-          <div className="badge-row">
-            <span className="badge">{currentUtteranceSummary}</span>
-            <span className={`badge ${hasPendingChanges ? 'badge-attention' : ''}`}>
+          <div className="flex flex-wrap gap-2">
+            <span className="inline-flex items-center rounded-full bg-[#ff6359]/12 px-3 py-1.5 text-xs font-bold text-[#b54843]">{currentUtteranceSummary}</span>
+            <span className={`inline-flex items-center rounded-full px-3 py-1.5 text-xs font-bold ${hasPendingChanges ? 'bg-[#ffe7df] text-[#8f2d1f]' : 'bg-[#ff6359]/12 text-[#b54843]'}`}>
               {hasPendingChanges ? 'Pending changes' : 'Recommendations synced'}
             </span>
           </div>
         </div>
 
-        <div className="recipe-panel-grid">
-          <section className="recipe-state-panel">
-            <div className="recipe-state-grid">
+        <div className="mt-4 grid gap-4">
+          <section className="rounded-[1.5rem] border border-slate-200/70 bg-white/75 p-4">
+            <div className="grid gap-4">
               <EditableField
                 label="Ingredients"
                 editing={editField === 'ingredients'}
@@ -267,14 +267,14 @@ export function RecipeWorkspace() {
                 onCommit={commitEdit}
                 placeholder="air fried, high protein, spicy, under 20 minutes"
               />
-              <section className="detail-section">
-                <span className="detail-label">Mode</span>
-                <div className="mode-pill-row">
+              <section className="border-t border-slate-200/70 pt-3">
+                <span className="mb-1 block text-[0.72rem] uppercase tracking-[0.1em] text-slate-500">Mode</span>
+                <div className="flex flex-wrap gap-2.5">
                   {MODE_OPTIONS.map((option) => (
                     <button
                       key={option.value}
                       type="button"
-                      className={`mode-pill ${draft.mode === option.value ? 'active' : ''}`}
+                      className={`rounded-full border px-4 py-2.5 text-sm font-bold ${draft.mode === option.value ? 'border-transparent bg-[#ff6359] text-white' : 'border-slate-300/60 bg-white/85 text-slate-600'}`}
                       onClick={() => setDraft((current) => applyRecipeStatePatch(current, { mode: option.value }))}
                     >
                       {option.label}
@@ -285,93 +285,93 @@ export function RecipeWorkspace() {
             </div>
           </section>
 
-          <div className="recipe-generate-row">
-            <button className="primary-action chip-button" type="button" onClick={handleGenerate} disabled={!canGenerate}>
+          <div className="flex flex-col items-stretch justify-between gap-3 px-1 sm:flex-row sm:items-center">
+            <button className="inline-flex min-h-11 items-center justify-center rounded-full border border-transparent bg-gradient-to-br from-[#ff6a60] to-[#ff7f5d] px-4 py-2.5 text-sm font-bold text-white shadow-[0_12px_24px_rgba(255,99,89,0.24)] transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60" type="button" onClick={handleGenerate} disabled={!canGenerate}>
               Generate Recipes
             </button>
-            <p className="section-copy">
+            <p className="m-0 text-sm leading-relaxed text-slate-500">
               Recommendations only update when you confirm the current draft.
             </p>
           </div>
 
           {feedback ? (
-            <div className={`recipe-feedback ${feedback.toLowerCase().includes('failed') ? 'is-error' : ''}`}>
+            <div className={`rounded-2xl px-4 py-3 text-sm ${feedback.toLowerCase().includes('failed') ? 'bg-[#ffe4df] text-[#8f2d1f]' : 'bg-cyan-100/70 text-slate-900'}`}>
               {feedback}
             </div>
           ) : null}
 
-          <section className="recipe-results-panel">
-            <div className="section-head">
+          <section className="rounded-[1.5rem] border border-slate-200/70 bg-white/75 p-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div>
-                <h2 className="section-title">Recommendations</h2>
-                <p className="section-copy">
+                <h2 className="m-0 font-[Avenir_Next_Condensed,Arial_Narrow,sans-serif] text-[clamp(1.45rem,5.5vw,2.1rem)] leading-none tracking-[-0.03em]">Recommendations</h2>
+                <p className="m-0 text-sm leading-relaxed text-slate-500">
                   {recommendations.length === 0 ? 'Generate to see three recipe options.' : 'Tap a card to expand details.'}
                 </p>
               </div>
             </div>
             {recommendations.length === 0 ? (
-              <div className="empty-state recipe-empty-state">
-                <h3 className="section-title">Nothing generated yet</h3>
-                <p>Speak ingredients and constraints, review the draft, then generate.</p>
+              <div className="mt-4 rounded-[1.5rem] border border-white/70 bg-white/80 p-4">
+                <h3 className="m-0 font-[Avenir_Next_Condensed,Arial_Narrow,sans-serif] text-[clamp(1.3rem,5vw,1.7rem)] leading-[1.05] tracking-[-0.03em]">Nothing generated yet</h3>
+                <p className="mt-2 text-sm leading-relaxed text-slate-600">Speak ingredients and constraints, review the draft, then generate.</p>
               </div>
             ) : (
-              <div className="recipe-recommendation-stack">
+              <div className="mt-4 grid gap-4">
                 {recommendations.map((recommendation) => {
                   const expanded = expandedId === recommendation.id;
                   return (
-                    <article key={recommendation.id} className={`recipe-option-card ${expanded ? 'expanded' : ''}`}>
+                    <article key={recommendation.id} className={`rounded-[1.5rem] border border-slate-200/70 bg-white/80 p-4 ${expanded ? 'shadow-[0_20px_45px_rgba(41,51,64,0.08)]' : ''}`}>
                       <button
                         type="button"
-                        className="recipe-option-trigger"
+                        className="flex w-full flex-col items-start justify-between gap-3 border-0 bg-transparent p-0 text-left sm:flex-row"
                         onClick={() => setExpandedId(expanded ? null : recommendation.id)}
                       >
                         <div>
-                          <h3 className="library-title">{recommendation.title}</h3>
-                          <p className="library-copy">{recommendation.summary}</p>
+                          <h3 className="m-0 font-[Avenir_Next_Condensed,Arial_Narrow,sans-serif] text-[1.4rem] leading-none tracking-[-0.03em]">{recommendation.title}</h3>
+                          <p className="m-0 text-sm leading-relaxed text-slate-500">{recommendation.summary}</p>
                         </div>
-                        <span className="badge">{recommendation.totalMinutes ? `${recommendation.totalMinutes} min` : 'Flexible'}</span>
+                        <span className="inline-flex items-center rounded-full bg-[#ff6359]/12 px-3 py-1.5 text-xs font-bold text-[#b54843]">{recommendation.totalMinutes ? `${recommendation.totalMinutes} min` : 'Flexible'}</span>
                       </button>
 
                       {expanded ? (
-                        <div className="detail-list">
-                          <section className="detail-section">
-                            <span className="detail-label">Rationale</span>
-                            <p className="library-copy">{recommendation.rationale}</p>
+                        <div className="mt-3 grid gap-3">
+                          <section className="border-t border-slate-200/70 pt-3">
+                            <span className="mb-1 block text-[0.72rem] uppercase tracking-[0.1em] text-slate-500">Rationale</span>
+                            <p className="m-0 text-sm leading-relaxed text-slate-500">{recommendation.rationale}</p>
                           </section>
-                          <section className="detail-section">
-                            <span className="detail-label">Available Ingredients Used</span>
-                            <div className="badge-row">
+                          <section className="border-t border-slate-200/70 pt-3">
+                            <span className="mb-1 block text-[0.72rem] uppercase tracking-[0.1em] text-slate-500">Available Ingredients Used</span>
+                            <div className="flex flex-wrap gap-2">
                               {recommendation.availableIngredientsUsed.map((item) => (
-                                <span key={item} className="badge">{item}</span>
+                                <span key={item} className="inline-flex items-center rounded-full bg-[#ff6359]/12 px-3 py-1.5 text-xs font-bold text-[#b54843]">{item}</span>
                               ))}
                             </div>
                           </section>
-                          <section className="detail-section">
-                            <span className="detail-label">Available Ingredients Unused</span>
-                            <div className="badge-row">
+                          <section className="border-t border-slate-200/70 pt-3">
+                            <span className="mb-1 block text-[0.72rem] uppercase tracking-[0.1em] text-slate-500">Available Ingredients Unused</span>
+                            <div className="flex flex-wrap gap-2">
                               {recommendation.availableIngredientsUnused.length > 0 ? recommendation.availableIngredientsUnused.map((item) => (
-                                <span key={item} className="badge badge-muted">{item}</span>
-                              )) : <span className="badge">none</span>}
+                                <span key={item} className="inline-flex items-center rounded-full bg-cyan-100/70 px-3 py-1.5 text-xs font-bold text-cyan-800">{item}</span>
+                              )) : <span className="inline-flex items-center rounded-full bg-[#ff6359]/12 px-3 py-1.5 text-xs font-bold text-[#b54843]">none</span>}
                             </div>
                           </section>
-                          <section className="detail-section">
-                            <span className="detail-label">Extra Ingredients Needed</span>
-                            <div className="badge-row">
+                          <section className="border-t border-slate-200/70 pt-3">
+                            <span className="mb-1 block text-[0.72rem] uppercase tracking-[0.1em] text-slate-500">Extra Ingredients Needed</span>
+                            <div className="flex flex-wrap gap-2">
                               {recommendation.extraIngredients.length > 0 ? recommendation.extraIngredients.map((item) => (
-                                <span key={item} className="badge badge-muted">{item}</span>
-                              )) : <span className="badge">none</span>}
+                                <span key={item} className="inline-flex items-center rounded-full bg-cyan-100/70 px-3 py-1.5 text-xs font-bold text-cyan-800">{item}</span>
+                              )) : <span className="inline-flex items-center rounded-full bg-[#ff6359]/12 px-3 py-1.5 text-xs font-bold text-[#b54843]">none</span>}
                             </div>
                           </section>
-                          <section className="detail-section">
-                            <span className="detail-label">Preparation Steps</span>
-                            <ol className="recipe-steps">
+                          <section className="border-t border-slate-200/70 pt-3">
+                            <span className="mb-1 block text-[0.72rem] uppercase tracking-[0.1em] text-slate-500">Preparation Steps</span>
+                            <ol className="m-0 list-decimal pl-5 text-sm leading-relaxed text-slate-600">
                               {recommendation.steps.map((step) => (
                                 <li key={step}>{step}</li>
                               ))}
                             </ol>
                           </section>
-                          <div className="hero-actions">
-                            <button className="soft-action" type="button" onClick={() => handleSave(recommendation)} disabled={isBusy}>
+                          <div className="flex flex-wrap gap-2.5">
+                            <button className="inline-flex min-h-11 items-center justify-center rounded-full border border-slate-300/60 bg-white/75 px-4 py-2.5 text-sm font-bold text-slate-800 transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60" type="button" onClick={() => handleSave(recommendation)} disabled={isBusy}>
                               Save
                             </button>
                           </div>
@@ -388,10 +388,10 @@ export function RecipeWorkspace() {
       </section>
 
       {isClient ? createPortal(
-        <div className="recipe-mic-dock">
+        <div className="pointer-events-none fixed inset-x-0 bottom-[calc(22px+env(safe-area-inset-bottom))] z-[2147483647] flex justify-center sm:bottom-[calc(18px+env(safe-area-inset-bottom))]">
           <button
             type="button"
-            className={`recipe-mic-button ${isRecording ? 'is-live' : ''}`}
+            className={`pointer-events-auto grid h-[68px] w-[68px] place-items-center rounded-full border-0 text-white shadow-[0_22px_60px_rgba(20,24,30,0.16)] ${isRecording ? 'bg-[#c8362f]' : 'bg-[#17181c]'}`}
             onClick={isRecording ? stopListening : startListening}
             disabled={isBusy && !isRecording}
             aria-label={isRecording ? 'Stop listening' : 'Start listening'}
@@ -408,7 +408,7 @@ export function RecipeWorkspace() {
 function MicIcon() {
   return (
     <svg
-      className="recipe-mic-icon"
+      className="h-7 w-7"
       viewBox="0 0 24 24"
       aria-hidden="true"
       focusable="false"
@@ -445,11 +445,11 @@ function EditableField({
   placeholder: string;
 }) {
   return (
-    <section className="detail-section">
-      <span className="detail-label">{label}</span>
+    <section className="border-t border-slate-200/70 pt-3">
+      <span className="mb-1 block text-[0.72rem] uppercase tracking-[0.1em] text-slate-500">{label}</span>
       {editing ? (
         <textarea
-          className="recipe-inline-editor"
+          className="min-h-[92px] w-full resize-y rounded-[18px] border border-slate-300/60 bg-white/85 px-3.5 py-3 text-slate-900"
           value={editValue}
           onChange={(event) => onChange(event.target.value)}
           onBlur={onCommit}
@@ -462,7 +462,7 @@ function EditableField({
           placeholder={placeholder}
         />
       ) : (
-        <button type="button" className="recipe-inline-display" onDoubleClick={onBeginEdit}>
+        <button type="button" className="w-full border-0 bg-transparent p-0 text-left leading-relaxed text-slate-900" onDoubleClick={onBeginEdit}>
           {displayValue}
         </button>
       )}

@@ -46,6 +46,7 @@ See [trainer/README.md](/Users/arjun/Personal/apps/personal_trainer/trainer/READ
 
 The frontend reads generated workspace JSON plus library assets and provides the user-facing app:
 
+- Tailwind CSS utility-first styling on top of Next.js + React
 - homepage hub with workout summary and a dedicated Recipes entry point
 - read-only workout overview with per-day summaries before the session starts
 - single-day workout view with per-device checklist persistence

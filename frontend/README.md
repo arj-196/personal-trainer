@@ -7,6 +7,7 @@ The frontend is a Next.js app for the workout UI, exercise library, and Jeff the
 - Next.js
 - React
 - TypeScript
+- Tailwind CSS (utility-first styling)
 
 ## Current features
 
@@ -33,6 +34,8 @@ The frontend is a Next.js app for the workout UI, exercise library, and Jeff the
 cd frontend
 npm install
 ```
+
+Tailwind is integrated through `postcss.config.mjs` using `@tailwindcss/postcss`.
 
 ## Run
 
@@ -166,3 +169,7 @@ In `blob` mode the frontend reads the same logical data from Vercel Blob:
 - `/debug` is intentionally unlinked from the homepage and is meant for manual device verification workflows.
 - Plan generation still happens in the trainer CLI.
 - A workspace must exist in the selected data source before the frontend can display it.
+- Styling is utility-first with Tailwind classes directly in route/component JSX.
+- `app/globals.css` is intentionally minimal and limited to base resets and shared global defaults.
+- Responsive behavior is mobile-first; baseline styles target small screens and scale up with `sm`/`md`/`lg` classes.
+- Root layout sets `suppressHydrationWarning` on `<html>` and `<body>` to avoid false-positive warnings when mobile Chrome injects temporary attributes before React hydration.
