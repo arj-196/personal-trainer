@@ -271,8 +271,8 @@ Use the profile and latest check-in to choose the split, exercise selection, vol
 
 Important requirements:
 - Keep `day_label` in the form `Day 1`, `Day 2`, and so on.
-- Prefer exercise names from the provided exercise library when they fit, because the app links those names to reference cards.
-- You may use an exercise not in the library when it is clearly better for the athlete.
+- Prefer exercise names from the provided exercise catalog when they fit, because the app can map those names to known exercise images.
+- You may use an exercise not in the catalog when it is clearly better for the athlete.
 - Match the athlete's available training days and session length unless the recovery picture strongly justifies fewer sessions.
 - Keep `summary`, `progression_note`, `warmup`, `finisher`, `recovery`, and `next_checkin_prompt` concise and practical.
 - Each exercise needs a compact `prescription` string, for example `4 sets x 6-8 reps @ RPE 7`.

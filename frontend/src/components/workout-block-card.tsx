@@ -1,5 +1,3 @@
-import Link from 'next/link';
-
 import { googleImagesSearchUrl, type WorkoutBlock } from '@/lib/workout-helpers';
 
 type WorkoutBlockCardProps = {
@@ -20,17 +18,6 @@ function blockLabel(kind: WorkoutBlock['kind']): string {
     default:
       return 'Exercise';
   }
-}
-
-function LibraryIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path
-        d="M6 5.5A2.5 2.5 0 0 1 8.5 3H19v15H8.5A2.5 2.5 0 0 0 6 20.5V5.5Zm0 15a2.5 2.5 0 0 1 2.5-2.5H19V21H8.5A2.5 2.5 0 0 1 6 18.5v2Z"
-        fill="currentColor"
-      />
-    </svg>
-  );
 }
 
 function ImageSearchIcon() {
@@ -64,7 +51,6 @@ export function WorkoutBlockCard({
   onToggle,
   display = 'compact',
 }: WorkoutBlockCardProps) {
-  const libraryHref = block.kind === 'exercise' ? `/library?q=${encodeURIComponent(block.name)}` : null;
   const isStartView = display === 'start';
   const isCollapsedComplete = isStartView && checked;
 
@@ -118,17 +104,6 @@ export function WorkoutBlockCard({
             <p className="m-0 text-[0.98rem] font-bold leading-[1.42] text-slate-900">{block.prescription}</p>
             {block.notes ? <p className="m-0 text-sm leading-relaxed text-slate-500">{block.notes}</p> : null}
             <div className="mt-1 flex flex-wrap gap-2">
-              {libraryHref ? (
-                isStartView ? (
-                  <Link className="inline-flex min-h-11 items-center justify-center rounded-full border border-slate-300/60 bg-white/75 px-4 py-2.5 text-sm font-bold text-slate-800 transition hover:-translate-y-0.5" href={libraryHref}>
-                    Open library
-                  </Link>
-                ) : (
-                  <Link className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-300/60 bg-white/80 text-slate-900 transition hover:-translate-y-0.5 hover:shadow-[0_10px_18px_rgba(43,52,61,0.1)]" href={libraryHref} aria-label={`Open ${block.name} in library`}>
-                    <LibraryIcon />
-                  </Link>
-                )
-              ) : null}
               {block.kind === 'exercise' && block.searchName ? (
                 isStartView ? (
                   <a

@@ -2,7 +2,7 @@
 
 The trainer app is the trainer engine for the monorepo.
 
-It generates workout plans with Ollama and OpenAI-backed trainer agents, manages workspace files, maintains the bundled exercise library, and can publish the current plan to Apple Notes.
+It generates workout plans with Ollama and OpenAI-backed trainer agents, manages workspace files, maintains the bundled exercise catalog, and can publish the current plan to Apple Notes.
 
 ## Stack
 
@@ -17,8 +17,7 @@ It generates workout plans with Ollama and OpenAI-backed trainer agents, manages
 - generate explicit workout timing metadata (`activeSeconds`, set counts, and rest durations) in `plan.json` for the start-workout timer flow
 - render `plan.pdf` with the same document structure as `plan.md`, including embedded exercise images
 - generate side-by-side comparison plans when you request multiple models
-- sync the exercise library into each workspace
-- publish workspace and library assets to Vercel Blob for the hosted frontend
+- publish workspace artifacts to Vercel Blob for the hosted frontend
 - publish a text-only workout note to Apple Notes on macOS
 
 ## Install
@@ -69,7 +68,7 @@ These commands read and write files in:
 
 - the parsed athlete profile
 - the latest check-in when present
-- the bundled exercise library metadata so the model can prefer linkable exercise names
+- the bundled exercise catalog metadata so the model can prefer known exercise names
 
 Each model must return structured JSON, which the app validates before writing both JSON data files and Markdown views.
 
@@ -197,7 +196,7 @@ poetry run pytest -q
 
 ## Blob publish
 
-To host the frontend on Vercel without relying on local repo files, publish the generated workspace and shared exercise library to Vercel Blob:
+To host the frontend on Vercel without relying on local repo files, publish the generated workspace artifacts to Vercel Blob:
 
 ```bash
 cd trainer
@@ -209,7 +208,6 @@ Optional flags:
 
 - `--prefix` to change the blob pathname prefix
 - `--access public|private` to match the Blob store access mode
-- `--skip-library` to upload only the selected workspace
 
 Required environment variables:
 

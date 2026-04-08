@@ -1,10 +1,6 @@
 import { blobPath, getTrainerDataSource } from './storage-config';
 import { listBlobFolders, readBlobText } from './blob-storage';
-import {
-  listLocalWorkspaces,
-  readLocalExerciseCatalogText,
-  readLocalWorkspaceText,
-} from './local-storage';
+import { listLocalWorkspaces, readLocalWorkspaceText } from './local-storage';
 
 export type WorkoutExercise = {
   name: string;
@@ -15,7 +11,6 @@ export type WorkoutExercise = {
   restBetweenSetsSeconds: number;
   restBetweenExercisesSeconds: number;
   imageUrl: string | null;
-  referencePath: string | null;
 };
 
 export type WorkoutDay = {
@@ -36,23 +31,6 @@ export type WorkoutPlan = {
   progression: string;
   days: WorkoutDay[];
   nextCheckIn: string;
-};
-
-export type ExerciseReference = {
-  slug: string;
-  name: string;
-  aliases: string[];
-  summary: string;
-  setup: string;
-  cues: string[];
-  visual_note: string;
-  image_url: string;
-  source_title: string;
-  source_url: string;
-  author: string;
-  credit: string;
-  license: string;
-  license_url: string;
 };
 
 export type UserProfileSummary = {
@@ -82,39 +60,7 @@ export async function readWorkoutPlan(workspace: string): Promise<WorkoutPlan | 
     return null;
   }
 
-  const plan = normalizeWorkoutPlan(JSON.parse(text) as Record<string, unknown>);
-  const needsCatalogLookup = plan.days.some((day) =>
-    day.exercises.some((exercise) => !exercise.imageUrl)
-  );
-  if (!needsCatalogLookup) {
-    return plan;
-  }
-
-  const references = await readExerciseLibrary();
-  const referenceMap = new Map(references.map((reference) => [reference.name, reference]));
-  return {
-    ...plan,
-    days: plan.days.map((day) => ({
-      ...day,
-      exercises: day.exercises.map((exercise) => ({
-        ...exercise,
-        imageUrl: exercise.imageUrl ?? referenceMap.get(exercise.name)?.image_url ?? null,
-      })),
-    })),
-  };
-}
-
-export async function readExerciseLibrary(): Promise<ExerciseReference[]> {
-  const text =
-    getTrainerDataSource() === 'blob'
-      ? await readBlobText(blobPath('exercise-library', 'catalog.json'))
-      : readLocalExerciseCatalogText();
-
-  if (!text) {
-    return [];
-  }
-
-  return (JSON.parse(text) as Array<Record<string, unknown>>).map(normalizeExerciseReference);
+  return normalizeWorkoutPlan(JSON.parse(text) as Record<string, unknown>);
 }
 
 export async function readUserProfileSummary(workspace: string): Promise<UserProfileSummary | null> {
@@ -187,13 +133,6 @@ function normalizeWorkoutPlan(payload: Record<string, unknown>): WorkoutPlan {
         ),
       };
     }),
-  };
-}
-
-function normalizeExerciseReference(payload: Record<string, unknown>): ExerciseReference {
-  return {
-    ...(payload as ExerciseReference),
-    image_url: typeof payload.image_url === 'string' ? payload.image_url : '',
   };
 }
 

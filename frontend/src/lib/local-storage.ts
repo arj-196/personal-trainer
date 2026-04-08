@@ -5,15 +5,6 @@ import { contentTypeFor } from './content-types';
 
 const REPO_ROOT = resolve(process.cwd(), '..');
 const WORKSPACES_DIR = join(REPO_ROOT, 'workspaces');
-const EXERCISE_LIBRARY_DIR = join(
-  REPO_ROOT,
-  'trainer',
-  'src',
-  'personal_trainer',
-  'assets',
-  'exercise_library'
-);
-const EXERCISE_CATALOG = join(EXERCISE_LIBRARY_DIR, 'catalog.json');
 
 export type StoredFile = {
   body: Buffer;
@@ -36,10 +27,6 @@ export function listLocalWorkspaces(): string[] {
 export function readLocalWorkspaceText(workspace: string, filename: string): string | null {
   const targetPath = join(WORKSPACES_DIR, workspace, filename);
   return existsSync(targetPath) ? readFileSync(targetPath, 'utf-8') : null;
-}
-
-export function readLocalExerciseCatalogText(): string | null {
-  return existsSync(EXERCISE_CATALOG) ? readFileSync(EXERCISE_CATALOG, 'utf-8') : null;
 }
 
 export function readLocalWorkspaceAsset(workspace: string, pathParts: string[]): StoredFile | null {

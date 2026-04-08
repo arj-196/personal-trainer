@@ -51,7 +51,4 @@ def test_render_plan_renders_reference_image_as_block() -> None:
         'alt="Dumbbell Bench Press" '
         'style="display: block; max-width: 240px; width: 100%; height: auto;" />'
     ) in rendered
-    assert (
-        "\nReference: [Dumbbell Bench Press](exercise_library/dumbbell-bench-press.md)\n\n- Finisher:"
-        in rendered
-    )
+    assert "\n- Finisher:" in rendered

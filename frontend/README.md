@@ -1,6 +1,6 @@
 # Frontend
 
-The frontend is a Next.js app for the workout UI, exercise library, and Jeff the Cook recipe workspace.
+The frontend is a Next.js app for the workout UI and Jeff the Cook recipe workspace.
 
 ## Stack
 
@@ -17,7 +17,6 @@ The frontend is a Next.js app for the workout UI, exercise library, and Jeff the
 - open a larger read-only workout focus view
 - start a single-day workout session from a specific workout day with a persistent per-device checklist
 - use a compact fixed stopwatch panel in the start-workout session with active/rest coaching cues
-- browse the exercise library with images and coaching cues
 - use Jeff the Cook as a voice-first recipe workspace with draft review before generation
 - save immutable recipe snapshots to Vercel Blob and reopen or delete them later
 - open Google Images for each exercise card when you need a quick visual lookup
@@ -107,7 +106,7 @@ See `.env.example`.
 2. Set the project Root Directory to `frontend`.
 3. Create a Vercel Blob store and attach it to the same Vercel project.
 4. Set the frontend environment variables from `.env.example`.
-5. Publish workout/library data from the trainer app with:
+5. Publish workout data from the trainer app with:
 
 ```bash
 cd trainer
@@ -136,14 +135,12 @@ In `local` mode the frontend reads directly from repo files on the server side:
 
 - `../workspaces/<name>/plan.json`
 - `../workspaces/<name>/profile.json`
-- `../trainer/src/personal_trainer/assets/exercise_library/catalog.json`
 - workout reference markdown from the workspace
-- remote `wger` image URLs directly from the plan and shared exercise catalog
+- remote `wger` image URLs directly from the plan
 
 In `blob` mode the frontend reads the same logical data from Vercel Blob:
 
 - `personal-trainer/workspaces/<name>/...`
-- `personal-trainer/exercise-library/catalog.json`
 - `personal-trainer/saved-recipes/YYYY/MM/recipe_<id>.json`
 
 ## Routes
@@ -154,7 +151,6 @@ In `blob` mode the frontend reads the same logical data from Vercel Blob:
 - `/recipes`: Jeff the Cook recipe workspace with voice input, draft review, and explicit generation
 - `/saved-recipes`: saved recipe snapshot list
 - `/saved-recipes/[id]`: saved recipe snapshot detail
-- `/library`: exercise library
 - `/debug`: direct-entry diagnostics page for validating production feature implementations (currently mic capture + playback)
 
 ## Notes

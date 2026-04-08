@@ -15,7 +15,6 @@ from personal_trainer.blob_sync import (
     default_blob_prefix,
     publish_workspace_to_blob,
 )
-from personal_trainer.exercise_library import sync_workspace_library
 from personal_trainer.markdown_io import (
     ensure_workspace,
     load_checkin,
@@ -187,7 +186,6 @@ def main() -> None:
 @WORKSPACE_ARGUMENT
 def init_command(workspace: Path) -> None:
     paths = ensure_workspace(workspace)
-    sync_workspace_library(paths.root)
     if not paths.profile.exists():
         paths.profile.write_text(render_profile_template(), encoding="utf-8")
     profile = load_profile(paths.profile)
@@ -214,7 +212,6 @@ def plan_command(
     _configure_progress_logging()
     paths = ensure_workspace(workspace)
     LOGGER.info("Preparing workspace '%s' for plan generation", paths.root.name)
-    sync_workspace_library(paths.root)
     if not paths.profile.exists():
         raise click.ClickException(f"Missing profile: {paths.profile}")
 
@@ -276,7 +273,6 @@ def refresh_command(
     _configure_progress_logging()
     paths = ensure_workspace(workspace)
     LOGGER.info("Preparing workspace '%s' for plan refresh", paths.root.name)
-    sync_workspace_library(paths.root)
     checkin_path = _resolve_checkin_path(paths.root, checkin)
     if not paths.profile.exists():
         raise click.ClickException(f"Missing profile: {paths.profile}")
@@ -450,7 +446,6 @@ def publish_notes_command(
     workspace: Path, account: str, folder_name: str, title: str | None
 ) -> None:
     paths = ensure_workspace(workspace)
-    sync_workspace_library(paths.root)
     try:
         result = publish_plan_to_notes(
             paths.root,
@@ -469,7 +464,7 @@ def publish_notes_command(
 
 @main.command(
     "publish-web",
-    help="Upload the workspace and shared exercise library to Vercel Blob.",
+    help="Upload the workspace artifacts to Vercel Blob.",
 )
 @WORKSPACE_ARGUMENT
 @click.option(
@@ -485,20 +480,12 @@ def publish_notes_command(
     show_default="env TRAINER_BLOB_ACCESS or private",
     help="Blob access level for the uploaded files.",
 )
-@click.option(
-    "--skip-library",
-    is_flag=True,
-    help="Upload only the selected workspace without refreshing shared library assets.",
-)
-def publish_web_command(
-    workspace: Path, prefix: str, access: str, skip_library: bool
-) -> None:
+def publish_web_command(workspace: Path, prefix: str, access: str) -> None:
     try:
         result = publish_workspace_to_blob(
             workspace,
             prefix=prefix,
             access=cast(BlobAccess, access),
-            include_library=not skip_library,
         )
     except BlobPublishError as error:
         raise click.ClickException(str(error)) from error
@@ -507,7 +494,6 @@ def publish_web_command(
         f"Published workspace '{result.workspace}' to Blob prefix '{result.prefix}'"
     )
     click.echo(f"Workspace files uploaded: {result.workspace_files_uploaded}")
-    click.echo(f"Library files uploaded: {result.library_files_uploaded}")
     click.echo(f"Remote files deleted: {result.remote_files_deleted}")
     click.echo(
         "Set TRAINER_DATA_SOURCE=blob in the frontend environment before deploying."

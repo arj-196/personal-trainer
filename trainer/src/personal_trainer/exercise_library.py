@@ -6,9 +6,6 @@ from functools import lru_cache
 from importlib.resources import as_file, files
 from pathlib import Path
 
-IMAGE_WIDTH_PX = 240
-
-
 @dataclass(frozen=True, slots=True)
 class ExerciseReference:
     slug: str
@@ -29,10 +26,6 @@ class ExerciseReference:
     @property
     def image_path(self) -> str:
         return self.image_url
-
-    @property
-    def markdown_path(self) -> str:
-        return f"exercise_library/{self.slug}.md"
 
 
 @lru_cache(maxsize=1)
@@ -82,72 +75,3 @@ def get_reference(exercise_name: str) -> ExerciseReference | None:
 
 def all_references() -> tuple[ExerciseReference, ...]:
     return _catalog()
-
-
-def sync_workspace_library(workspace_root: Path) -> None:
-    library_dir = workspace_root / "exercise_library"
-    library_dir.mkdir(parents=True, exist_ok=True)
-
-    for reference in _catalog():
-        (library_dir / f"{reference.slug}.md").write_text(
-            _render_reference(reference), encoding="utf-8"
-        )
-    (library_dir / "index.md").write_text(_render_index(), encoding="utf-8")
-
-
-def _render_reference(reference: ExerciseReference) -> str:
-    lines = [
-        f"# {reference.name}",
-        "",
-        _render_image(reference.name, reference.image_path),
-        "",
-        "## What It Is",
-        reference.summary,
-        "",
-        "## Setup",
-        reference.setup,
-        "",
-        "## Coaching Cues",
-    ]
-    lines.extend(f"- {cue}" for cue in reference.cues)
-    if reference.visual_note:
-        lines.extend(["", "## Visual Note", reference.visual_note])
-    lines.extend(
-        [
-            "",
-            "## Attribution",
-            f"- Source file: {reference.source_title}",
-            f"- Source page: {reference.source_url}",
-            f"- Author: {reference.author or 'Not provided'}",
-            f"- Credit: {reference.credit or 'Not provided'}",
-            f"- License: {reference.license or 'See source page'}",
-        ]
-    )
-    if reference.license_url:
-        lines.append(f"- License URL: {reference.license_url}")
-    lines.append("")
-    return "\n".join(lines)
-
-
-def _render_index() -> str:
-    lines = [
-        "# Exercise Library",
-        "",
-        "Use these reference pages when you want a quick explanation and picture for an exercise in your plan.",
-        "",
-    ]
-    for reference in _catalog():
-        lines.extend(
-            [
-                f"## {reference.name}",
-                _render_image(reference.name, reference.image_path),
-                reference.summary,
-                f"Reference: [{reference.name}]({reference.slug}.md)",
-                "",
-            ]
-        )
-    return "\n".join(lines)
-
-
-def _render_image(alt_text: str, path: str) -> str:
-    return f'<img src="{path}" alt="{alt_text}" width="{IMAGE_WIDTH_PX}" />'

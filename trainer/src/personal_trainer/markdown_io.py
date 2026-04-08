@@ -257,9 +257,6 @@ def render_plan(plan: WorkoutPlan, profile: UserProfile) -> str:
                 lines.append(
                     f'<img src="{reference.image_path}" alt="{reference.name}" style="display: block; max-width: {PLAN_IMAGE_WIDTH_PX}px; width: 100%; height: auto;" />'
                 )
-                lines.append(
-                    f"Reference: [{reference.name}]({reference.markdown_path})"
-                )
                 lines.append("")
         lines.extend(
             [
@@ -326,9 +323,6 @@ def render_plan_json(plan: WorkoutPlan, profile: UserProfile) -> str:
                         "restBetweenExercisesSeconds": exercise.rest_between_exercises_seconds,
                         "imageUrl": (
                             reference.image_path if reference is not None else None
-                        ),
-                        "referencePath": (
-                            reference.markdown_path if reference is not None else None
                         ),
                     }
                     for exercise in day.exercises

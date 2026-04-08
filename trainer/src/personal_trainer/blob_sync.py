@@ -9,7 +9,6 @@ from typing import Literal
 BlobAccess = Literal["public", "private"]
 
 DEFAULT_BLOB_PREFIX = "personal-trainer"
-LIBRARY_ASSETS_ROOT = Path(__file__).resolve().parent / "assets" / "exercise_library"
 
 
 class BlobPublishError(RuntimeError):
@@ -22,7 +21,6 @@ class BlobPublishResult:
     prefix: str
     access: BlobAccess
     workspace_files_uploaded: int
-    library_files_uploaded: int
     remote_files_deleted: int
 
 
@@ -31,7 +29,6 @@ def publish_workspace_to_blob(
     *,
     prefix: str | None = None,
     access: BlobAccess = "private",
-    include_library: bool = True,
 ) -> BlobPublishResult:
     if not workspace_root.exists():
         raise BlobPublishError(f"Workspace does not exist: {workspace_root}")
@@ -39,7 +36,6 @@ def publish_workspace_to_blob(
     normalized_prefix = _normalize_prefix(prefix)
     workspace_name = workspace_root.name
     workspace_blob_root = _blob_path(normalized_prefix, "workspaces", workspace_name)
-    library_blob_root = _blob_path(normalized_prefix, "exercise-library")
 
     try:
         client = _build_blob_client()
@@ -50,12 +46,9 @@ def publish_workspace_to_blob(
 
     remote_files_deleted = 0
     workspace_files_uploaded = 0
-    library_files_uploaded = 0
 
     with client:
         remote_files_deleted += _delete_prefix(client, f"{workspace_blob_root}/")
-        if include_library:
-            remote_files_deleted += _delete_prefix(client, f"{library_blob_root}/")
 
         for file_path in _iter_workspace_files(workspace_root):
             relative_path = file_path.relative_to(workspace_root).as_posix()
@@ -70,26 +63,11 @@ def publish_workspace_to_blob(
             )
             workspace_files_uploaded += 1
 
-        if include_library:
-            for file_path in _iter_library_files():
-                relative_path = file_path.relative_to(LIBRARY_ASSETS_ROOT).as_posix()
-                client.upload_file(
-                    file_path,
-                    _blob_path(library_blob_root, relative_path),
-                    access=access,
-                    content_type=_content_type_for(file_path),
-                    overwrite=True,
-                    add_random_suffix=False,
-                    cache_control_max_age=_cache_control_max_age(file_path),
-                )
-                library_files_uploaded += 1
-
     return BlobPublishResult(
         workspace=workspace_name,
         prefix=normalized_prefix,
         access=access,
         workspace_files_uploaded=workspace_files_uploaded,
-        library_files_uploaded=library_files_uploaded,
         remote_files_deleted=remote_files_deleted,
     )
 
@@ -148,23 +126,7 @@ def _iter_workspace_files(workspace_root: Path) -> list[Path]:
         if path.is_file() and not path.name.startswith(".")
     )
 
-    library_dir = workspace_root / "exercise_library"
-    if library_dir.exists():
-        files.extend(
-            path
-            for path in library_dir.rglob("*")
-            if path.is_file() and not path.name.startswith(".")
-        )
-
     return sorted(files)
-
-
-def _iter_library_files() -> list[Path]:
-    return sorted(
-        path
-        for path in LIBRARY_ASSETS_ROOT.rglob("*")
-        if path.is_file() and not path.name.startswith(".")
-    )
 
 
 def _normalize_prefix(prefix: str | None) -> str:

@@ -3,7 +3,7 @@ import './globals.css';
 
 export const metadata: Metadata = {
   title: 'Personal Trainer',
-  description: 'Workout workspace, exercise library, and Jeff the Cook recipe generator.',
+  description: 'Workout workspace and Jeff the Cook recipe generator.',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

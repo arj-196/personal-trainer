@@ -36,7 +36,6 @@ def test_write_plan_pdf_generates_pdf_with_embedded_remote_images(
 ## Day 1: Upper Body
 - **Dumbbell Bench Press**: 3 sets x 8 reps. Leave 2 reps in reserve.
 <img src="https://wger.de/media/exercise-images/1879/dumbbell-bench-press.webp" alt="Dumbbell Bench Press" />
-Reference: [Dumbbell Bench Press](exercise_library/dumbbell-bench-press.md)
 """,
         destination,
     )
@@ -46,5 +45,4 @@ Reference: [Dumbbell Bench Press](exercise_library/dumbbell-bench-press.md)
     assert pdf_bytes.startswith(b"%PDF-1.")
     assert b"/Subtype /Image" in pdf_bytes
     assert b"Jordan's Training Plan" in pdf_bytes
-    assert b"Reference:" in pdf_bytes
     assert b"Dumbbell Bench Press" in pdf_bytes

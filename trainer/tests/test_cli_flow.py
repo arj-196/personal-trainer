@@ -90,7 +90,6 @@ def test_init_and_plan_flow(tmp_path, monkeypatch) -> None:
     assert result.exit_code == 0
     assert (workspace / "profile.md").exists()
     assert (workspace / "profile.json").exists()
-    assert (workspace / "exercise_library" / "index.md").exists()
 
     profile = (workspace / "profile.md").read_text(encoding="utf-8")
     profile = profile.replace("Albert", "Jordan").replace(
@@ -113,9 +112,9 @@ def test_init_and_plan_flow(tmp_path, monkeypatch) -> None:
     plan_json = (workspace / "plan.json").read_text(encoding="utf-8")
     assert "https://wger.de/media/exercise-images/" in plan_text
     assert plan_pdf.startswith(b"%PDF-1.4")
-    assert "Reference: [Dumbbell Bench Press]" in plan_text
     assert '"days": [' in plan_json
     assert '"imageUrl": "https://wger.de/media/exercise-images/' in plan_json
+    assert '"referencePath":' not in plan_json
     assert '"activeSeconds": 45' in plan_json
     assert '"restBetweenSetsSeconds": 90' in plan_json
 
@@ -165,7 +164,6 @@ def test_refresh_updates_state(tmp_path, monkeypatch) -> None:
     assert "Plan version: 2" in (workspace / "plan.md").read_text(encoding="utf-8")
     assert (workspace / "plan.pdf").read_bytes().startswith(b"%PDF-1.4")
     assert '"value": "2"' in (workspace / "plan.json").read_text(encoding="utf-8")
-    assert (workspace / "exercise_library" / "index.md").exists()
 
 
 def test_plan_writes_comparison_files_for_multiple_models(
@@ -250,7 +248,6 @@ def test_publish_web_command_reports_upload_summary(tmp_path, monkeypatch) -> No
             prefix="pt-prod",
             access="private",
             workspace_files_uploaded=4,
-            library_files_uploaded=2,
             remote_files_deleted=3,
         ),
     )
@@ -261,4 +258,3 @@ def test_publish_web_command_reports_upload_summary(tmp_path, monkeypatch) -> No
     assert result.exit_code == 0
     assert "Published workspace 'athlete' to Blob prefix 'pt-prod'" in result.output
     assert "Workspace files uploaded: 4" in result.output
-    assert "Library files uploaded: 2" in result.output

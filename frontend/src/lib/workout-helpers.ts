@@ -13,7 +13,6 @@ export type WorkoutBlock = {
   restBetweenSetsSeconds: number | null;
   restBetweenExercisesSeconds: number | null;
   imageUrl: string | null;
-  referencePath: string | null;
   searchName: string | null;
 };
 
@@ -34,7 +33,6 @@ export function buildWorkoutDayBlocks(day: WorkoutDay): WorkoutBlock[] {
       restBetweenSetsSeconds: null,
       restBetweenExercisesSeconds: null,
       imageUrl: null,
-      referencePath: null,
       searchName: null,
     },
     ...day.exercises.map((exercise, index) => ({
@@ -48,7 +46,6 @@ export function buildWorkoutDayBlocks(day: WorkoutDay): WorkoutBlock[] {
       restBetweenSetsSeconds: exercise.restBetweenSetsSeconds,
       restBetweenExercisesSeconds: exercise.restBetweenExercisesSeconds,
       imageUrl: exercise.imageUrl,
-      referencePath: exercise.referencePath,
       searchName: exercise.name,
     })),
   ];
@@ -65,7 +62,6 @@ export function buildWorkoutDayBlocks(day: WorkoutDay): WorkoutBlock[] {
       restBetweenSetsSeconds: null,
       restBetweenExercisesSeconds: null,
       imageUrl: null,
-      referencePath: null,
       searchName: null,
     });
   }
@@ -82,7 +78,6 @@ export function buildWorkoutDayBlocks(day: WorkoutDay): WorkoutBlock[] {
       restBetweenSetsSeconds: null,
       restBetweenExercisesSeconds: null,
       imageUrl: null,
-      referencePath: null,
       searchName: null,
     });
   }

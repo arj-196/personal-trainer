@@ -10,7 +10,6 @@ import { get, list } from '@vercel/blob';
 import {
   listWorkspaces,
   readUserProfileSummary,
-  readExerciseLibrary,
   readWorkoutPlan,
   workspaceImageUrl,
 } from './trainer-data';
@@ -55,7 +54,6 @@ describe('buildWorkoutDayBlocks', () => {
           restBetweenSetsSeconds: 90,
           restBetweenExercisesSeconds: 120,
           imageUrl: 'https://example.test/squat.jpg',
-          referencePath: 'exercise_library/goblet-squat.md',
         },
       ],
       finisher: 'Bike sprints',
@@ -70,7 +68,6 @@ describe('buildWorkoutDayBlocks', () => {
       activeSeconds: 45,
       setCount: 3,
       imageUrl: 'https://example.test/squat.jpg',
-      referencePath: 'exercise_library/goblet-squat.md',
     });
   });
 });
@@ -94,18 +91,6 @@ describe('trainer data integration (local)', () => {
     await expect(readUserProfileSummary('workspace_that_does_not_exist')).resolves.toBeNull();
   });
 
-  it('loads exercise references from the bundled catalog', async () => {
-    const exercises = await readExerciseLibrary();
-
-    expect(exercises.length).toBeGreaterThan(0);
-    expect(exercises[0]).toEqual(
-      expect.objectContaining({
-        slug: expect.any(String),
-        name: expect.any(String),
-        image_url: expect.stringContaining('https://'),
-      })
-    );
-  });
 });
 
 describe('trainer data integration (blob)', () => {
@@ -139,7 +124,7 @@ describe('trainer data integration (blob)', () => {
     });
   });
 
-  it('reads the workout plan and exercise catalog from blob storage', async () => {
+  it('reads the workout plan from blob storage', async () => {
     mockedGet.mockImplementation(async (pathname) => {
       const textByPath: Record<string, string> = {
         'pt-prod/workspaces/alpha/plan.json': JSON.stringify({
@@ -165,7 +150,6 @@ describe('trainer data integration (blob)', () => {
                   restBetweenSetsSeconds: 90,
                   restBetweenExercisesSeconds: 120,
                   imageUrl: 'https://wger.de/media/exercise-images/1542/dumbbell-goblet-squat.jpeg',
-                  referencePath: 'exercise_library/goblet-squat.md',
                 },
               ],
               finisher: '5 minute bike',
@@ -176,24 +160,6 @@ describe('trainer data integration (blob)', () => {
           ],
           nextCheckIn: 'Next Monday.',
         }),
-        'pt-prod/exercise-library/catalog.json': JSON.stringify([
-          {
-            slug: 'goblet-squat',
-            name: 'Goblet Squat',
-            aliases: [],
-            summary: 'Leg exercise',
-            setup: 'Hold a dumbbell',
-            cues: ['Brace'],
-            visual_note: '',
-            image_url: 'https://wger.de/media/exercise-images/1542/dumbbell-goblet-squat.jpeg',
-            source_title: '',
-            source_url: '',
-            author: '',
-            credit: '',
-            license: 'CC',
-            license_url: '',
-          },
-        ]),
         'pt-prod/workspaces/alpha/profile.json': JSON.stringify({
           name: 'Alpha',
           goal: 'Fat loss',
@@ -229,7 +195,6 @@ describe('trainer data integration (blob)', () => {
     });
 
     const plan = await readWorkoutPlan('alpha');
-    const exercises = await readExerciseLibrary();
     const profile = await readUserProfileSummary('alpha');
 
     expect(plan).toMatchObject({
@@ -240,11 +205,8 @@ describe('trainer data integration (blob)', () => {
       'https://wger.de/media/exercise-images/1542/dumbbell-goblet-squat.jpeg'
     );
     expect(plan?.days[0].exercises[0].activeSeconds).toBe(45);
-    expect(exercises).toHaveLength(1);
-    expect(exercises[0].name).toBe('Goblet Squat');
     expect(profile?.goal).toBe('Fat loss');
     expect(mockedGet).toHaveBeenCalledWith('pt-prod/workspaces/alpha/plan.json', { access: 'private' });
-    expect(mockedGet).toHaveBeenCalledWith('pt-prod/exercise-library/catalog.json', { access: 'private' });
     expect(mockedGet).toHaveBeenCalledWith('pt-prod/workspaces/alpha/profile.json', { access: 'private' });
   });
 
@@ -269,7 +231,6 @@ describe('trainer data integration (blob)', () => {
                 prescription: '3 sets x 10',
                 notes: 'Smooth tempo.',
                 imageUrl: 'https://wger.de/media/exercise-images/1542/dumbbell-goblet-squat.jpeg',
-                referencePath: 'exercise_library/goblet-squat.md',
               },
             ],
             finisher: '5 minute bike',

@@ -21,10 +21,7 @@ class FakeBlobClient:
         fixtures = {
             "pt-test/workspaces/athlete/": [
                 SimpleNamespace(pathname="pt-test/workspaces/athlete/plan.md"),
-                SimpleNamespace(pathname="pt-test/workspaces/athlete/exercise_library/index.md"),
-            ],
-            "pt-test/exercise-library/": [
-                SimpleNamespace(pathname="pt-test/exercise-library/catalog.json"),
+                SimpleNamespace(pathname="pt-test/workspaces/athlete/plan.json"),
             ],
         }
         return iter(fixtures.get(prefix, []))
@@ -50,9 +47,7 @@ class FakeBlobClient:
         )
 
 
-def test_publish_workspace_to_blob_uploads_workspace_and_library(
-    tmp_path, monkeypatch
-) -> None:
+def test_publish_workspace_to_blob_uploads_workspace_files(tmp_path, monkeypatch) -> None:
     workspace = tmp_path / "athlete"
     workspace.mkdir()
     (workspace / "profile.md").write_text("# Profile", encoding="utf-8")
@@ -61,46 +56,31 @@ def test_publish_workspace_to_blob_uploads_workspace_and_library(
     (workspace / "plan.pdf").write_bytes(b"%PDF-1.4\n")
     (workspace / "plan.json").write_text("{}", encoding="utf-8")
     (workspace / "coach_notes.md").write_text("# Notes", encoding="utf-8")
-    (workspace / "exercise_library").mkdir(parents=True)
-    (workspace / "exercise_library" / "goblet-squat.md").write_text(
-        "# Goblet Squat", encoding="utf-8"
-    )
-
-    library_root = tmp_path / "library"
-    library_root.mkdir(parents=True)
-    (library_root / "catalog.json").write_text("[]", encoding="utf-8")
-
     client = FakeBlobClient()
     monkeypatch.setattr("personal_trainer.blob_sync._build_blob_client", lambda: client)
-    monkeypatch.setattr("personal_trainer.blob_sync.LIBRARY_ASSETS_ROOT", library_root)
 
     result = publish_workspace_to_blob(
         workspace,
         prefix="pt-test",
         access="private",
-        include_library=True,
     )
 
     assert result.workspace == "athlete"
     assert result.prefix == "pt-test"
-    assert result.workspace_files_uploaded == 7
-    assert result.library_files_uploaded == 1
-    assert result.remote_files_deleted == 3
+    assert result.workspace_files_uploaded == 6
+    assert result.remote_files_deleted == 2
     assert client.deleted == [
         "pt-test/workspaces/athlete/plan.md",
-        "pt-test/workspaces/athlete/exercise_library/index.md",
-        "pt-test/exercise-library/catalog.json",
+        "pt-test/workspaces/athlete/plan.json",
     ]
     uploaded_paths = [remote_path for _, remote_path, *_ in client.uploads]
     assert "pt-test/workspaces/athlete/plan.md" in uploaded_paths
     assert "pt-test/workspaces/athlete/plan.pdf" in uploaded_paths
     assert "pt-test/workspaces/athlete/plan.json" in uploaded_paths
     assert "pt-test/workspaces/athlete/profile.json" in uploaded_paths
-    assert "pt-test/workspaces/athlete/exercise_library/goblet-squat.md" in uploaded_paths
-    assert "pt-test/exercise-library/catalog.json" in uploaded_paths
 
 
-def test_publish_workspace_to_blob_can_skip_shared_library(
+def test_publish_workspace_to_blob_uploads_minimum_workspace_files(
     tmp_path, monkeypatch
 ) -> None:
     workspace = tmp_path / "athlete"
@@ -114,10 +94,7 @@ def test_publish_workspace_to_blob_can_skip_shared_library(
         workspace,
         prefix="pt-test",
         access="public",
-        include_library=False,
     )
 
     assert result.workspace_files_uploaded == 1
-    assert result.library_files_uploaded == 0
     assert result.remote_files_deleted == 2
-    assert all("exercise-library/" not in path for path in client.deleted)
