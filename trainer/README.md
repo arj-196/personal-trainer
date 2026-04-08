@@ -14,6 +14,7 @@ It generates workout plans with Ollama and OpenAI-backed trainer agents, manages
 - create workspaces under `../workspaces/<name>`
 - parse `profile.md` and check-in files
 - generate `profile.json`, `plan.json`, `plan.md`, `plan.pdf`, and `coach_notes.md` from structured LLM output instead of hardcoded split logic
+- generate explicit workout timing metadata (`activeSeconds`, set counts, and rest durations) in `plan.json` for the start-workout timer flow
 - render `plan.pdf` with the same document structure as `plan.md`, including embedded exercise images
 - generate side-by-side comparison plans when you request multiple models
 - sync the exercise library into each workspace

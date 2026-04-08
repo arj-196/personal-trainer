@@ -314,11 +314,17 @@ def render_plan_json(plan: WorkoutPlan, profile: UserProfile) -> str:
             {
                 "heading": f"{day.day_label}: {day.focus}",
                 "warmup": day.warmup,
+                "warmupActiveSeconds": day.warmup_active_seconds,
                 "exercises": [
                     {
                         "name": exercise.name,
                         "prescription": exercise.prescription,
                         "notes": exercise.notes,
+                        "sets": exercise.sets,
+                        "activeSeconds": exercise.active_seconds,
+                        "restBetweenSetsSeconds": exercise.rest_between_sets_seconds,
+                        "restBetweenExercisesSeconds": exercise.rest_between_exercises_seconds,
+                        "tempoLabel": exercise.tempo_label,
                         "imageUrl": (
                             reference.image_path if reference is not None else None
                         ),
@@ -330,7 +336,9 @@ def render_plan_json(plan: WorkoutPlan, profile: UserProfile) -> str:
                     for reference in [get_reference(exercise.name)]
                 ],
                 "finisher": day.finisher,
+                "finisherActiveSeconds": day.finisher_active_seconds,
                 "recovery": day.recovery,
+                "recoveryActiveSeconds": day.recovery_active_seconds,
             }
             for day in plan.days
         ],

@@ -61,27 +61,53 @@ PLAN_SCHEMA: dict[str, Any] = {
                     "day_label",
                     "focus",
                     "warmup",
+                    "warmup_active_seconds",
                     "exercises",
                     "finisher",
+                    "finisher_active_seconds",
                     "recovery",
+                    "recovery_active_seconds",
                 ],
                 "properties": {
                     "day_label": {"type": "string"},
                     "focus": {"type": "string"},
                     "warmup": {"type": "string"},
+                    "warmup_active_seconds": {"type": "integer", "minimum": 1},
                     "finisher": {"type": "string"},
+                    "finisher_active_seconds": {"type": "integer", "minimum": 1},
                     "recovery": {"type": "string"},
+                    "recovery_active_seconds": {"type": "integer", "minimum": 1},
                     "exercises": {
                         "type": "array",
                         "minItems": 1,
                         "items": {
                             "type": "object",
                             "additionalProperties": False,
-                            "required": ["name", "prescription", "notes"],
+                            "required": [
+                                "name",
+                                "prescription",
+                                "notes",
+                                "sets",
+                                "active_seconds",
+                                "rest_between_sets_seconds",
+                                "rest_between_exercises_seconds",
+                                "tempo_label",
+                            ],
                             "properties": {
                                 "name": {"type": "string"},
                                 "prescription": {"type": "string"},
                                 "notes": {"type": "string"},
+                                "sets": {"type": "integer", "minimum": 1},
+                                "active_seconds": {"type": "integer", "minimum": 1},
+                                "rest_between_sets_seconds": {
+                                    "type": "integer",
+                                    "minimum": 1,
+                                },
+                                "rest_between_exercises_seconds": {
+                                    "type": "integer",
+                                    "minimum": 1,
+                                },
+                                "tempo_label": {"type": "string"},
                             },
                         },
                     },
@@ -252,6 +278,10 @@ Important requirements:
 - Match the athlete's available training days and session length unless the recovery picture strongly justifies fewer sessions.
 - Keep `summary`, `progression_note`, `warmup`, `finisher`, `recovery`, and `next_checkin_prompt` concise and practical.
 - Each exercise needs a compact `prescription` string, for example `4 sets x 6-8 reps @ RPE 7`.
+- Add timing values as integer seconds.
+- For each day include `warmup_active_seconds`, `finisher_active_seconds`, and `recovery_active_seconds`.
+- For each exercise include: `sets`, `active_seconds` (per-set work duration), `rest_between_sets_seconds`, `rest_between_exercises_seconds`, and `tempo_label` (simple labels like `controlled`, `steady`, or `explosive`).
+- Keep timing realistic for the athlete's target session length.
 - `coach_notes_focus` should contain the main coaching priorities for the week.
 - `coach_notes_cautions` should call out pain, recovery, or execution risks only when relevant.
 
@@ -311,21 +341,38 @@ def _normalize_day(value: Any, *, index: int) -> WorkoutDay:
     if not day_label.lower().startswith("day "):
         day_label = f"Day {index}"
 
-    return WorkoutDay(
+    day = WorkoutDay(
         day_label=day_label,
         focus=_require_text(value, "focus", scope=f"day {index}"),
         warmup=_require_text(value, "warmup", scope=f"day {index}"),
+        warmup_active_seconds=_require_positive_int(
+            value, "warmup_active_seconds", scope=f"day {index}"
+        ),
         exercises=exercises,
         finisher=_require_text(value, "finisher", scope=f"day {index}"),
+        finisher_active_seconds=_require_positive_int(
+            value, "finisher_active_seconds", scope=f"day {index}"
+        ),
         recovery=_require_text(value, "recovery", scope=f"day {index}"),
+        recovery_active_seconds=_require_positive_int(
+            value, "recovery_active_seconds", scope=f"day {index}"
+        ),
     )
+    LOGGER.info(
+        "Normalized day %s timing: warmup=%ss finisher=%ss recovery=%ss",
+        index,
+        day.warmup_active_seconds,
+        day.finisher_active_seconds,
+        day.recovery_active_seconds,
+    )
+    return day
 
 
 def _normalize_exercise(value: Any, *, day_index: int) -> Exercise:
     if not isinstance(value, dict):
         raise WorkoutPlannerError(f"Day {day_index} includes an invalid exercise entry")
 
-    return Exercise(
+    exercise = Exercise(
         name=_require_text(value, "name", scope=f"day {day_index} exercise"),
         prescription=_require_text(
             value,
@@ -333,7 +380,33 @@ def _normalize_exercise(value: Any, *, day_index: int) -> Exercise:
             scope=f"day {day_index} exercise",
         ),
         notes=_require_text(value, "notes", scope=f"day {day_index} exercise"),
+        sets=_require_positive_int(value, "sets", scope=f"day {day_index} exercise"),
+        active_seconds=_require_positive_int(
+            value, "active_seconds", scope=f"day {day_index} exercise"
+        ),
+        rest_between_sets_seconds=_require_positive_int(
+            value,
+            "rest_between_sets_seconds",
+            scope=f"day {day_index} exercise",
+        ),
+        rest_between_exercises_seconds=_require_positive_int(
+            value,
+            "rest_between_exercises_seconds",
+            scope=f"day {day_index} exercise",
+        ),
+        tempo_label=_require_text(value, "tempo_label", scope=f"day {day_index} exercise"),
     )
+    LOGGER.info(
+        "Normalized day %s exercise '%s' timing: sets=%s active=%ss rest_set=%ss rest_exercise=%ss tempo=%s",
+        day_index,
+        exercise.name,
+        exercise.sets,
+        exercise.active_seconds,
+        exercise.rest_between_sets_seconds,
+        exercise.rest_between_exercises_seconds,
+        exercise.tempo_label,
+    )
+    return exercise
 
 
 def _require_text(
@@ -353,6 +426,20 @@ def _optional_text_list(value: Any) -> list[str]:
         return []
     cleaned_values = [_clean_text(item) for item in value]
     return [item for item in cleaned_values if item]
+
+
+def _require_positive_int(
+    value: dict[str, Any],
+    key: str,
+    *,
+    scope: str = "plan",
+) -> int:
+    raw = value.get(key)
+    if isinstance(raw, bool) or not isinstance(raw, int) or raw <= 0:
+        raise WorkoutPlannerError(
+            f"The {scope} is missing a usable positive integer '{key}' field"
+        )
+    return raw
 
 
 def _clean_text(value: Any) -> str:

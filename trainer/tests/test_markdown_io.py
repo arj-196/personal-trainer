@@ -24,15 +24,23 @@ def test_render_plan_renders_reference_image_as_block() -> None:
                 day_label="Day 1",
                 focus="Upper body",
                 warmup="5 minutes easy cardio.",
+                warmup_active_seconds=300,
                 exercises=[
                     Exercise(
                         name="Dumbbell Bench Press",
                         prescription="3 sets x 8 reps",
                         notes="Leave 2 reps in reserve.",
+                        sets=3,
+                        active_seconds=45,
+                        rest_between_sets_seconds=75,
+                        rest_between_exercises_seconds=120,
+                        tempo_label="controlled",
                     )
                 ],
                 finisher="Easy bike.",
+                finisher_active_seconds=480,
                 recovery="Hydrate.",
+                recovery_active_seconds=300,
             )
         ],
     )

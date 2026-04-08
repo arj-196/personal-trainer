@@ -8,6 +8,11 @@ export type WorkoutBlock = {
   name: string;
   prescription: string;
   notes: string;
+  activeSeconds: number;
+  setCount: number;
+  restBetweenSetsSeconds: number | null;
+  restBetweenExercisesSeconds: number | null;
+  tempoLabel: string | null;
   imageUrl: string | null;
   referencePath: string | null;
   searchName: string | null;
@@ -25,6 +30,11 @@ export function buildWorkoutDayBlocks(day: WorkoutDay): WorkoutBlock[] {
       name: 'Warm-up',
       prescription: day.warmup,
       notes: 'Get joints, lungs, and first movement patterns ready before the working sets.',
+      activeSeconds: day.warmupActiveSeconds,
+      setCount: 1,
+      restBetweenSetsSeconds: null,
+      restBetweenExercisesSeconds: null,
+      tempoLabel: null,
       imageUrl: null,
       referencePath: null,
       searchName: null,
@@ -35,6 +45,11 @@ export function buildWorkoutDayBlocks(day: WorkoutDay): WorkoutBlock[] {
       name: exercise.name,
       prescription: exercise.prescription,
       notes: exercise.notes,
+      activeSeconds: exercise.activeSeconds,
+      setCount: exercise.sets,
+      restBetweenSetsSeconds: exercise.restBetweenSetsSeconds,
+      restBetweenExercisesSeconds: exercise.restBetweenExercisesSeconds,
+      tempoLabel: exercise.tempoLabel,
       imageUrl: exercise.imageUrl,
       referencePath: exercise.referencePath,
       searchName: exercise.name,
@@ -48,6 +63,11 @@ export function buildWorkoutDayBlocks(day: WorkoutDay): WorkoutBlock[] {
       name: 'Finisher',
       prescription: day.finisher,
       notes: 'End the session with short conditioning or extra targeted volume.',
+      activeSeconds: day.finisherActiveSeconds,
+      setCount: 1,
+      restBetweenSetsSeconds: null,
+      restBetweenExercisesSeconds: null,
+      tempoLabel: null,
       imageUrl: null,
       referencePath: null,
       searchName: null,
@@ -61,6 +81,11 @@ export function buildWorkoutDayBlocks(day: WorkoutDay): WorkoutBlock[] {
       name: 'Recovery',
       prescription: day.recovery,
       notes: 'Use this cooldown block to bring effort down and leave the session feeling better.',
+      activeSeconds: day.recoveryActiveSeconds,
+      setCount: 1,
+      restBetweenSetsSeconds: null,
+      restBetweenExercisesSeconds: null,
+      tempoLabel: null,
       imageUrl: null,
       referencePath: null,
       searchName: null,

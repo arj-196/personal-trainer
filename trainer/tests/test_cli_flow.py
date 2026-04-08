@@ -15,20 +15,33 @@ def _stub_plan_payload(day_count: int) -> dict[str, object]:
                 "day_label": f"Day {index + 1}",
                 "focus": "Upper strength" if index == 0 else f"Session {index + 1}",
                 "warmup": "5 minutes easy cardio and 2 ramp-up sets.",
+                "warmup_active_seconds": 300,
                 "exercises": [
                     {
                         "name": "Dumbbell Bench Press",
                         "prescription": "3 sets x 8-10 reps",
                         "notes": "Stop with 1-2 reps in reserve.",
+                        "sets": 3,
+                        "active_seconds": 45,
+                        "rest_between_sets_seconds": 90,
+                        "rest_between_exercises_seconds": 120,
+                        "tempo_label": "controlled",
                     },
                     {
                         "name": "1-Arm Dumbbell Row",
                         "prescription": "3 sets x 8-10 reps",
                         "notes": "Control the lowering phase.",
+                        "sets": 3,
+                        "active_seconds": 40,
+                        "rest_between_sets_seconds": 75,
+                        "rest_between_exercises_seconds": 120,
+                        "tempo_label": "steady",
                     },
                 ],
                 "finisher": "8 minutes on the bike at a conversational pace.",
+                "finisher_active_seconds": 480,
                 "recovery": "Monitor symptoms and keep the next day easy if needed.",
+                "recovery_active_seconds": 300,
             }
         )
     return {
@@ -105,6 +118,8 @@ def test_init_and_plan_flow(tmp_path, monkeypatch) -> None:
     assert "Reference: [Dumbbell Bench Press]" in plan_text
     assert '"days": [' in plan_json
     assert '"imageUrl": "https://wger.de/media/exercise-images/' in plan_json
+    assert '"activeSeconds": 45' in plan_json
+    assert '"restBetweenSetsSeconds": 90' in plan_json
 
 
 def test_refresh_updates_state(tmp_path, monkeypatch) -> None:

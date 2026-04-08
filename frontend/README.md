@@ -15,6 +15,7 @@ The frontend is a Next.js app for the workout UI, exercise library, and Jeff the
 - view a high-level workout summary on the homepage instead of the full exercise list
 - open a larger read-only workout focus view
 - start a single-day workout session from a specific workout day with a persistent per-device checklist
+- use a compact fixed stopwatch panel in the start-workout session with active/rest coaching cues
 - browse the exercise library with images and coaching cues
 - use Jeff the Cook as a voice-first recipe workspace with draft review before generation
 - save immutable recipe snapshots to Vercel Blob and reopen or delete them later
@@ -157,6 +158,8 @@ In `blob` mode the frontend reads the same logical data from Vercel Blob:
 
 - The workout checklist state is browser-local and does not sync across devices.
 - The start workout route accepts `?day=<1-based index>` so each workout day card can open its own fixed session view.
+- Start workout uses timing fields from `plan.json` (`warmupActiveSeconds`, `activeSeconds`, `restBetweenSetsSeconds`, `restBetweenExercisesSeconds`, `tempoLabel`) and falls back to safe defaults for older plans.
+- Within an exercise, the timer runs continuously (active set -> rest -> next set) after a single Start tap; the next exercise still starts manually.
 - The frontend is read-only for workout data, but Jeff the Cook can save immutable recipe snapshots to Blob.
 - Jeff the Cook interpretation requests use strict JSON schema with nullable patch fields so `gpt-5.4-mini` accepts the payload while still returning partial state updates.
 - Jeff the Cook microphone uploads now preserve browser-native audio MIME/container and extension (including iPhone/WebKit `audio/mp4`/`.m4a`) instead of forcing `.webm`.

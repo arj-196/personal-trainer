@@ -71,39 +71,65 @@ def test_build_plan_uses_structured_agent_output() -> None:
                     "day_label": "Day 1",
                     "focus": "Upper body strength",
                     "warmup": "5 minutes easy bike, shoulder circles, and 2 ramp-up sets for the first press.",
+                    "warmup_active_seconds": 300,
                     "exercises": [
                         {
                             "name": "Dumbbell Bench Press",
                             "prescription": "4 sets x 6-8 reps @ RPE 7",
                             "notes": "Pause briefly on the chest and keep the last rep clean.",
+                            "sets": 4,
+                            "active_seconds": 50,
+                            "rest_between_sets_seconds": 90,
+                            "rest_between_exercises_seconds": 120,
+                            "tempo_label": "controlled",
                         },
                         {
                             "name": "1-Arm Dumbbell Row",
                             "prescription": "4 sets x 8-10 reps",
                             "notes": "Drive the elbow back without twisting the torso.",
+                            "sets": 4,
+                            "active_seconds": 45,
+                            "rest_between_sets_seconds": 75,
+                            "rest_between_exercises_seconds": 120,
+                            "tempo_label": "steady",
                         },
                     ],
                     "finisher": "8 minutes easy-moderate bike intervals.",
+                    "finisher_active_seconds": 480,
                     "recovery": "Walk for 10 minutes later in the day and monitor knee stiffness.",
+                    "recovery_active_seconds": 300,
                 },
                 {
                     "day_label": "Day 2",
                     "focus": "Lower body technique and trunk",
                     "warmup": "Bike 5 minutes, hip mobility, then bodyweight squats to a comfortable depth.",
+                    "warmup_active_seconds": 300,
                     "exercises": [
                         {
                             "name": "Squat to Bench",
                             "prescription": "3 sets x 8 reps @ easy-moderate effort",
                             "notes": "Stay in the pain-free range and control the descent.",
+                            "sets": 3,
+                            "active_seconds": 45,
+                            "rest_between_sets_seconds": 90,
+                            "rest_between_exercises_seconds": 120,
+                            "tempo_label": "controlled",
                         },
                         {
                             "name": "Glute Bridge",
                             "prescription": "3 sets x 12 reps",
                             "notes": "Pause for a full second at the top.",
+                            "sets": 3,
+                            "active_seconds": 40,
+                            "rest_between_sets_seconds": 75,
+                            "rest_between_exercises_seconds": 120,
+                            "tempo_label": "steady",
                         },
                     ],
                     "finisher": "10 minutes brisk walking.",
+                    "finisher_active_seconds": 600,
                     "recovery": "Keep the next day easy if knee soreness lingers more than 24 hours.",
+                    "recovery_active_seconds": 300,
                 },
             ],
         }
@@ -115,6 +141,8 @@ def test_build_plan_uses_structured_agent_output() -> None:
     assert plan.plan_version == 4
     assert plan.planner_backend == "ollama/gpt-oss:20b"
     assert plan.days[0].exercises[0].prescription == "4 sets x 6-8 reps @ RPE 7"
+    assert plan.days[0].exercises[0].sets == 4
+    assert plan.days[0].warmup_active_seconds == 300
     assert plan.coach_notes_focus == [
         "Keep 1-2 reps in reserve on the main lifts.",
         "Treat the warm-ups as movement prep, not throwaway volume.",
@@ -141,15 +169,23 @@ def test_build_plan_records_openai_backend() -> None:
                     "day_label": "Day 1",
                     "focus": "Full body",
                     "warmup": "5 minutes easy cardio.",
+                    "warmup_active_seconds": 300,
                     "exercises": [
                         {
                             "name": "Push-Up",
                             "prescription": "3 sets x 8 reps",
                             "notes": "Leave 2 reps in reserve.",
+                            "sets": 3,
+                            "active_seconds": 35,
+                            "rest_between_sets_seconds": 75,
+                            "rest_between_exercises_seconds": 120,
+                            "tempo_label": "steady",
                         }
                     ],
                     "finisher": "Easy walk.",
+                    "finisher_active_seconds": 300,
                     "recovery": "Hydrate and sleep well.",
+                    "recovery_active_seconds": 240,
                 }
             ],
         },
@@ -160,3 +196,41 @@ def test_build_plan_records_openai_backend() -> None:
     plan = build_plan(profile, plan_version=2, agent=agent)
 
     assert plan.planner_backend == "openai/gpt-5.4-mini"
+
+
+def test_build_plan_rejects_non_positive_timing_values() -> None:
+    profile = UserProfile(name="Jordan")
+    agent = StaticAgent(
+        {
+            "summary": "Keep the week simple.",
+            "progression_note": "Add reps before load.",
+            "next_checkin_prompt": "Log adherence and recovery.",
+            "days": [
+                {
+                    "day_label": "Day 1",
+                    "focus": "Full body",
+                    "warmup": "5 minutes easy cardio.",
+                    "warmup_active_seconds": 300,
+                    "exercises": [
+                        {
+                            "name": "Push-Up",
+                            "prescription": "3 sets x 8 reps",
+                            "notes": "Leave 2 reps in reserve.",
+                            "sets": 3,
+                            "active_seconds": 0,
+                            "rest_between_sets_seconds": 75,
+                            "rest_between_exercises_seconds": 120,
+                            "tempo_label": "steady",
+                        }
+                    ],
+                    "finisher": "Easy walk.",
+                    "finisher_active_seconds": 300,
+                    "recovery": "Hydrate and sleep well.",
+                    "recovery_active_seconds": 240,
+                }
+            ],
+        }
+    )
+
+    with pytest.raises(WorkoutPlannerError, match="positive integer 'active_seconds'"):
+        build_plan(profile, plan_version=1, agent=agent)

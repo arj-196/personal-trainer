@@ -19,15 +19,23 @@ def _install_stub_ollama(monkeypatch) -> None:
                     "day_label": "Day 1",
                     "focus": "Lower",
                     "warmup": "5 minutes easy cardio",
+                    "warmup_active_seconds": 300,
                     "exercises": [
                         {
                             "name": "Goblet Squat",
                             "prescription": "3 sets x 8-12 reps",
                             "notes": "Stay tall.",
+                            "sets": 3,
+                            "active_seconds": 45,
+                            "rest_between_sets_seconds": 90,
+                            "rest_between_exercises_seconds": 120,
+                            "tempo_label": "controlled",
                         }
                     ],
                     "finisher": "5 minute bike",
+                    "finisher_active_seconds": 300,
                     "recovery": "Walk and hydrate",
+                    "recovery_active_seconds": 300,
                 }
             ],
         }

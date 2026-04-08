@@ -10,6 +10,11 @@ export type WorkoutExercise = {
   name: string;
   prescription: string;
   notes: string;
+  sets: number;
+  activeSeconds: number;
+  restBetweenSetsSeconds: number;
+  restBetweenExercisesSeconds: number;
+  tempoLabel: string;
   imageUrl: string | null;
   referencePath: string | null;
 };
@@ -17,9 +22,12 @@ export type WorkoutExercise = {
 export type WorkoutDay = {
   heading: string;
   warmup: string;
+  warmupActiveSeconds: number;
   exercises: WorkoutExercise[];
   finisher: string;
+  finisherActiveSeconds: number;
   recovery: string;
+  recoveryActiveSeconds: number;
 };
 
 export type WorkoutPlan = {
@@ -150,15 +158,39 @@ function normalizeWorkoutPlan(payload: Record<string, unknown>): WorkoutPlan {
       };
       return {
         ...typedDay,
+        warmupActiveSeconds: normalizePositiveInt((typedDay as { warmupActiveSeconds?: unknown }).warmupActiveSeconds, 300),
         exercises: Array.isArray(typedDay.exercises)
           ? typedDay.exercises.map((exercise) => ({
               ...exercise,
+              sets: normalizePositiveInt((exercise as { sets?: unknown }).sets, 3),
+              activeSeconds: normalizePositiveInt((exercise as { activeSeconds?: unknown }).activeSeconds, 45),
+              restBetweenSetsSeconds: normalizePositiveInt(
+                (exercise as { restBetweenSetsSeconds?: unknown }).restBetweenSetsSeconds,
+                90
+              ),
+              restBetweenExercisesSeconds: normalizePositiveInt(
+                (exercise as { restBetweenExercisesSeconds?: unknown }).restBetweenExercisesSeconds,
+                120
+              ),
+              tempoLabel:
+                typeof (exercise as { tempoLabel?: unknown }).tempoLabel === 'string' &&
+                (exercise as { tempoLabel?: string }).tempoLabel?.trim()
+                  ? (exercise as { tempoLabel: string }).tempoLabel.trim()
+                  : 'steady',
               imageUrl:
                 typeof exercise.imageUrl === 'string' && /^https?:\/\//.test(exercise.imageUrl)
                   ? exercise.imageUrl
                   : null,
             }))
           : [],
+        finisherActiveSeconds: normalizePositiveInt(
+          (typedDay as { finisherActiveSeconds?: unknown }).finisherActiveSeconds,
+          300
+        ),
+        recoveryActiveSeconds: normalizePositiveInt(
+          (typedDay as { recoveryActiveSeconds?: unknown }).recoveryActiveSeconds,
+          300
+        ),
       };
     }),
   };
@@ -169,4 +201,8 @@ function normalizeExerciseReference(payload: Record<string, unknown>): ExerciseR
     ...(payload as ExerciseReference),
     image_url: typeof payload.image_url === 'string' ? payload.image_url : '',
   };
+}
+
+function normalizePositiveInt(value: unknown, fallback: number): number {
+  return typeof value === 'number' && Number.isInteger(value) && value > 0 ? value : fallback;
 }

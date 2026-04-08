@@ -51,6 +51,11 @@ class Exercise:
     name: str
     prescription: str
     notes: str
+    sets: int
+    active_seconds: int
+    rest_between_sets_seconds: int
+    rest_between_exercises_seconds: int
+    tempo_label: str
 
     def to_markdown(self) -> str:
         return f"- **{self.name}**: {self.prescription}. {self.notes}".strip()
@@ -61,9 +66,12 @@ class WorkoutDay:
     day_label: str
     focus: str
     warmup: str
+    warmup_active_seconds: int
     exercises: list[Exercise]
     finisher: str
+    finisher_active_seconds: int
     recovery: str
+    recovery_active_seconds: int
 
 
 @dataclass(slots=True)

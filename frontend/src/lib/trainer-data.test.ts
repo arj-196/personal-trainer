@@ -44,22 +44,33 @@ describe('buildWorkoutDayBlocks', () => {
     const blocks = buildWorkoutDayBlocks({
       heading: 'Day 1',
       warmup: '5 minute bike',
+      warmupActiveSeconds: 300,
       exercises: [
         {
           name: 'Goblet Squat',
           prescription: '3 x 10',
           notes: 'Smooth reps',
+          sets: 3,
+          activeSeconds: 45,
+          restBetweenSetsSeconds: 90,
+          restBetweenExercisesSeconds: 120,
+          tempoLabel: 'controlled',
           imageUrl: 'https://example.test/squat.jpg',
           referencePath: 'exercise_library/goblet-squat.md',
         },
       ],
       finisher: 'Bike sprints',
+      finisherActiveSeconds: 240,
       recovery: 'Walk and stretch',
+      recoveryActiveSeconds: 180,
     });
 
     expect(blocks.map((block) => block.kind)).toEqual(['warmup', 'exercise', 'finisher', 'recovery']);
     expect(blocks[1]).toMatchObject({
       name: 'Goblet Squat',
+      activeSeconds: 45,
+      setCount: 3,
+      tempoLabel: 'controlled',
       imageUrl: 'https://example.test/squat.jpg',
       referencePath: 'exercise_library/goblet-squat.md',
     });
@@ -75,13 +86,14 @@ describe('trainer data integration (local)', () => {
     vi.clearAllMocks();
   });
 
-  it('returns an empty local workspace list when no repo fixtures exist', async () => {
-    await expect(listWorkspaces()).resolves.toEqual([]);
+  it('lists local workspaces from repo fixtures', async () => {
+    const workspaces = await listWorkspaces();
+    expect(workspaces).toEqual(expect.arrayContaining(['wk_arj']));
   });
 
   it('returns null for missing local workspace files', async () => {
-    await expect(readWorkoutPlan('wk_arj')).resolves.toBeNull();
-    await expect(readUserProfileSummary('wk_arj')).resolves.toBeNull();
+    await expect(readWorkoutPlan('workspace_that_does_not_exist')).resolves.toBeNull();
+    await expect(readUserProfileSummary('workspace_that_does_not_exist')).resolves.toBeNull();
   });
 
   it('loads exercise references from the bundled catalog', async () => {
@@ -144,17 +156,25 @@ describe('trainer data integration (blob)', () => {
             {
               heading: 'Day 1: Full Body',
               warmup: '5 minutes',
+              warmupActiveSeconds: 300,
               exercises: [
                 {
                   name: 'Goblet Squat',
                   prescription: '3 sets x 10',
                   notes: 'Smooth tempo.',
+                  sets: 3,
+                  activeSeconds: 45,
+                  restBetweenSetsSeconds: 90,
+                  restBetweenExercisesSeconds: 120,
+                  tempoLabel: 'controlled',
                   imageUrl: 'https://wger.de/media/exercise-images/1542/dumbbell-goblet-squat.jpeg',
                   referencePath: 'exercise_library/goblet-squat.md',
                 },
               ],
               finisher: '5 minute bike',
+              finisherActiveSeconds: 240,
               recovery: 'Walk and hydrate',
+              recoveryActiveSeconds: 180,
             },
           ],
           nextCheckIn: 'Next Monday.',
@@ -222,11 +242,74 @@ describe('trainer data integration (blob)', () => {
     expect(plan?.days[0].exercises[0].imageUrl).toBe(
       'https://wger.de/media/exercise-images/1542/dumbbell-goblet-squat.jpeg'
     );
+    expect(plan?.days[0].exercises[0].activeSeconds).toBe(45);
     expect(exercises).toHaveLength(1);
     expect(exercises[0].name).toBe('Goblet Squat');
     expect(profile?.goal).toBe('Fat loss');
     expect(mockedGet).toHaveBeenCalledWith('pt-prod/workspaces/alpha/plan.json', { access: 'private' });
     expect(mockedGet).toHaveBeenCalledWith('pt-prod/exercise-library/catalog.json', { access: 'private' });
     expect(mockedGet).toHaveBeenCalledWith('pt-prod/workspaces/alpha/profile.json', { access: 'private' });
+  });
+
+  it('applies timing defaults for legacy plans that do not include stopwatch fields', async () => {
+    mockedGet.mockImplementation(async (pathname) => {
+      if (pathname !== 'pt-prod/workspaces/alpha/plan.json') {
+        return null;
+      }
+
+      const text = JSON.stringify({
+        title: 'Legacy Plan',
+        meta: [],
+        summary: 'Legacy summary',
+        progression: 'Legacy progression',
+        days: [
+          {
+            heading: 'Day 1: Full Body',
+            warmup: '5 minutes',
+            exercises: [
+              {
+                name: 'Goblet Squat',
+                prescription: '3 sets x 10',
+                notes: 'Smooth tempo.',
+                imageUrl: 'https://wger.de/media/exercise-images/1542/dumbbell-goblet-squat.jpeg',
+                referencePath: 'exercise_library/goblet-squat.md',
+              },
+            ],
+            finisher: '5 minute bike',
+            recovery: 'Walk and hydrate',
+          },
+        ],
+        nextCheckIn: 'Next Monday.',
+      });
+
+      return {
+        statusCode: 200 as const,
+        stream: new ReadableStream<Uint8Array>({
+          start(controller) {
+            controller.enqueue(new TextEncoder().encode(text));
+            controller.close();
+          },
+        }),
+        headers: new Headers(),
+        blob: {
+          url: `https://example.test/${pathname}`,
+          downloadUrl: `https://example.test/download/${pathname}`,
+          pathname,
+          contentDisposition: 'inline',
+          cacheControl: 'public, max-age=3600',
+          uploadedAt: new Date('2026-03-30T00:00:00Z'),
+          etag: 'etag',
+          contentType: 'application/json',
+          size: text.length,
+        },
+      };
+    });
+
+    const plan = await readWorkoutPlan('alpha');
+    expect(plan?.days[0].warmupActiveSeconds).toBe(300);
+    expect(plan?.days[0].exercises[0].sets).toBe(3);
+    expect(plan?.days[0].exercises[0].tempoLabel).toBe('steady');
+    expect(plan?.days[0].finisherActiveSeconds).toBe(300);
+    expect(plan?.days[0].recoveryActiveSeconds).toBe(300);
   });
 });
