@@ -91,7 +91,6 @@ PLAN_SCHEMA: dict[str, Any] = {
                                 "active_seconds",
                                 "rest_between_sets_seconds",
                                 "rest_between_exercises_seconds",
-                                "tempo_label",
                             ],
                             "properties": {
                                 "name": {"type": "string"},
@@ -107,7 +106,6 @@ PLAN_SCHEMA: dict[str, Any] = {
                                     "type": "integer",
                                     "minimum": 1,
                                 },
-                                "tempo_label": {"type": "string"},
                             },
                         },
                     },
@@ -280,7 +278,7 @@ Important requirements:
 - Each exercise needs a compact `prescription` string, for example `4 sets x 6-8 reps @ RPE 7`.
 - Add timing values as integer seconds.
 - For each day include `warmup_active_seconds`, `finisher_active_seconds`, and `recovery_active_seconds`.
-- For each exercise include: `sets`, `active_seconds` (per-set work duration), `rest_between_sets_seconds`, `rest_between_exercises_seconds`, and `tempo_label` (simple labels like `controlled`, `steady`, or `explosive`).
+- For each exercise include: `sets`, `active_seconds` (per-set work duration), `rest_between_sets_seconds`, and `rest_between_exercises_seconds`.
 - Keep timing realistic for the athlete's target session length.
 - `coach_notes_focus` should contain the main coaching priorities for the week.
 - `coach_notes_cautions` should call out pain, recovery, or execution risks only when relevant.
@@ -394,17 +392,15 @@ def _normalize_exercise(value: Any, *, day_index: int) -> Exercise:
             "rest_between_exercises_seconds",
             scope=f"day {day_index} exercise",
         ),
-        tempo_label=_require_text(value, "tempo_label", scope=f"day {day_index} exercise"),
     )
     LOGGER.info(
-        "Normalized day %s exercise '%s' timing: sets=%s active=%ss rest_set=%ss rest_exercise=%ss tempo=%s",
+        "Normalized day %s exercise '%s' timing: sets=%s active=%ss rest_set=%ss rest_exercise=%ss",
         day_index,
         exercise.name,
         exercise.sets,
         exercise.active_seconds,
         exercise.rest_between_sets_seconds,
         exercise.rest_between_exercises_seconds,
-        exercise.tempo_label,
     )
     return exercise
 

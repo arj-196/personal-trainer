@@ -14,7 +14,6 @@ export type WorkoutExercise = {
   activeSeconds: number;
   restBetweenSetsSeconds: number;
   restBetweenExercisesSeconds: number;
-  tempoLabel: string;
   imageUrl: string | null;
   referencePath: string | null;
 };
@@ -172,11 +171,6 @@ function normalizeWorkoutPlan(payload: Record<string, unknown>): WorkoutPlan {
                 (exercise as { restBetweenExercisesSeconds?: unknown }).restBetweenExercisesSeconds,
                 120
               ),
-              tempoLabel:
-                typeof (exercise as { tempoLabel?: unknown }).tempoLabel === 'string' &&
-                (exercise as { tempoLabel?: string }).tempoLabel?.trim()
-                  ? (exercise as { tempoLabel: string }).tempoLabel.trim()
-                  : 'steady',
               imageUrl:
                 typeof exercise.imageUrl === 'string' && /^https?:\/\//.test(exercise.imageUrl)
                   ? exercise.imageUrl

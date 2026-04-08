@@ -29,7 +29,6 @@ def _install_stub_ollama(monkeypatch) -> None:
                             "active_seconds": 45,
                             "rest_between_sets_seconds": 90,
                             "rest_between_exercises_seconds": 120,
-                            "tempo_label": "controlled",
                         }
                     ],
                     "finisher": "5 minute bike",

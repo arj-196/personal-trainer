@@ -12,7 +12,6 @@ export type WorkoutBlock = {
   setCount: number;
   restBetweenSetsSeconds: number | null;
   restBetweenExercisesSeconds: number | null;
-  tempoLabel: string | null;
   imageUrl: string | null;
   referencePath: string | null;
   searchName: string | null;
@@ -34,7 +33,6 @@ export function buildWorkoutDayBlocks(day: WorkoutDay): WorkoutBlock[] {
       setCount: 1,
       restBetweenSetsSeconds: null,
       restBetweenExercisesSeconds: null,
-      tempoLabel: null,
       imageUrl: null,
       referencePath: null,
       searchName: null,
@@ -49,7 +47,6 @@ export function buildWorkoutDayBlocks(day: WorkoutDay): WorkoutBlock[] {
       setCount: exercise.sets,
       restBetweenSetsSeconds: exercise.restBetweenSetsSeconds,
       restBetweenExercisesSeconds: exercise.restBetweenExercisesSeconds,
-      tempoLabel: exercise.tempoLabel,
       imageUrl: exercise.imageUrl,
       referencePath: exercise.referencePath,
       searchName: exercise.name,
@@ -67,7 +64,6 @@ export function buildWorkoutDayBlocks(day: WorkoutDay): WorkoutBlock[] {
       setCount: 1,
       restBetweenSetsSeconds: null,
       restBetweenExercisesSeconds: null,
-      tempoLabel: null,
       imageUrl: null,
       referencePath: null,
       searchName: null,
@@ -85,7 +81,6 @@ export function buildWorkoutDayBlocks(day: WorkoutDay): WorkoutBlock[] {
       setCount: 1,
       restBetweenSetsSeconds: null,
       restBetweenExercisesSeconds: null,
-      tempoLabel: null,
       imageUrl: null,
       referencePath: null,
       searchName: null,

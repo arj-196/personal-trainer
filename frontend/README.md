@@ -158,7 +158,7 @@ In `blob` mode the frontend reads the same logical data from Vercel Blob:
 
 - The workout checklist state is browser-local and does not sync across devices.
 - The start workout route accepts `?day=<1-based index>` so each workout day card can open its own fixed session view.
-- Start workout uses timing fields from `plan.json` (`warmupActiveSeconds`, `activeSeconds`, `restBetweenSetsSeconds`, `restBetweenExercisesSeconds`, `tempoLabel`) and falls back to safe defaults for older plans.
+- Start workout uses timing fields from `plan.json` (`warmupActiveSeconds`, `activeSeconds`, `restBetweenSetsSeconds`, `restBetweenExercisesSeconds`) and falls back to safe defaults for older plans.
 - Within an exercise, the timer runs continuously (active set -> rest -> next set) after a single Start tap; the next exercise still starts manually.
 - The frontend is read-only for workout data, but Jeff the Cook can save immutable recipe snapshots to Blob.
 - Jeff the Cook interpretation requests use strict JSON schema with nullable patch fields so `gpt-5.4-mini` accepts the payload while still returning partial state updates.

@@ -81,7 +81,6 @@ def test_build_plan_uses_structured_agent_output() -> None:
                             "active_seconds": 50,
                             "rest_between_sets_seconds": 90,
                             "rest_between_exercises_seconds": 120,
-                            "tempo_label": "controlled",
                         },
                         {
                             "name": "1-Arm Dumbbell Row",
@@ -91,7 +90,6 @@ def test_build_plan_uses_structured_agent_output() -> None:
                             "active_seconds": 45,
                             "rest_between_sets_seconds": 75,
                             "rest_between_exercises_seconds": 120,
-                            "tempo_label": "steady",
                         },
                     ],
                     "finisher": "8 minutes easy-moderate bike intervals.",
@@ -113,7 +111,6 @@ def test_build_plan_uses_structured_agent_output() -> None:
                             "active_seconds": 45,
                             "rest_between_sets_seconds": 90,
                             "rest_between_exercises_seconds": 120,
-                            "tempo_label": "controlled",
                         },
                         {
                             "name": "Glute Bridge",
@@ -123,7 +120,6 @@ def test_build_plan_uses_structured_agent_output() -> None:
                             "active_seconds": 40,
                             "rest_between_sets_seconds": 75,
                             "rest_between_exercises_seconds": 120,
-                            "tempo_label": "steady",
                         },
                     ],
                     "finisher": "10 minutes brisk walking.",
@@ -179,7 +175,6 @@ def test_build_plan_records_openai_backend() -> None:
                             "active_seconds": 35,
                             "rest_between_sets_seconds": 75,
                             "rest_between_exercises_seconds": 120,
-                            "tempo_label": "steady",
                         }
                     ],
                     "finisher": "Easy walk.",
@@ -220,7 +215,6 @@ def test_build_plan_rejects_non_positive_timing_values() -> None:
                             "active_seconds": 0,
                             "rest_between_sets_seconds": 75,
                             "rest_between_exercises_seconds": 120,
-                            "tempo_label": "steady",
                         }
                     ],
                     "finisher": "Easy walk.",

@@ -25,7 +25,6 @@ def _stub_plan_payload(day_count: int) -> dict[str, object]:
                         "active_seconds": 45,
                         "rest_between_sets_seconds": 90,
                         "rest_between_exercises_seconds": 120,
-                        "tempo_label": "controlled",
                     },
                     {
                         "name": "1-Arm Dumbbell Row",
@@ -35,7 +34,6 @@ def _stub_plan_payload(day_count: int) -> dict[str, object]:
                         "active_seconds": 40,
                         "rest_between_sets_seconds": 75,
                         "rest_between_exercises_seconds": 120,
-                        "tempo_label": "steady",
                     },
                 ],
                 "finisher": "8 minutes on the bike at a conversational pace.",

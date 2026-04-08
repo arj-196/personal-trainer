@@ -34,7 +34,6 @@ def test_render_plan_renders_reference_image_as_block() -> None:
                         active_seconds=45,
                         rest_between_sets_seconds=75,
                         rest_between_exercises_seconds=120,
-                        tempo_label="controlled",
                     )
                 ],
                 finisher="Easy bike.",

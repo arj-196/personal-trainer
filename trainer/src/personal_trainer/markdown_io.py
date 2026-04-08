@@ -324,7 +324,6 @@ def render_plan_json(plan: WorkoutPlan, profile: UserProfile) -> str:
                         "activeSeconds": exercise.active_seconds,
                         "restBetweenSetsSeconds": exercise.rest_between_sets_seconds,
                         "restBetweenExercisesSeconds": exercise.rest_between_exercises_seconds,
-                        "tempoLabel": exercise.tempo_label,
                         "imageUrl": (
                             reference.image_path if reference is not None else None
                         ),

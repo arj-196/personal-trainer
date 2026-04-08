@@ -54,7 +54,6 @@ describe('buildWorkoutDayBlocks', () => {
           activeSeconds: 45,
           restBetweenSetsSeconds: 90,
           restBetweenExercisesSeconds: 120,
-          tempoLabel: 'controlled',
           imageUrl: 'https://example.test/squat.jpg',
           referencePath: 'exercise_library/goblet-squat.md',
         },
@@ -70,7 +69,6 @@ describe('buildWorkoutDayBlocks', () => {
       name: 'Goblet Squat',
       activeSeconds: 45,
       setCount: 3,
-      tempoLabel: 'controlled',
       imageUrl: 'https://example.test/squat.jpg',
       referencePath: 'exercise_library/goblet-squat.md',
     });
@@ -166,7 +164,6 @@ describe('trainer data integration (blob)', () => {
                   activeSeconds: 45,
                   restBetweenSetsSeconds: 90,
                   restBetweenExercisesSeconds: 120,
-                  tempoLabel: 'controlled',
                   imageUrl: 'https://wger.de/media/exercise-images/1542/dumbbell-goblet-squat.jpeg',
                   referencePath: 'exercise_library/goblet-squat.md',
                 },
@@ -308,7 +305,6 @@ describe('trainer data integration (blob)', () => {
     const plan = await readWorkoutPlan('alpha');
     expect(plan?.days[0].warmupActiveSeconds).toBe(300);
     expect(plan?.days[0].exercises[0].sets).toBe(3);
-    expect(plan?.days[0].exercises[0].tempoLabel).toBe('steady');
     expect(plan?.days[0].finisherActiveSeconds).toBe(300);
     expect(plan?.days[0].recoveryActiveSeconds).toBe(300);
   });

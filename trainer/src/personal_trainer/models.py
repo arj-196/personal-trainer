@@ -55,7 +55,6 @@ class Exercise:
     active_seconds: int
     rest_between_sets_seconds: int
     rest_between_exercises_seconds: int
-    tempo_label: str
 
     def to_markdown(self) -> str:
         return f"- **{self.name}**: {self.prescription}. {self.notes}".strip()
