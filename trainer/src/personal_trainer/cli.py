@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import cast
 
 import click
+from dotenv import load_dotenv
 
 from personal_trainer.blob_sync import (
     BlobAccess,
@@ -173,7 +174,40 @@ def _configure_progress_logging() -> None:
     )
 
 
-@click.group(help="Markdown-first personal trainer application.")
+def _resolve_local_env_file() -> Path | None:
+    env_filename = ".env.local"
+    cwd = Path.cwd().resolve()
+    trainer_root = Path(__file__).resolve().parents[2]
+
+    candidates = [cwd / env_filename, cwd / "trainer" / env_filename]
+    candidates.extend(parent / env_filename for parent in cwd.parents)
+    candidates.append(trainer_root / env_filename)
+
+    seen: set[Path] = set()
+    for candidate in candidates:
+        resolved = candidate.resolve()
+        if resolved in seen:
+            continue
+        seen.add(resolved)
+        if resolved.is_file():
+            return resolved
+    return None
+
+
+def _load_local_env_file() -> None:
+    env_file = _resolve_local_env_file()
+    if env_file is None:
+        return
+    load_dotenv(dotenv_path=env_file, override=False)
+
+
+class TrainerGroup(click.Group):
+    def make_context(self, info_name, args, parent=None, **extra):
+        _load_local_env_file()
+        return super().make_context(info_name, args, parent=parent, **extra)
+
+
+@click.group(cls=TrainerGroup, help="Markdown-first personal trainer application.")
 def main() -> None:
     """Top-level CLI group."""
 
