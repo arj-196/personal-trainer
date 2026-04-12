@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 import json
 import logging
 from dataclasses import asdict, dataclass
@@ -7,7 +8,7 @@ from datetime import date
 from pathlib import Path
 from typing import Any, Protocol
 
-from personal_trainer.exercise_library import all_references
+from personal_trainer.exercise_library import all_references, resolve_reference
 from personal_trainer.llm import LLMRunner, start_workflow
 from personal_trainer.models import (
     CheckIn,
@@ -437,6 +438,7 @@ def build_plan_with_review(
         raise WorkoutPlannerError(
             f"Unable to generate a plan with model '{planner.model_name}': {error}"
         ) from error
+    current_plan_draft = _canonicalize_plan_draft_exercise_names(current_plan_draft)
 
     review_iterations: list[PlanReviewIteration] = []
     final_status = "approved"
@@ -520,6 +522,7 @@ def build_plan_with_review(
             step_name=f"planner_revision_iter_{iteration}",
             iteration=iteration,
         )
+        current_plan_draft = _canonicalize_plan_draft_exercise_names(current_plan_draft)
 
     plan = _normalize_plan(
         current_plan_draft,
@@ -554,18 +557,9 @@ def build_plan_with_review(
 
 
 def _build_user_prompt(request: TrainerPlanRequest) -> str:
-    references = [
-        {
-            "name": reference.name,
-            "aliases": list(reference.aliases),
-            "summary": reference.summary,
-            "setup": reference.setup,
-            "cues": list(reference.cues),
-        }
-        for reference in all_references()
-    ]
+    references = _exercise_library_names()
     LOGGER.info(
-        "Loaded %s exercise references into the trainer prompt", len(references)
+        "Loaded %s exercise names into the trainer prompt", len(references)
     )
     payload = {
         "today": date.today().isoformat(),
@@ -633,6 +627,7 @@ def _build_plan_revision_prompt(
             asdict(arnold_feedback),
             asdict(doctor_mike_feedback),
         ],
+        "exercise_library": _exercise_library_names(),
     }
     payload_json = json.dumps(payload, indent=2, default=str)
     try:
@@ -878,8 +873,13 @@ def _normalize_exercise(value: Any, *, day_index: int) -> Exercise:
     if not isinstance(value, dict):
         raise WorkoutPlannerError(f"Day {day_index} includes an invalid exercise entry")
 
+    generated_name = _require_text(value, "name", scope=f"day {day_index} exercise")
+    exercise_name = _canonicalize_exercise_name(
+        generated_name,
+        context=f"day {day_index} exercise",
+    )
     exercise = Exercise(
-        name=_require_text(value, "name", scope=f"day {day_index} exercise"),
+        name=exercise_name,
         prescription=_require_text(
             value,
             "prescription",
@@ -950,3 +950,78 @@ def _clean_text(value: Any) -> str:
     if not isinstance(value, str):
         return ""
     return " ".join(value.strip().split())
+
+
+def _exercise_library_names() -> list[str]:
+    return [reference.name for reference in all_references()]
+
+
+def _canonicalize_plan_draft_exercise_names(draft: TrainerPlanDraft) -> TrainerPlanDraft:
+    payload = draft.payload
+    if not isinstance(payload, dict):
+        return draft
+
+    canonicalized_payload = copy.deepcopy(payload)
+    raw_days = canonicalized_payload.get("days")
+    if not isinstance(raw_days, list):
+        return TrainerPlanDraft(
+            payload=canonicalized_payload,
+            provider=draft.provider,
+            model_name=draft.model_name,
+        )
+
+    for day_index, raw_day in enumerate(raw_days, start=1):
+        if not isinstance(raw_day, dict):
+            continue
+        raw_exercises = raw_day.get("exercises")
+        if not isinstance(raw_exercises, list):
+            continue
+        for exercise_index, raw_exercise in enumerate(raw_exercises, start=1):
+            if not isinstance(raw_exercise, dict):
+                continue
+            cleaned_name = _clean_text(raw_exercise.get("name"))
+            if not cleaned_name:
+                continue
+            context = f"day {day_index} exercise {exercise_index}"
+            canonical_name = _canonicalize_exercise_name(cleaned_name, context=context)
+            raw_exercise["name"] = canonical_name
+
+    return TrainerPlanDraft(
+        payload=canonicalized_payload,
+        provider=draft.provider,
+        model_name=draft.model_name,
+    )
+
+
+def _canonicalize_exercise_name(name: str, *, context: str) -> str:
+    match = resolve_reference(name)
+    if match is None:
+        LOGGER.info(
+            "No exercise library match for %s name '%s'; leaving generated value unchanged",
+            context,
+            name,
+        )
+        return name
+
+    canonical_name = match.reference.name
+    if canonical_name == name:
+        return canonical_name
+
+    if match.strategy == "fuzzy":
+        LOGGER.info(
+            "Canonicalized %s name '%s' -> '%s' via fuzzy match on '%s' (score=%.3f)",
+            context,
+            name,
+            canonical_name,
+            match.matched_alias,
+            match.score,
+        )
+        return canonical_name
+
+    LOGGER.info(
+        "Canonicalized %s name '%s' -> '%s' via exact alias lookup",
+        context,
+        name,
+        canonical_name,
+    )
+    return canonical_name

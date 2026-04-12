@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from datetime import date
 
 import pytest
@@ -70,6 +71,7 @@ class StaticAgent:
         self.requests: list[TrainerPlanRequest] = []
         self.step_names: list[str] = []
         self.revision_prompts: dict[str, str] = {}
+        self.reviewer_prompts: dict[str, str] = {}
         self.arnold_approvals = arnold_approvals or [True]
         self.doctor_mike_approvals = doctor_mike_approvals or [True]
         self.revision_payloads = revision_payloads or [payload]
@@ -105,6 +107,7 @@ class StaticAgent:
             )
 
         if step_name.startswith("review_arnold_iter_"):
+            self.reviewer_prompts[step_name] = user_prompt
             iter_index = int(step_name.rsplit("_", 1)[-1]) - 1
             approved = self.arnold_approvals[min(iter_index, len(self.arnold_approvals) - 1)]
             return TrainerPlanDraft(
@@ -119,6 +122,7 @@ class StaticAgent:
             )
 
         if step_name.startswith("review_doctor_mike_iter_"):
+            self.reviewer_prompts[step_name] = user_prompt
             iter_index = int(step_name.rsplit("_", 1)[-1]) - 1
             approved = self.doctor_mike_approvals[
                 min(iter_index, len(self.doctor_mike_approvals) - 1)
@@ -135,6 +139,11 @@ class StaticAgent:
             )
 
         raise AssertionError(f"Unexpected step name: {step_name}")
+
+
+def _extract_payload_json(prompt: str, marker: str) -> dict[str, object]:
+    payload_text = prompt.split(marker, maxsplit=1)[1].strip()
+    return json.loads(payload_text)
 
 
 def test_build_plan_uses_structured_agent_output() -> None:
@@ -297,6 +306,30 @@ def test_build_plan_revision_prompt_includes_both_persona_feedback() -> None:
     assert "Reduce knee-irritating movement dosage." in prompt
 
 
+def test_build_plan_revision_prompt_includes_name_only_exercise_library() -> None:
+    profile = UserProfile(name="Jordan")
+    agent = StaticAgent(
+        _valid_plan_payload(),
+        arnold_approvals=[False, True],
+        doctor_mike_approvals=[True, True],
+        revision_payloads=[_valid_plan_payload("Revised after feedback")],
+    )
+
+    build_plan_with_review(
+        profile,
+        plan_version=3,
+        agent=agent,
+        max_review_iterations=3,
+    )
+
+    prompt = agent.revision_prompts["planner_revision_iter_1"]
+    payload = _extract_payload_json(prompt, "Revision context JSON:")
+    exercise_library = payload["exercise_library"]  # type: ignore[index]
+    assert isinstance(exercise_library, list)
+    assert exercise_library
+    assert all(isinstance(item, str) for item in exercise_library)
+
+
 def test_build_user_prompt_renders_template_with_payload_json() -> None:
     profile = UserProfile(name="Jordan", training_days=3, session_length_minutes=45)
     request = TrainerPlanRequest(profile=profile, plan_version=5)
@@ -307,6 +340,47 @@ def test_build_user_prompt_renders_template_with_payload_json() -> None:
     assert "Planning context JSON:" in prompt
     assert '"target_plan_version": 5' in prompt
     assert '"name": "Jordan"' in prompt
+
+    payload = _extract_payload_json(prompt, "Planning context JSON:")
+    exercise_library = payload["exercise_library"]  # type: ignore[index]
+    assert isinstance(exercise_library, list)
+    assert exercise_library
+    assert all(isinstance(item, str) for item in exercise_library)
+
+
+def test_build_plan_canonicalizes_exercise_names_before_reviewer_prompts() -> None:
+    profile = UserProfile(name="Jordan")
+    payload = _valid_plan_payload()
+    exercises = payload["days"][0]["exercises"]  # type: ignore[index]
+    exercises[0]["name"] = "Affondi indietro alternati"  # type: ignore[index]
+    agent = StaticAgent(payload)
+
+    result = build_plan_with_review(profile, plan_version=1, agent=agent)
+
+    review_prompt = agent.reviewer_prompts["review_arnold_iter_1"]
+    assert '"name": "Alternate back lunges"' in review_prompt
+    assert '"name": "Affondi indietro alternati"' not in review_prompt
+    assert result.plan.days[0].exercises[0].name == "Alternate back lunges"
+
+
+def test_build_plan_revision_prompt_uses_canonicalized_current_plan() -> None:
+    profile = UserProfile(name="Jordan")
+    initial = _valid_plan_payload("Initial draft")
+    exercises = initial["days"][0]["exercises"]  # type: ignore[index]
+    exercises[0]["name"] = "Affondi indietro alternati"  # type: ignore[index]
+    revised = _valid_plan_payload("Revised draft")
+    agent = StaticAgent(
+        initial,
+        arnold_approvals=[False, True],
+        doctor_mike_approvals=[True, True],
+        revision_payloads=[revised],
+    )
+
+    build_plan_with_review(profile, plan_version=3, agent=agent, max_review_iterations=3)
+
+    revision_prompt = agent.revision_prompts["planner_revision_iter_1"]
+    assert '"name": "Alternate back lunges"' in revision_prompt
+    assert '"name": "Affondi indietro alternati"' not in revision_prompt
 
 
 def test_build_system_prompt_renders_template() -> None:

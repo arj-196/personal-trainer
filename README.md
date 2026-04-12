@@ -2,7 +2,7 @@
 
 Personal Trainer is a multi-app repository for generating workout plans, running the Jeff the Cook recipe workspace, and publishing a gym-friendly view of the plan.
 
-The workout planner now uses Ollama and OpenAI-backed trainer agents instead of hardcoded split and exercise rules. The Python app packages the athlete profile, check-in history, and exercise catalog context into a structured LLM request, then runs a planner-reviewer loop where Arnold Schwarzenegger and Doctor Mike review each draft until approval or max iterations, then writes the resulting week plan to JSON plus Markdown.
+The workout planner now uses Ollama and OpenAI-backed trainer agents instead of hardcoded split and exercise rules. The Python app packages the athlete profile, check-in history, and a compact exercise catalog names context into a structured LLM request, then runs a planner-reviewer loop where Arnold Schwarzenegger and Doctor Mike review each draft until approval or max iterations, then writes the resulting week plan to JSON plus Markdown.
 Generated plans now include explicit workout timing metadata (active durations, set counts, and rest durations) so the start-workout experience can run a guided timer workflow.
 Trainer prompts now live in file-based Jinja templates, and each model call is traced with workspace-scoped JSONL logs plus optional Langfuse integration.
 

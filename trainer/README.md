@@ -77,7 +77,7 @@ The app sends:
 
 - the parsed athlete profile
 - the latest check-in when present
-- the bundled exercise catalog metadata so the model can prefer known exercise names
+- a compact bundled exercise catalog name list so the model can prefer known exercise names
 
 Planner and reviewer steps must return structured JSON, which the app validates before writing both JSON data files and Markdown views.
 Each step call also writes a trace record to:
@@ -217,6 +217,14 @@ Notes:
 ```bash
 cd trainer
 poetry run pytest -q
+```
+
+`paid_openai` tests are skipped by default so routine runs stay on local/free paths.
+To include OpenAI-path tests explicitly:
+
+```bash
+cd trainer
+poetry run pytest -q --run-paid
 ```
 
 ## Blob publish

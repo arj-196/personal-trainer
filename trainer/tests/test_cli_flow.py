@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 
+import pytest
 from click.testing import CliRunner
 
 from personal_trainer.blob_sync import BlobPublishResult
@@ -197,6 +198,7 @@ def test_refresh_updates_state(tmp_path, monkeypatch) -> None:
     assert (workspace / "plan_review.json").exists()
 
 
+@pytest.mark.paid_openai
 def test_plan_writes_comparison_files_for_multiple_models(
     tmp_path, monkeypatch
 ) -> None:
@@ -390,6 +392,7 @@ def test_publish_web_command_reports_upload_summary(tmp_path, monkeypatch) -> No
     assert "Workspace files uploaded: 4" in result.output
 
 
+@pytest.mark.paid_openai
 def test_plan_loads_openai_api_key_from_dotenv_local(tmp_path, monkeypatch) -> None:
     workspaces_root = tmp_path / "workspaces"
     workspace = workspaces_root / "athlete"
@@ -410,6 +413,7 @@ def test_plan_loads_openai_api_key_from_dotenv_local(tmp_path, monkeypatch) -> N
     )
 
 
+@pytest.mark.paid_openai
 def test_process_env_openai_key_takes_priority_over_dotenv(tmp_path, monkeypatch) -> None:
     workspaces_root = tmp_path / "workspaces"
     workspace = workspaces_root / "athlete"
