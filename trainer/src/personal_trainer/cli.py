@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import logging
 import re
 from dataclasses import dataclass
@@ -33,7 +34,11 @@ from personal_trainer.markdown_io import (
 from personal_trainer.notes_publisher import NotesPublishError, publish_plan_to_notes
 from personal_trainer.ollama_client import OllamaClientConfig
 from personal_trainer.openai_client import OpenAIClientConfig
-from personal_trainer.workout_planner import WorkoutPlannerError, build_plan
+from personal_trainer.workout_planner import (
+    WorkoutPlannerError,
+    WorkoutPlanBuildResult,
+    build_plan_with_review,
+)
 
 WORKSPACES_ROOT = Path(__file__).resolve().parents[3] / "workspaces"
 LOGGER = logging.getLogger(__name__)
@@ -73,7 +78,14 @@ class PlannerTarget:
 class PlannerOutputPaths:
     plan_markdown: Path
     plan_json: Path
+    plan_review_json: Path
     coach_notes_markdown: Path
+
+
+@dataclass(frozen=True, slots=True)
+class GeneratedPlanResult:
+    target: PlannerTarget
+    result: WorkoutPlanBuildResult
 
 
 def _split_models(value: str | None) -> tuple[str, ...]:
@@ -105,6 +117,7 @@ def _planner_output_paths(
         return PlannerOutputPaths(
             plan_markdown=workspace / "plan.md",
             plan_json=workspace / "plan.json",
+            plan_review_json=workspace / "plan_review.json",
             coach_notes_markdown=workspace / "coach_notes.md",
         )
 
@@ -112,6 +125,7 @@ def _planner_output_paths(
     return PlannerOutputPaths(
         plan_markdown=workspace / f"plan-{slug}.md",
         plan_json=workspace / f"plan-{slug}.json",
+        plan_review_json=workspace / f"plan_review-{slug}.json",
         coach_notes_markdown=workspace / f"coach-notes-{slug}.md",
     )
 
@@ -169,6 +183,14 @@ def planner_options(function):
         default=180,
         show_default=True,
         help="Timeout for a single planner request.",
+    )(function)
+    function = click.option(
+        "--max-review-iterations",
+        type=int,
+        envvar="TRAINER_PLAN_REVIEW_MAX_ITERATIONS",
+        default=5,
+        show_default=True,
+        help="Maximum planner-reviewer iterations before accepting the latest draft with a warning.",
     )(function)
     return function
 
@@ -257,6 +279,7 @@ def plan_command(
     openai_api_key: str,
     session_id: str,
     timeout_seconds: int,
+    max_review_iterations: int,
 ) -> None:
     _configure_progress_logging()
     paths = ensure_workspace(workspace)
@@ -281,7 +304,7 @@ def plan_command(
         "Using Langfuse session id '%s' for this plan command",
         resolved_session_id,
     )
-    plans, outputs = _build_plans(
+    generated_plans, outputs = _build_plans(
         workspace=paths.root,
         profile=profile,
         plan_version=state.plan_version + 1,
@@ -291,17 +314,19 @@ def plan_command(
         openai_base_url=openai_base_url,
         openai_api_key=openai_api_key,
         timeout_seconds=timeout_seconds,
+        max_review_iterations=max_review_iterations,
     )
     checkin_template_path = (
-        paths.checkins_dir / f"{plans[0][1].generated_on.isoformat()}-checkin.md"
+        paths.checkins_dir
+        / f"{generated_plans[0].result.plan.generated_on.isoformat()}-checkin.md"
     )
     if not checkin_template_path.exists():
         checkin_template_path.write_text(
-            render_checkin_template(plans[0][1]), encoding="utf-8"
+            render_checkin_template(generated_plans[0].result.plan), encoding="utf-8"
         )
 
-    state.plan_version = plans[0][1].plan_version
-    state.generated_plans += len(plans)
+    state.plan_version = generated_plans[0].result.plan.plan_version
+    state.generated_plans += len(generated_plans)
     save_state(paths.state, state)
     LOGGER.info("Plan generation finished successfully")
 
@@ -309,7 +334,16 @@ def plan_command(
     for output in outputs:
         click.echo(f"Plan written to {output.plan_markdown}")
         click.echo(f"Plan data written to {output.plan_json}")
+        click.echo(f"Plan review written to {output.plan_review_json}")
         click.echo(f"Coach notes written to {output.coach_notes_markdown}")
+    for generated in generated_plans:
+        if generated.result.reached_max_iterations:
+            unresolved = generated.result.review_report.get("unresolved_personas", [])
+            click.echo(
+                "Warning: review loop hit max iterations for "
+                f"{generated.target.provider}/{generated.target.model}. "
+                f"Unresolved reviewers: {', '.join(unresolved) if unresolved else 'unknown'}."
+            )
     click.echo(f"Check-in template written to {checkin_template_path}")
 
 
@@ -327,6 +361,7 @@ def refresh_command(
     openai_api_key: str,
     session_id: str,
     timeout_seconds: int,
+    max_review_iterations: int,
 ) -> None:
     _configure_progress_logging()
     paths = ensure_workspace(workspace)
@@ -355,7 +390,7 @@ def refresh_command(
         "Using Langfuse session id '%s' for this refresh command",
         resolved_session_id,
     )
-    plans, outputs = _build_plans(
+    generated_plans, outputs = _build_plans(
         workspace=paths.root,
         profile=profile,
         plan_version=state.plan_version + 1,
@@ -366,18 +401,20 @@ def refresh_command(
         openai_base_url=openai_base_url,
         openai_api_key=openai_api_key,
         timeout_seconds=timeout_seconds,
+        max_review_iterations=max_review_iterations,
     )
 
     next_checkin_path = (
-        paths.checkins_dir / f"{plans[0][1].generated_on.isoformat()}-checkin.md"
+        paths.checkins_dir
+        / f"{generated_plans[0].result.plan.generated_on.isoformat()}-checkin.md"
     )
     if not next_checkin_path.exists():
         next_checkin_path.write_text(
-            render_checkin_template(plans[0][1]), encoding="utf-8"
+            render_checkin_template(generated_plans[0].result.plan), encoding="utf-8"
         )
 
-    state.plan_version = plans[0][1].plan_version
-    state.generated_plans += len(plans)
+    state.plan_version = generated_plans[0].result.plan.plan_version
+    state.generated_plans += len(generated_plans)
     state.last_check_in = checkin.check_in_date.isoformat()
     save_state(paths.state, state)
     LOGGER.info("Plan refresh finished successfully")
@@ -386,7 +423,16 @@ def refresh_command(
     for output in outputs:
         click.echo(f"Updated plan written to {output.plan_markdown}")
         click.echo(f"Updated plan data written to {output.plan_json}")
+        click.echo(f"Updated plan review written to {output.plan_review_json}")
         click.echo(f"Updated coach notes written to {output.coach_notes_markdown}")
+    for generated in generated_plans:
+        if generated.result.reached_max_iterations:
+            unresolved = generated.result.review_report.get("unresolved_personas", [])
+            click.echo(
+                "Warning: review loop hit max iterations for "
+                f"{generated.target.provider}/{generated.target.model}. "
+                f"Unresolved reviewers: {', '.join(unresolved) if unresolved else 'unknown'}."
+            )
     click.echo(f"Next check-in template written to {next_checkin_path}")
 
 
@@ -420,9 +466,10 @@ def _build_plans(
     openai_base_url: str,
     openai_api_key: str,
     timeout_seconds: int,
+    max_review_iterations: int,
     checkin=None,
 ):
-    plans = []
+    plans: list[GeneratedPlanResult] = []
     outputs: list[PlannerOutputPaths] = []
     comparison_mode = len(targets) > 1
     for target in targets:
@@ -433,7 +480,7 @@ def _build_plans(
         )
         try:
             if target.provider == "openai":
-                plan = build_plan(
+                build_result = build_plan_with_review(
                     profile,
                     plan_version=plan_version,
                     checkin=checkin,
@@ -446,9 +493,10 @@ def _build_plans(
                         base_url=openai_base_url,
                         timeout_seconds=max(30, timeout_seconds),
                     ),
+                    max_review_iterations=max_review_iterations,
                 )
             else:
-                plan = build_plan(
+                build_result = build_plan_with_review(
                     profile,
                     plan_version=plan_version,
                     checkin=checkin,
@@ -460,10 +508,11 @@ def _build_plans(
                         base_url=ollama_base_url,
                         timeout_seconds=max(30, timeout_seconds),
                     ),
+                    max_review_iterations=max_review_iterations,
                 )
         except WorkoutPlannerError as error:
             raise click.ClickException(str(error)) from error
-        plans.append((target, plan))
+        plans.append(GeneratedPlanResult(target=target, result=build_result))
         output_paths = _planner_output_paths(
             workspace, target, comparison_mode=comparison_mode
         )
@@ -479,13 +528,17 @@ def _build_plans(
         if legacy_pdf.exists():
             LOGGER.info("Removing stale PDF artifact at %s", legacy_pdf)
             legacy_pdf.unlink()
-        plan_markdown = render_plan(plan, profile)
+        plan_markdown = render_plan(build_result.plan, profile)
         output_paths.plan_markdown.write_text(plan_markdown, encoding="utf-8")
         output_paths.plan_json.write_text(
-            render_plan_json(plan, profile), encoding="utf-8"
+            render_plan_json(build_result.plan, profile), encoding="utf-8"
+        )
+        output_paths.plan_review_json.write_text(
+            json.dumps(build_result.review_report, indent=2), encoding="utf-8"
         )
         output_paths.coach_notes_markdown.write_text(
-            render_coach_notes(plan, profile, checkin=checkin), encoding="utf-8"
+            render_coach_notes(build_result.plan, profile, checkin=checkin),
+            encoding="utf-8",
         )
         outputs.append(output_paths)
     return plans, outputs

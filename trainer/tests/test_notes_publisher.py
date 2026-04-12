@@ -10,6 +10,14 @@ from personal_trainer.notes_publisher import build_notes_document, default_note_
 
 def _install_stub_ollama(monkeypatch) -> None:
     def fake_chat_json(self, *, system_prompt, user_prompt, schema):
+        properties = schema.get("properties")
+        if isinstance(properties, dict) and "approved" in properties:
+            return {
+                "approved": True,
+                "blocking_issues": [],
+                "suggested_changes": ["Looks good."],
+                "reasoning_summary": "Approved.",
+            }
         return {
             "summary": "Plan summary",
             "progression_note": "Progress slowly",

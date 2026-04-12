@@ -31,7 +31,13 @@ from personal_trainer.prompting import PromptManager, PromptManagerError
 LOGGER = logging.getLogger(__name__)
 PROMPT_MANAGER = PromptManager()
 WEEKLY_PLAN_TEMPLATE = "trainer/weekly_plan.jinja"
-SYSTEM_PROMPT_TEMPLATE = "trainer/system_prompt.jinja"
+PLAN_REVIEW_TEMPLATE = "trainer/plan_review.jinja"
+PLAN_REVISION_TEMPLATE = "trainer/plan_revision.jinja"
+SYSTEM_PROMPT_TEMPLATE = "trainer/weekly_plan_system_prompt.jinja"
+ARNOLD_REVIEWER_SYSTEM_PROMPT_TEMPLATE = "trainer/reviewer_arnold_system_prompt.jinja"
+DOCTOR_MIKE_REVIEWER_SYSTEM_PROMPT_TEMPLATE = (
+    "trainer/reviewer_doctor_mike_system_prompt.jinja"
+)
 
 PLAN_SCHEMA: dict[str, Any] = {
     "type": "object",
@@ -121,6 +127,32 @@ PLAN_SCHEMA: dict[str, Any] = {
     },
 }
 
+REVIEW_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "additionalProperties": False,
+    "required": [
+        "approved",
+        "blocking_issues",
+        "suggested_changes",
+        "reasoning_summary",
+    ],
+    "properties": {
+        "approved": {"type": "boolean"},
+        "blocking_issues": {
+            "type": "array",
+            "items": {"type": "string"},
+        },
+        "suggested_changes": {
+            "type": "array",
+            "items": {"type": "string"},
+        },
+        "reasoning_summary": {"type": "string"},
+    },
+}
+
+ARNOLD_PERSONA = "Arnold Schwarzenegger"
+DOCTOR_MIKE_PERSONA = "Doctor Mike"
+
 
 class WorkoutPlannerError(RuntimeError):
     """Raised when an LLM-generated plan cannot be requested or normalized."""
@@ -144,11 +176,46 @@ class TrainerPlanDraft:
     model_name: str
 
 
+@dataclass(frozen=True, slots=True)
+class ReviewerFeedback:
+    persona: str
+    approved: bool
+    blocking_issues: list[str]
+    suggested_changes: list[str]
+    reasoning_summary: str
+
+
+@dataclass(frozen=True, slots=True)
+class PlanReviewIteration:
+    iteration: int
+    planner_step_name: str
+    plan_payload: dict[str, Any]
+    arnold_review: ReviewerFeedback
+    doctor_mike_review: ReviewerFeedback
+    approved: bool
+
+
+@dataclass(frozen=True, slots=True)
+class WorkoutPlanBuildResult:
+    plan: WorkoutPlan
+    review_report: dict[str, Any]
+    reached_max_iterations: bool
+
+
 class TrainerAgent(Protocol):
     model_name: str
 
-    def generate_weekly_plan(self, request: TrainerPlanRequest) -> TrainerPlanDraft:
-        """Return a structured weekly plan for the athlete."""
+    def run_json_step(
+        self,
+        request: TrainerPlanRequest,
+        *,
+        system_prompt: str,
+        user_prompt: str,
+        schema: dict[str, Any],
+        step_name: str,
+        metadata: dict[str, Any],
+    ) -> TrainerPlanDraft:
+        """Run one structured JSON step for the planner workflow."""
 
 
 class OllamaTrainerAgent:
@@ -156,32 +223,41 @@ class OllamaTrainerAgent:
         self._client = client
         self.model_name = client.config.model
 
-    def generate_weekly_plan(self, request: TrainerPlanRequest) -> TrainerPlanDraft:
+    def run_json_step(
+        self,
+        request: TrainerPlanRequest,
+        *,
+        system_prompt: str,
+        user_prompt: str,
+        schema: dict[str, Any],
+        step_name: str,
+        metadata: dict[str, Any],
+    ) -> TrainerPlanDraft:
         LOGGER.info(
-            "Building trainer prompt for %s (%s days, %s minute sessions)",
+            "Running step '%s' for %s (%s days, %s minute sessions)",
+            step_name,
             request.profile.name,
             request.profile.training_days,
             request.profile.session_length_minutes,
         )
-        system_prompt = _build_system_prompt()
-        user_prompt = _build_user_prompt(request)
         runner = LLMRunner(jsonl_path=request.llm_log_path)
         result = runner.run_step(
             trace_id=request.trace_id,
             session_id=request.session_id,
             workflow_name=request.workflow_name,
-            step_name="planner",
+            step_name=step_name,
             model=self.model_name,
             prompt=user_prompt,
             metadata={
                 "provider": "ollama",
                 "target_plan_version": request.plan_version,
                 "athlete_name": request.profile.name,
+                **metadata,
             },
             execute=lambda: self._client.chat_json(
                 system_prompt=system_prompt,
                 user_prompt=user_prompt,
-                schema=PLAN_SCHEMA,
+                schema=schema,
             ),
         )
         payload = result.output
@@ -198,38 +274,57 @@ class OllamaTrainerAgent:
             model_name=self.model_name,
         )
 
+    def generate_weekly_plan(self, request: TrainerPlanRequest) -> TrainerPlanDraft:
+        return self.run_json_step(
+            request,
+            system_prompt=_build_system_prompt(),
+            user_prompt=_build_user_prompt(request),
+            schema=PLAN_SCHEMA,
+            step_name="planner_initial",
+            metadata={},
+        )
+
 
 class OpenAITrainerAgent:
     def __init__(self, client: OpenAIChatClient) -> None:
         self._client = client
         self.model_name = client.config.model
 
-    def generate_weekly_plan(self, request: TrainerPlanRequest) -> TrainerPlanDraft:
+    def run_json_step(
+        self,
+        request: TrainerPlanRequest,
+        *,
+        system_prompt: str,
+        user_prompt: str,
+        schema: dict[str, Any],
+        step_name: str,
+        metadata: dict[str, Any],
+    ) -> TrainerPlanDraft:
         LOGGER.info(
-            "Building trainer prompt for %s (%s days, %s minute sessions)",
+            "Running step '%s' for %s (%s days, %s minute sessions)",
+            step_name,
             request.profile.name,
             request.profile.training_days,
             request.profile.session_length_minutes,
         )
-        system_prompt = _build_system_prompt()
-        user_prompt = _build_user_prompt(request)
         runner = LLMRunner(jsonl_path=request.llm_log_path)
         result = runner.run_step(
             trace_id=request.trace_id,
             session_id=request.session_id,
             workflow_name=request.workflow_name,
-            step_name="planner",
+            step_name=step_name,
             model=self.model_name,
             prompt=user_prompt,
             metadata={
                 "provider": "openai",
                 "target_plan_version": request.plan_version,
                 "athlete_name": request.profile.name,
+                **metadata,
             },
             execute=lambda: self._client.chat_json(
                 system_prompt=system_prompt,
                 user_prompt=user_prompt,
-                schema=PLAN_SCHEMA,
+                schema=schema,
             ),
         )
         payload = result.output
@@ -246,6 +341,16 @@ class OpenAITrainerAgent:
             model_name=self.model_name,
         )
 
+    def generate_weekly_plan(self, request: TrainerPlanRequest) -> TrainerPlanDraft:
+        return self.run_json_step(
+            request,
+            system_prompt=_build_system_prompt(),
+            user_prompt=_build_user_prompt(request),
+            schema=PLAN_SCHEMA,
+            step_name="planner_initial",
+            metadata={},
+        )
+
 
 def build_plan(
     profile: UserProfile,
@@ -259,7 +364,41 @@ def build_plan(
     trace_id: str | None = None,
     session_id: str | None = None,
     llm_log_path: Path | None = None,
+    max_review_iterations: int = 5,
 ) -> WorkoutPlan:
+    result = build_plan_with_review(
+        profile=profile,
+        plan_version=plan_version,
+        checkin=checkin,
+        agent=agent,
+        client_config=client_config,
+        openai_client_config=openai_client_config,
+        workflow_name=workflow_name,
+        trace_id=trace_id,
+        session_id=session_id,
+        llm_log_path=llm_log_path,
+        max_review_iterations=max_review_iterations,
+    )
+    return result.plan
+
+
+def build_plan_with_review(
+    profile: UserProfile,
+    plan_version: int,
+    checkin: CheckIn | None = None,
+    *,
+    agent: TrainerAgent | None = None,
+    client_config: OllamaClientConfig | None = None,
+    openai_client_config: OpenAIClientConfig | None = None,
+    workflow_name: str = "weekly_plan_generation",
+    trace_id: str | None = None,
+    session_id: str | None = None,
+    llm_log_path: Path | None = None,
+    max_review_iterations: int = 5,
+) -> WorkoutPlanBuildResult:
+    if max_review_iterations <= 0:
+        raise WorkoutPlannerError("max_review_iterations must be greater than zero")
+
     planner: TrainerAgent
     if agent is not None:
         planner = agent
@@ -280,8 +419,18 @@ def build_plan(
         llm_log_path=llm_log_path,
     )
 
+    planner_system_prompt = _build_system_prompt()
+    arnold_system_prompt = _build_arnold_reviewer_system_prompt()
+    doctor_mike_system_prompt = _build_doctor_mike_reviewer_system_prompt()
     try:
-        draft = planner.generate_weekly_plan(request)
+        current_plan_draft = planner.run_json_step(
+            request,
+            system_prompt=planner_system_prompt,
+            user_prompt=_build_user_prompt(request),
+            schema=PLAN_SCHEMA,
+            step_name="planner_initial",
+            metadata={"phase": "initial"},
+        )
     except WorkoutPlannerError:
         raise
     except (OllamaError, OpenAIError) as error:
@@ -289,10 +438,118 @@ def build_plan(
             f"Unable to generate a plan with model '{planner.model_name}': {error}"
         ) from error
 
-    return _normalize_plan(
-        draft,
+    review_iterations: list[PlanReviewIteration] = []
+    final_status = "approved"
+    unresolved_personas: list[str] = []
+
+    for iteration in range(1, max_review_iterations + 1):
+        arnold_review_draft = _run_reviewer_step(
+            planner=planner,
+            request=request,
+            system_prompt=arnold_system_prompt,
+            user_prompt=_build_plan_review_prompt(
+                request,
+                plan_payload=current_plan_draft.payload,
+                persona=ARNOLD_PERSONA,
+                iteration=iteration,
+            ),
+            step_name=f"review_arnold_iter_{iteration}",
+            persona=ARNOLD_PERSONA,
+            iteration=iteration,
+        )
+        doctor_mike_review_draft = _run_reviewer_step(
+            planner=planner,
+            request=request,
+            system_prompt=doctor_mike_system_prompt,
+            user_prompt=_build_plan_review_prompt(
+                request,
+                plan_payload=current_plan_draft.payload,
+                persona=DOCTOR_MIKE_PERSONA,
+                iteration=iteration,
+            ),
+            step_name=f"review_doctor_mike_iter_{iteration}",
+            persona=DOCTOR_MIKE_PERSONA,
+            iteration=iteration,
+        )
+
+        arnold_review = _normalize_reviewer_feedback(
+            arnold_review_draft.payload,
+            persona=ARNOLD_PERSONA,
+        )
+        doctor_mike_review = _normalize_reviewer_feedback(
+            doctor_mike_review_draft.payload,
+            persona=DOCTOR_MIKE_PERSONA,
+        )
+        approved = arnold_review.approved and doctor_mike_review.approved
+        review_iterations.append(
+            PlanReviewIteration(
+                iteration=iteration,
+                planner_step_name=(
+                    "planner_initial" if iteration == 1 else f"planner_revision_iter_{iteration - 1}"
+                ),
+                plan_payload=current_plan_draft.payload,
+                arnold_review=arnold_review,
+                doctor_mike_review=doctor_mike_review,
+                approved=approved,
+            )
+        )
+
+        if approved:
+            break
+
+        if iteration == max_review_iterations:
+            final_status = "max_iterations_reached"
+            unresolved_personas = [
+                feedback.persona
+                for feedback in (arnold_review, doctor_mike_review)
+                if not feedback.approved
+            ]
+            break
+
+        current_plan_draft = _run_plan_revision_step(
+            planner=planner,
+            request=request,
+            system_prompt=planner_system_prompt,
+            user_prompt=_build_plan_revision_prompt(
+                request,
+                iteration=iteration,
+                current_plan_payload=current_plan_draft.payload,
+                arnold_feedback=arnold_review,
+                doctor_mike_feedback=doctor_mike_review,
+            ),
+            step_name=f"planner_revision_iter_{iteration}",
+            iteration=iteration,
+        )
+
+    plan = _normalize_plan(
+        current_plan_draft,
         generated_on=date.today(),
         plan_version=plan_version,
+    )
+    report = _build_review_report(
+        request=request,
+        draft=current_plan_draft,
+        iterations=review_iterations,
+        max_review_iterations=max_review_iterations,
+        final_status=final_status,
+        unresolved_personas=unresolved_personas,
+    )
+    reached_max_iterations = final_status == "max_iterations_reached"
+    if reached_max_iterations:
+        LOGGER.warning(
+            "Plan generation reached max review iterations (%s). Unresolved personas: %s",
+            max_review_iterations,
+            ", ".join(unresolved_personas) if unresolved_personas else "none",
+        )
+    else:
+        LOGGER.info(
+            "Plan approved by both personas after %s review iteration(s)",
+            len(review_iterations),
+        )
+    return WorkoutPlanBuildResult(
+        plan=plan,
+        review_report=report,
+        reached_max_iterations=reached_max_iterations,
     )
 
 
@@ -329,6 +586,66 @@ def _build_user_prompt(request: TrainerPlanRequest) -> str:
         ) from error
 
 
+def _build_plan_review_prompt(
+    request: TrainerPlanRequest,
+    *,
+    plan_payload: dict[str, Any],
+    persona: str,
+    iteration: int,
+) -> str:
+    payload = {
+        "today": date.today().isoformat(),
+        "iteration": iteration,
+        "persona": persona,
+        "target_plan_version": request.plan_version,
+        "athlete_profile": asdict(request.profile),
+        "latest_checkin": asdict(request.checkin) if request.checkin else None,
+        "candidate_plan": plan_payload,
+    }
+    payload_json = json.dumps(payload, indent=2, default=str)
+    try:
+        return PROMPT_MANAGER.render(
+            PLAN_REVIEW_TEMPLATE,
+            payload_json=payload_json,
+        )
+    except PromptManagerError as error:
+        raise WorkoutPlannerError(
+            f"Unable to render workout plan review prompt: {error}"
+        ) from error
+
+
+def _build_plan_revision_prompt(
+    request: TrainerPlanRequest,
+    *,
+    iteration: int,
+    current_plan_payload: dict[str, Any],
+    arnold_feedback: ReviewerFeedback,
+    doctor_mike_feedback: ReviewerFeedback,
+) -> str:
+    payload = {
+        "today": date.today().isoformat(),
+        "iteration": iteration,
+        "target_plan_version": request.plan_version,
+        "athlete_profile": asdict(request.profile),
+        "latest_checkin": asdict(request.checkin) if request.checkin else None,
+        "current_plan": current_plan_payload,
+        "review_feedback": [
+            asdict(arnold_feedback),
+            asdict(doctor_mike_feedback),
+        ],
+    }
+    payload_json = json.dumps(payload, indent=2, default=str)
+    try:
+        return PROMPT_MANAGER.render(
+            PLAN_REVISION_TEMPLATE,
+            payload_json=payload_json,
+        )
+    except PromptManagerError as error:
+        raise WorkoutPlannerError(
+            f"Unable to render workout plan revision prompt: {error}"
+        ) from error
+
+
 def _build_system_prompt() -> str:
     try:
         return PROMPT_MANAGER.render(SYSTEM_PROMPT_TEMPLATE)
@@ -336,6 +653,147 @@ def _build_system_prompt() -> str:
         raise WorkoutPlannerError(
             f"Unable to render workout planner system prompt: {error}"
         ) from error
+
+
+def _build_arnold_reviewer_system_prompt() -> str:
+    try:
+        return PROMPT_MANAGER.render(ARNOLD_REVIEWER_SYSTEM_PROMPT_TEMPLATE)
+    except PromptManagerError as error:
+        raise WorkoutPlannerError(
+            f"Unable to render Arnold reviewer system prompt: {error}"
+        ) from error
+
+
+def _build_doctor_mike_reviewer_system_prompt() -> str:
+    try:
+        return PROMPT_MANAGER.render(DOCTOR_MIKE_REVIEWER_SYSTEM_PROMPT_TEMPLATE)
+    except PromptManagerError as error:
+        raise WorkoutPlannerError(
+            f"Unable to render Doctor Mike reviewer system prompt: {error}"
+        ) from error
+
+
+def _run_reviewer_step(
+    *,
+    planner: TrainerAgent,
+    request: TrainerPlanRequest,
+    system_prompt: str,
+    user_prompt: str,
+    step_name: str,
+    persona: str,
+    iteration: int,
+) -> TrainerPlanDraft:
+    try:
+        return planner.run_json_step(
+            request,
+            system_prompt=system_prompt,
+            user_prompt=user_prompt,
+            schema=REVIEW_SCHEMA,
+            step_name=step_name,
+            metadata={
+                "phase": "review",
+                "iteration": iteration,
+                "persona": persona,
+            },
+        )
+    except WorkoutPlannerError:
+        raise
+    except (OllamaError, OpenAIError) as error:
+        raise WorkoutPlannerError(
+            f"Unable to run review step '{step_name}' with model '{planner.model_name}': {error}"
+        ) from error
+
+
+def _run_plan_revision_step(
+    *,
+    planner: TrainerAgent,
+    request: TrainerPlanRequest,
+    system_prompt: str,
+    user_prompt: str,
+    step_name: str,
+    iteration: int,
+) -> TrainerPlanDraft:
+    try:
+        return planner.run_json_step(
+            request,
+            system_prompt=system_prompt,
+            user_prompt=user_prompt,
+            schema=PLAN_SCHEMA,
+            step_name=step_name,
+            metadata={
+                "phase": "revision",
+                "iteration": iteration,
+            },
+        )
+    except WorkoutPlannerError:
+        raise
+    except (OllamaError, OpenAIError) as error:
+        raise WorkoutPlannerError(
+            f"Unable to run revision step '{step_name}' with model '{planner.model_name}': {error}"
+        ) from error
+
+
+def _normalize_reviewer_feedback(
+    payload: dict[str, Any],
+    *,
+    persona: str,
+) -> ReviewerFeedback:
+    if not isinstance(payload, dict):
+        raise WorkoutPlannerError(
+            f"Reviewer output for {persona} must be a JSON object"
+        )
+    approved = payload.get("approved")
+    if not isinstance(approved, bool):
+        raise WorkoutPlannerError(
+            f"Reviewer output for {persona} must include boolean 'approved'"
+        )
+    reasoning_summary = _require_text(payload, "reasoning_summary", scope=persona)
+    return ReviewerFeedback(
+        persona=persona,
+        approved=approved,
+        blocking_issues=_optional_text_list(payload.get("blocking_issues")),
+        suggested_changes=_optional_text_list(payload.get("suggested_changes")),
+        reasoning_summary=reasoning_summary,
+    )
+
+
+def _build_review_report(
+    *,
+    request: TrainerPlanRequest,
+    draft: TrainerPlanDraft,
+    iterations: list[PlanReviewIteration],
+    max_review_iterations: int,
+    final_status: str,
+    unresolved_personas: list[str],
+) -> dict[str, Any]:
+    serialized_iterations: list[dict[str, Any]] = []
+    for record in iterations:
+        serialized_iterations.append(
+            {
+                "iteration": record.iteration,
+                "planner_step_name": record.planner_step_name,
+                "plan_payload": record.plan_payload,
+                "approved": record.approved,
+                "reviews": [
+                    asdict(record.arnold_review),
+                    asdict(record.doctor_mike_review),
+                ],
+            }
+        )
+
+    return {
+        "generated_on": date.today().isoformat(),
+        "target_plan_version": request.plan_version,
+        "workflow_name": request.workflow_name,
+        "trace_id": request.trace_id,
+        "session_id": request.session_id,
+        "planner_backend": f"{draft.provider}/{draft.model_name}",
+        "max_review_iterations": max_review_iterations,
+        "iterations_ran": len(iterations),
+        "final_status": final_status,
+        "unresolved_personas": unresolved_personas,
+        "iterations": serialized_iterations,
+    }
 
 
 def _normalize_plan(

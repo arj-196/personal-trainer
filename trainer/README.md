@@ -13,7 +13,7 @@ It generates workout plans with Ollama and OpenAI-backed trainer agents, manages
 
 - create workspaces under `../workspaces/<name>`
 - parse `profile.md` and check-in files
-- generate `profile.json`, `plan.json`, `plan.md`, and `coach_notes.md` from structured LLM output instead of hardcoded split logic
+- generate `profile.json`, `plan.json`, `plan_review.json`, `plan.md`, and `coach_notes.md` from structured LLM output instead of hardcoded split logic
 - generate explicit workout timing metadata (`activeSeconds`, set counts, and rest durations) in `plan.json` for the start-workout timer flow
 - generate side-by-side comparison plans when you request multiple models
 - render planner prompts from Jinja templates under `prompts/`
@@ -65,14 +65,22 @@ These commands read and write files in:
 
 ## Planner
 
-`plan` and `refresh` call one or more planner models and ask each one to act like a professional trainer. The app sends:
+`plan` and `refresh` call one or more planner models and run a conversational validation loop per model target:
+
+1. planner drafts a structured plan
+2. Arnold Schwarzenegger reviews the draft
+3. Doctor Mike reviews the draft
+4. planner revises the draft if either reviewer rejects
+5. loop repeats until both approve or max iterations is reached
+
+The app sends:
 
 - the parsed athlete profile
 - the latest check-in when present
 - the bundled exercise catalog metadata so the model can prefer known exercise names
 
-Each model must return structured JSON, which the app validates before writing both JSON data files and Markdown views.
-Each model call also writes a trace record to:
+Planner and reviewer steps must return structured JSON, which the app validates before writing both JSON data files and Markdown views.
+Each step call also writes a trace record to:
 
 ```text
 ../workspaces/<workspace>/.trainer/logs/llm_calls.jsonl
@@ -85,6 +93,7 @@ If you pass one model, the trainer writes:
 
 - `profile.json`
 - `plan.json`
+- `plan_review.json`
 - `plan.md`
 - `coach_notes.md`
 
@@ -95,9 +104,11 @@ If you pass multiple models, the trainer writes one plan set per model in the wo
 ├── profile.json
 ├── plan-ollama-gpt-oss-20b.md
 ├── plan-ollama-gpt-oss-20b.json
+├── plan_review-ollama-gpt-oss-20b.json
 ├── coach-notes-ollama-gpt-oss-20b.md
 ├── plan-openai-gpt-5-4-mini.md
 ├── plan-openai-gpt-5-4-mini.json
+├── plan_review-openai-gpt-5-4-mini.json
 └── coach-notes-openai-gpt-5-4-mini.md
 ```
 
@@ -112,6 +123,7 @@ Both `plan` and `refresh` accept:
 - `--openai-api-key` or `OPENAI_API_KEY` for OpenAI requests
 - `--session-id` to pin a Langfuse session id across all model calls in a single command
 - `--timeout-seconds` with default `180`
+- `--max-review-iterations` with default `5`
 
 Matching environment variables are also supported:
 
@@ -119,6 +131,7 @@ Matching environment variables are also supported:
 - `TRAINER_OPENAI_MODELS`
 - `TRAINER_OLLAMA_BASE_URL`
 - `TRAINER_OLLAMA_TIMEOUT_SECONDS`
+- `TRAINER_PLAN_REVIEW_MAX_ITERATIONS`
 - `OPENAI_BASE_URL`
 - `OPENAI_API_KEY`
 - `LANGFUSE_PUBLIC_KEY` (optional)
