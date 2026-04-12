@@ -21,11 +21,20 @@ def start_workflow(workflow_name: str) -> str:
     return f"{slug}-{uuid4().hex}"
 
 
+def start_session(workflow_name: str) -> str:
+    slug = "".join(char if char.isalnum() else "-" for char in workflow_name.lower())
+    slug = "-".join(part for part in slug.split("-") if part)
+    if not slug:
+        slug = "workflow"
+    return f"{slug}-session-{uuid4().hex}"
+
+
 @dataclass(frozen=True, slots=True)
 class LLMResult:
     response_text: str
     model: str
     trace_id: str
+    session_id: str
     step_name: str
     raw_provider_response: Any | None
     output: Any
@@ -50,15 +59,18 @@ class LLMRunner:
         model: str,
         prompt: str,
         execute: Callable[[], Any],
+        session_id: str | None = None,
         metadata: dict[str, Any] | None = None,
     ) -> LLMResult:
         resolved_trace_id = trace_id or start_workflow(workflow_name)
+        resolved_session_id = session_id or start_session(workflow_name)
         normalized_metadata = metadata or {}
         started_at = datetime.now(timezone.utc)
         start = perf_counter()
 
         generation = self._start_langfuse_generation(
             trace_id=resolved_trace_id,
+            session_id=resolved_session_id,
             workflow_name=workflow_name,
             step_name=step_name,
             model=model,
@@ -78,6 +90,7 @@ class LLMRunner:
             self._record_jsonl(
                 timestamp=started_at,
                 trace_id=resolved_trace_id,
+                session_id=resolved_session_id,
                 workflow_name=workflow_name,
                 step_name=step_name,
                 model=model,
@@ -100,6 +113,7 @@ class LLMRunner:
                 response_text=response_text,
                 model=model,
                 trace_id=resolved_trace_id,
+                session_id=resolved_session_id,
                 step_name=step_name,
                 raw_provider_response=raw_provider_response,
                 output=output,
@@ -109,6 +123,7 @@ class LLMRunner:
             self._record_jsonl(
                 timestamp=started_at,
                 trace_id=resolved_trace_id,
+                session_id=resolved_session_id,
                 workflow_name=workflow_name,
                 step_name=step_name,
                 model=model,
@@ -133,6 +148,7 @@ class LLMRunner:
         *,
         timestamp: datetime,
         trace_id: str,
+        session_id: str,
         workflow_name: str,
         step_name: str,
         model: str,
@@ -149,6 +165,7 @@ class LLMRunner:
         record = {
             "timestamp": timestamp.isoformat(),
             "trace_id": trace_id,
+            "session_id": session_id,
             "workflow_name": workflow_name,
             "step_name": step_name,
             "model": model,
@@ -166,6 +183,7 @@ class LLMRunner:
         self,
         *,
         trace_id: str,
+        session_id: str,
         workflow_name: str,
         step_name: str,
         model: str,
@@ -178,6 +196,7 @@ class LLMRunner:
             trace = self._langfuse.trace(
                 id=trace_id,
                 name=workflow_name,
+                session_id=session_id,
                 metadata=metadata,
             )
             return trace.generation(

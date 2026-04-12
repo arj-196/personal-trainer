@@ -17,7 +17,7 @@ It generates workout plans with Ollama and OpenAI-backed trainer agents, manages
 - generate explicit workout timing metadata (`activeSeconds`, set counts, and rest durations) in `plan.json` for the start-workout timer flow
 - generate side-by-side comparison plans when you request multiple models
 - render planner prompts from Jinja templates under `prompts/`
-- trace each model call with optional Langfuse instrumentation and local JSONL fallback logs
+- trace each model call with optional Langfuse instrumentation, including per-run session ids, and local JSONL fallback logs
 - publish workspace artifacts to Vercel Blob for the hosted frontend
 - publish a text-only workout note to Apple Notes on macOS
 
@@ -78,7 +78,8 @@ Each model call also writes a trace record to:
 ../workspaces/<workspace>/.trainer/logs/llm_calls.jsonl
 ```
 
-Each JSONL record includes timestamp, trace id, workflow, step, model, prompt, response, metadata, duration, success, and error when relevant.
+Each JSONL record includes timestamp, trace id, session id, workflow, step, model, prompt, response, metadata, duration, success, and error when relevant.
+For `plan` and `refresh`, one session id is used per CLI invocation and shared across all model calls in that run (including multi-model comparison mode).
 
 If you pass one model, the trainer writes:
 
@@ -109,6 +110,7 @@ Both `plan` and `refresh` accept:
 - `--ollama-base-url` with default `http://localhost:11434`
 - `--openai-base-url` with default `https://api.openai.com/v1`
 - `--openai-api-key` or `OPENAI_API_KEY` for OpenAI requests
+- `--session-id` to pin a Langfuse session id across all model calls in a single command
 - `--timeout-seconds` with default `180`
 
 Matching environment variables are also supported:

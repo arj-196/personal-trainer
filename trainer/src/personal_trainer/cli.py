@@ -16,6 +16,7 @@ from personal_trainer.blob_sync import (
     default_blob_prefix,
     publish_workspace_to_blob,
 )
+from personal_trainer.llm import start_session
 from personal_trainer.markdown_io import (
     ensure_workspace,
     load_checkin,
@@ -156,6 +157,12 @@ def planner_options(function):
         help="API key used for OpenAI plan generation.",
     )(function)
     function = click.option(
+        "--session-id",
+        "session_id",
+        default="",
+        help="Optional Langfuse session id shared across model calls in this command.",
+    )(function)
+    function = click.option(
         "--timeout-seconds",
         type=int,
         envvar="TRAINER_OLLAMA_TIMEOUT_SECONDS",
@@ -172,6 +179,17 @@ def _configure_progress_logging() -> None:
         format="%(asctime)s | %(levelname)s | %(message)s",
         force=True,
     )
+
+
+def _resolve_session_id(
+    *,
+    session_id: str,
+    workflow_name: str,
+) -> str:
+    resolved_session_id = session_id.strip()
+    if resolved_session_id:
+        return resolved_session_id
+    return start_session(workflow_name)
 
 
 def _resolve_local_env_file() -> Path | None:
@@ -237,6 +255,7 @@ def plan_command(
     ollama_base_url: str,
     openai_base_url: str,
     openai_api_key: str,
+    session_id: str,
     timeout_seconds: int,
 ) -> None:
     _configure_progress_logging()
@@ -254,11 +273,20 @@ def plan_command(
         openai_models=openai_model,
         openai_api_key=openai_api_key,
     )
+    resolved_session_id = _resolve_session_id(
+        session_id=session_id,
+        workflow_name="weekly_plan_generation",
+    )
+    LOGGER.info(
+        "Using Langfuse session id '%s' for this plan command",
+        resolved_session_id,
+    )
     plans, outputs = _build_plans(
         workspace=paths.root,
         profile=profile,
         plan_version=state.plan_version + 1,
         targets=targets,
+        session_id=resolved_session_id,
         ollama_base_url=ollama_base_url,
         openai_base_url=openai_base_url,
         openai_api_key=openai_api_key,
@@ -297,6 +325,7 @@ def refresh_command(
     ollama_base_url: str,
     openai_base_url: str,
     openai_api_key: str,
+    session_id: str,
     timeout_seconds: int,
 ) -> None:
     _configure_progress_logging()
@@ -318,12 +347,21 @@ def refresh_command(
         openai_models=openai_model,
         openai_api_key=openai_api_key,
     )
+    resolved_session_id = _resolve_session_id(
+        session_id=session_id,
+        workflow_name="weekly_plan_generation",
+    )
+    LOGGER.info(
+        "Using Langfuse session id '%s' for this refresh command",
+        resolved_session_id,
+    )
     plans, outputs = _build_plans(
         workspace=paths.root,
         profile=profile,
         plan_version=state.plan_version + 1,
         checkin=checkin,
         targets=targets,
+        session_id=resolved_session_id,
         ollama_base_url=ollama_base_url,
         openai_base_url=openai_base_url,
         openai_api_key=openai_api_key,
@@ -377,6 +415,7 @@ def _build_plans(
     profile,
     plan_version: int,
     targets: list[PlannerTarget],
+    session_id: str,
     ollama_base_url: str,
     openai_base_url: str,
     openai_api_key: str,
@@ -399,6 +438,7 @@ def _build_plans(
                     plan_version=plan_version,
                     checkin=checkin,
                     workflow_name="weekly_plan_generation",
+                    session_id=session_id,
                     llm_log_path=workspace / ".trainer" / "logs" / "llm_calls.jsonl",
                     openai_client_config=OpenAIClientConfig(
                         api_key=openai_api_key,
@@ -413,6 +453,7 @@ def _build_plans(
                     plan_version=plan_version,
                     checkin=checkin,
                     workflow_name="weekly_plan_generation",
+                    session_id=session_id,
                     llm_log_path=workspace / ".trainer" / "logs" / "llm_calls.jsonl",
                     client_config=OllamaClientConfig(
                         model=target.model,

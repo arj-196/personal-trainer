@@ -233,6 +233,8 @@ def test_plan_writes_comparison_files_for_multiple_models(
     assert all(record["workflow_name"] == "weekly_plan_generation" for record in records)
     assert all(record["step_name"] == "planner" for record in records)
     assert all(record["success"] is True for record in records)
+    assert all(record["session_id"] for record in records)
+    assert len({record["session_id"] for record in records}) == 1
 
 
 def test_plan_succeeds_with_langfuse_env_set_in_pytest(tmp_path, monkeypatch) -> None:
@@ -260,6 +262,28 @@ def test_plan_succeeds_with_langfuse_env_set_in_pytest(tmp_path, monkeypatch) ->
     ]
     assert len(records) == 1
     assert records[0]["success"] is True
+    assert records[0]["session_id"]
+
+
+def test_plan_honors_session_id_override(tmp_path, monkeypatch) -> None:
+    workspaces_root = tmp_path / "workspaces"
+    workspace = workspaces_root / "athlete"
+    monkeypatch.setattr("personal_trainer.cli.WORKSPACES_ROOT", workspaces_root)
+    _install_stub_ollama(monkeypatch, day_count=3)
+    runner = CliRunner()
+
+    assert runner.invoke(main, ["init", "athlete"]).exit_code == 0
+    result = runner.invoke(main, ["plan", "athlete", "--session-id", "conversation-42"])
+
+    assert result.exit_code == 0
+    llm_log_path = workspace / ".trainer" / "logs" / "llm_calls.jsonl"
+    records = [
+        json.loads(line)
+        for line in llm_log_path.read_text(encoding="utf-8").splitlines()
+        if line.strip()
+    ]
+    assert len(records) == 1
+    assert records[0]["session_id"] == "conversation-42"
 
 
 def test_status_runs(tmp_path, monkeypatch) -> None:

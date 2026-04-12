@@ -4,7 +4,7 @@ import json
 
 import pytest
 
-from personal_trainer.llm import LLMRunner, start_workflow
+from personal_trainer.llm import LLMRunner, start_session, start_workflow
 
 
 def test_start_workflow_returns_trace_id() -> None:
@@ -14,12 +14,20 @@ def test_start_workflow_returns_trace_id() -> None:
     assert len(trace_id) > len("weekly-plan-generation-")
 
 
+def test_start_session_returns_session_id() -> None:
+    session_id = start_session("weekly_plan_generation")
+
+    assert session_id.startswith("weekly-plan-generation-session-")
+    assert len(session_id) > len("weekly-plan-generation-session-")
+
+
 def test_runner_success_writes_jsonl_record(tmp_path) -> None:
     log_path = tmp_path / ".trainer" / "logs" / "llm_calls.jsonl"
     runner = LLMRunner(jsonl_path=log_path)
 
     result = runner.run_step(
         trace_id="trace-123",
+        session_id="session-abc",
         workflow_name="weekly_plan_generation",
         step_name="planner",
         model="gpt-oss:20b",
@@ -29,6 +37,7 @@ def test_runner_success_writes_jsonl_record(tmp_path) -> None:
     )
 
     assert result.trace_id == "trace-123"
+    assert result.session_id == "session-abc"
     assert result.model == "gpt-oss:20b"
     assert isinstance(result.output, dict)
     assert log_path.exists()
@@ -41,6 +50,7 @@ def test_runner_success_writes_jsonl_record(tmp_path) -> None:
     assert len(records) == 1
     record = records[0]
     assert record["trace_id"] == "trace-123"
+    assert record["session_id"] == "session-abc"
     assert record["workflow_name"] == "weekly_plan_generation"
     assert record["step_name"] == "planner"
     assert record["model"] == "gpt-oss:20b"
@@ -58,6 +68,7 @@ def test_runner_failure_writes_jsonl_record(tmp_path) -> None:
     with pytest.raises(RuntimeError, match="boom"):
         runner.run_step(
             trace_id="trace-fail",
+            session_id="session-fail",
             workflow_name="weekly_plan_generation",
             step_name="planner",
             model="gpt-5.4-mini",
@@ -73,6 +84,7 @@ def test_runner_failure_writes_jsonl_record(tmp_path) -> None:
     assert len(records) == 1
     record = records[0]
     assert record["trace_id"] == "trace-fail"
+    assert record["session_id"] == "session-fail"
     assert record["success"] is False
     assert "boom" in record["error"]
 
@@ -90,6 +102,7 @@ def test_runner_generates_trace_id_when_missing() -> None:
     )
 
     assert result.trace_id.startswith("weekly-plan-generation-")
+    assert result.session_id.startswith("weekly-plan-generation-session-")
 
 
 def test_runner_without_langfuse_env_still_runs(monkeypatch) -> None:
@@ -100,14 +113,16 @@ def test_runner_without_langfuse_env_still_runs(monkeypatch) -> None:
     runner = LLMRunner(jsonl_path=None)
     result = runner.run_step(
         trace_id="trace-local-only",
+        session_id="session-local-only",
         workflow_name="weekly_plan_generation",
         step_name="planner",
         model="gpt-oss:20b",
         prompt="plan this",
         execute=lambda: {"summary": "ok"},
-    ) 
+    )
 
     assert result.trace_id == "trace-local-only"
+    assert result.session_id == "session-local-only"
 
 
 def test_runner_disables_langfuse_automatically_in_pytest(monkeypatch) -> None:
@@ -121,6 +136,7 @@ def test_runner_disables_langfuse_automatically_in_pytest(monkeypatch) -> None:
 
     result = runner.run_step(
         trace_id="trace-pytest-no-langfuse",
+        session_id="session-pytest-no-langfuse",
         workflow_name="weekly_plan_generation",
         step_name="planner",
         model="gpt-oss:20b",
@@ -129,6 +145,7 @@ def test_runner_disables_langfuse_automatically_in_pytest(monkeypatch) -> None:
     )
 
     assert result.trace_id == "trace-pytest-no-langfuse"
+    assert result.session_id == "session-pytest-no-langfuse"
 
 
 def test_runner_allows_multi_step_with_shared_trace_id(tmp_path) -> None:
@@ -137,6 +154,7 @@ def test_runner_allows_multi_step_with_shared_trace_id(tmp_path) -> None:
 
     first = runner.run_step(
         trace_id="trace-shared",
+        session_id="session-shared",
         workflow_name="weekly_plan_generation",
         step_name="planner",
         model="gpt-oss:20b",
@@ -145,6 +163,7 @@ def test_runner_allows_multi_step_with_shared_trace_id(tmp_path) -> None:
     )
     second = runner.run_step(
         trace_id="trace-shared",
+        session_id="session-shared",
         workflow_name="weekly_plan_generation",
         step_name="critic",
         model="gpt-5.4-mini",
@@ -154,6 +173,8 @@ def test_runner_allows_multi_step_with_shared_trace_id(tmp_path) -> None:
 
     assert first.trace_id == "trace-shared"
     assert second.trace_id == "trace-shared"
+    assert first.session_id == "session-shared"
+    assert second.session_id == "session-shared"
 
     records = [
         json.loads(line)
@@ -163,3 +184,5 @@ def test_runner_allows_multi_step_with_shared_trace_id(tmp_path) -> None:
     assert len(records) == 2
     assert records[0]["trace_id"] == "trace-shared"
     assert records[1]["trace_id"] == "trace-shared"
+    assert records[0]["session_id"] == "session-shared"
+    assert records[1]["session_id"] == "session-shared"

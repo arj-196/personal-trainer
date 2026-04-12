@@ -132,6 +132,7 @@ class TrainerPlanRequest:
     plan_version: int
     checkin: CheckIn | None = None
     trace_id: str | None = None
+    session_id: str | None = None
     workflow_name: str = "weekly_plan_generation"
     llm_log_path: Path | None = None
 
@@ -167,6 +168,7 @@ class OllamaTrainerAgent:
         runner = LLMRunner(jsonl_path=request.llm_log_path)
         result = runner.run_step(
             trace_id=request.trace_id,
+            session_id=request.session_id,
             workflow_name=request.workflow_name,
             step_name="planner",
             model=self.model_name,
@@ -214,6 +216,7 @@ class OpenAITrainerAgent:
         runner = LLMRunner(jsonl_path=request.llm_log_path)
         result = runner.run_step(
             trace_id=request.trace_id,
+            session_id=request.session_id,
             workflow_name=request.workflow_name,
             step_name="planner",
             model=self.model_name,
@@ -254,6 +257,7 @@ def build_plan(
     openai_client_config: OpenAIClientConfig | None = None,
     workflow_name: str = "weekly_plan_generation",
     trace_id: str | None = None,
+    session_id: str | None = None,
     llm_log_path: Path | None = None,
 ) -> WorkoutPlan:
     planner: TrainerAgent
@@ -271,6 +275,7 @@ def build_plan(
         plan_version=plan_version,
         checkin=checkin,
         trace_id=trace_id or start_workflow(workflow_name),
+        session_id=session_id,
         workflow_name=workflow_name,
         llm_log_path=llm_log_path,
     )
