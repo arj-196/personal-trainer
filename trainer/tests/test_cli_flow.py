@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from datetime import date
 
 import pytest
 from click.testing import CliRunner
@@ -136,6 +137,7 @@ def test_init_and_plan_flow(tmp_path, monkeypatch) -> None:
     assert (workspace / "plan.json").exists()
     assert (workspace / "plan_review.json").exists()
     assert (workspace / "coach_notes.md").exists()
+    assert list((workspace / "checkins").glob("*-checkin.md")) == []
 
     assert "Plan written" in result.output
     assert "plan_review.json" in result.output
@@ -149,7 +151,7 @@ def test_init_and_plan_flow(tmp_path, monkeypatch) -> None:
     assert '"restBetweenSetsSeconds": 90' in plan_json
 
 
-def test_refresh_updates_state(tmp_path, monkeypatch) -> None:
+def test_plan_uses_latest_checkin_and_updates_state(tmp_path, monkeypatch) -> None:
     workspaces_root = tmp_path / "workspaces"
     workspace = workspaces_root / "athlete"
     monkeypatch.setattr("personal_trainer.cli.WORKSPACES_ROOT", workspaces_root)
@@ -160,8 +162,8 @@ def test_refresh_updates_state(tmp_path, monkeypatch) -> None:
     assert runner.invoke(main, ["plan", "athlete"]).exit_code == 0
     (workspace / "plan.pdf").write_bytes(b"%PDF-1.4\n")
 
-    checkin = workspace / "checkins" / "2026-03-30-checkin.md"
-    checkin.write_text(
+    older_checkin = workspace / "checkins" / "2026-03-30-checkin.md"
+    older_checkin.write_text(
         """# Weekly Check-In
 
 ## Summary
@@ -184,18 +186,245 @@ def test_refresh_updates_state(tmp_path, monkeypatch) -> None:
 """,
         encoding="utf-8",
     )
+    latest_checkin = workspace / "checkins" / "2026-04-06-checkin.md"
+    latest_checkin.write_text(
+        """# Weekly Check-In
 
-    result = runner.invoke(main, ["refresh", "athlete", checkin.name])
+## Summary
+- Date: 2026-04-06
+- Workouts completed: 2
+- Workouts planned: 3
+- Average difficulty (1-10): 8
+- Energy (1-10): 6
+- Soreness (1-10): 7
+- Body weight kg: 80.2
+
+## Wins
+- Completed all warmups.
+
+## Struggles
+- Missed one session.
+
+## Notes
+- Felt more fatigue this week.
+""",
+        encoding="utf-8",
+    )
+    (workspace / "checkins" / "notes.md").write_text("ignore me", encoding="utf-8")
+    (workspace / "checkins" / "2026-04-07-checkin.txt").write_text(
+        "ignore me too",
+        encoding="utf-8",
+    )
+
+    result = runner.invoke(main, ["plan", "athlete"])
     assert result.exit_code == 0
     state = load_state(workspace / ".trainer" / "state.json")
 
     assert state.plan_version == 2
     assert state.generated_plans == 2
-    assert state.last_check_in == "2026-03-30"
+    assert state.last_check_in == "2026-04-06"
     assert "Plan version: 2" in (workspace / "plan.md").read_text(encoding="utf-8")
     assert not (workspace / "plan.pdf").exists()
     assert '"value": "2"' in (workspace / "plan.json").read_text(encoding="utf-8")
     assert (workspace / "plan_review.json").exists()
+    coach_notes = (workspace / "coach_notes.md").read_text(encoding="utf-8")
+    assert "## Latest Check-In Read" in coach_notes
+    assert "- Date: 2026-04-06" in coach_notes
+    assert sorted(path.name for path in (workspace / "checkins").glob("*-checkin.md")) == [
+        older_checkin.name,
+        latest_checkin.name,
+    ]
+
+
+def test_plan_clears_last_checkin_when_no_checkins_exist(tmp_path, monkeypatch) -> None:
+    workspaces_root = tmp_path / "workspaces"
+    workspace = workspaces_root / "athlete"
+    monkeypatch.setattr("personal_trainer.cli.WORKSPACES_ROOT", workspaces_root)
+    _install_stub_ollama(monkeypatch, day_count=3)
+    runner = CliRunner()
+
+    assert runner.invoke(main, ["init", "athlete"]).exit_code == 0
+    checkin = workspace / "checkins" / "2026-04-05-checkin.md"
+    checkin.write_text(
+        """# Weekly Check-In
+
+## Summary
+- Date: 2026-04-05
+- Workouts completed: 3
+- Workouts planned: 3
+- Average difficulty (1-10): 6
+- Energy (1-10): 7
+- Soreness (1-10): 4
+- Body weight kg: 79.9
+
+## Wins
+- Stayed consistent.
+
+## Struggles
+- None.
+
+## Notes
+- Good week.
+""",
+        encoding="utf-8",
+    )
+
+    first_result = runner.invoke(main, ["plan", "athlete"])
+    assert first_result.exit_code == 0
+    first_state = load_state(workspace / ".trainer" / "state.json")
+    assert first_state.last_check_in == "2026-04-05"
+
+    checkin.unlink()
+    second_result = runner.invoke(main, ["plan", "athlete"])
+    assert second_result.exit_code == 0
+    second_state = load_state(workspace / ".trainer" / "state.json")
+    assert second_state.plan_version == 2
+    assert second_state.generated_plans == 2
+    assert second_state.last_check_in is None
+    coach_notes = (workspace / "coach_notes.md").read_text(encoding="utf-8")
+    assert "## Latest Check-In Read" not in coach_notes
+
+
+def test_plan_fails_when_latest_checkin_is_invalid(tmp_path, monkeypatch) -> None:
+    workspaces_root = tmp_path / "workspaces"
+    workspace = workspaces_root / "athlete"
+    monkeypatch.setattr("personal_trainer.cli.WORKSPACES_ROOT", workspaces_root)
+    _install_stub_ollama(monkeypatch, day_count=3)
+    runner = CliRunner()
+
+    assert runner.invoke(main, ["init", "athlete"]).exit_code == 0
+    valid_older = workspace / "checkins" / "2026-04-01-checkin.md"
+    valid_older.write_text(
+        """# Weekly Check-In
+
+## Summary
+- Date: 2026-04-01
+- Workouts completed: 3
+- Workouts planned: 3
+- Average difficulty (1-10): 6
+- Energy (1-10): 7
+- Soreness (1-10): 4
+- Body weight kg: 80.1
+
+## Wins
+- Consistent.
+
+## Struggles
+- None.
+
+## Notes
+- Good adherence.
+""",
+        encoding="utf-8",
+    )
+    invalid_latest = workspace / "checkins" / "2026-04-10-checkin.md"
+    invalid_latest.write_text(
+        """# Weekly Check-In
+
+## Summary
+- Workouts completed: 2
+- Workouts planned: 3
+- Average difficulty (1-10): 8
+- Energy (1-10): 5
+- Soreness (1-10): 7
+
+## Wins
+- Tried hard.
+
+## Struggles
+- Fatigue.
+
+## Notes
+- Missing date on purpose.
+""",
+        encoding="utf-8",
+    )
+
+    result = runner.invoke(main, ["plan", "athlete"])
+    assert result.exit_code != 0
+    assert "Latest check-in" in result.output
+    assert "invalid" in result.output
+    assert str(invalid_latest) in result.output
+
+    state = load_state(workspace / ".trainer" / "state.json")
+    assert state.plan_version == 0
+    assert state.generated_plans == 0
+    assert state.last_check_in is None
+
+
+def test_checkin_creates_today_file_with_plan_defaults(tmp_path, monkeypatch) -> None:
+    workspaces_root = tmp_path / "workspaces"
+    workspace = workspaces_root / "athlete"
+    monkeypatch.setattr("personal_trainer.cli.WORKSPACES_ROOT", workspaces_root)
+    runner = CliRunner()
+
+    assert runner.invoke(main, ["init", "athlete"]).exit_code == 0
+    (workspace / "plan.json").write_text(
+        json.dumps({"days": [{}, {}, {}]}),
+        encoding="utf-8",
+    )
+
+    result = runner.invoke(main, ["checkin", "athlete"])
+    assert result.exit_code == 0
+
+    today_path = workspace / "checkins" / f"{date.today().isoformat()}-checkin.md"
+    assert today_path.exists()
+    text = today_path.read_text(encoding="utf-8")
+    assert f"- Date: {date.today().isoformat()}" in text
+    assert "- Workouts completed: 3" in text
+    assert "- Workouts planned: 3" in text
+
+
+def test_checkin_creates_explicit_date_file(tmp_path, monkeypatch) -> None:
+    workspaces_root = tmp_path / "workspaces"
+    workspace = workspaces_root / "athlete"
+    monkeypatch.setattr("personal_trainer.cli.WORKSPACES_ROOT", workspaces_root)
+    runner = CliRunner()
+
+    assert runner.invoke(main, ["init", "athlete"]).exit_code == 0
+
+    result = runner.invoke(
+        main,
+        ["checkin", "athlete", "--date", "2026-04-10"],
+    )
+    assert result.exit_code == 0
+
+    path = workspace / "checkins" / "2026-04-10-checkin.md"
+    assert path.exists()
+    text = path.read_text(encoding="utf-8")
+    assert "- Date: 2026-04-10" in text
+
+
+def test_checkin_defaults_to_zero_without_plan_json(tmp_path, monkeypatch) -> None:
+    workspaces_root = tmp_path / "workspaces"
+    workspace = workspaces_root / "athlete"
+    monkeypatch.setattr("personal_trainer.cli.WORKSPACES_ROOT", workspaces_root)
+    runner = CliRunner()
+
+    assert runner.invoke(main, ["init", "athlete"]).exit_code == 0
+
+    result = runner.invoke(main, ["checkin", "athlete", "--date", "2026-04-11"])
+    assert result.exit_code == 0
+
+    path = workspace / "checkins" / "2026-04-11-checkin.md"
+    text = path.read_text(encoding="utf-8")
+    assert "- Workouts completed: 0" in text
+    assert "- Workouts planned: 0" in text
+
+
+def test_checkin_fails_when_file_already_exists(tmp_path, monkeypatch) -> None:
+    workspaces_root = tmp_path / "workspaces"
+    workspace = workspaces_root / "athlete"
+    monkeypatch.setattr("personal_trainer.cli.WORKSPACES_ROOT", workspaces_root)
+    runner = CliRunner()
+
+    assert runner.invoke(main, ["init", "athlete"]).exit_code == 0
+    existing = workspace / "checkins" / "2026-04-12-checkin.md"
+    existing.write_text("# Existing", encoding="utf-8")
+
+    result = runner.invoke(main, ["checkin", "athlete", "--date", "2026-04-12"])
+    assert result.exit_code != 0
+    assert "Check-in already exists" in result.output
 
 
 @pytest.mark.paid_openai

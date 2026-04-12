@@ -116,7 +116,7 @@ poetry run personal-trainer publish-web wk_arj
 
 6. Deploy the frontend.
 
-After every `plan` or `refresh`, run `publish-web` again so Blob stays in sync with the latest workspace files.
+After every `plan`, run `publish-web` again so Blob stays in sync with the latest workspace files.
 
 ## Local Vercel Build
 

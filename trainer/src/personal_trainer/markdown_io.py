@@ -198,15 +198,29 @@ Fill in the sections below, then run `personal-trainer plan <workspace>`.
 """
 
 
-def render_checkin_template(plan: WorkoutPlan) -> str:
+def read_planned_workouts_from_plan_json(path: Path) -> int:
+    if not path.exists():
+        return 0
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return 0
+    days = payload.get("days")
+    if not isinstance(days, list):
+        return 0
+    return len(days)
+
+
+def render_checkin_template(*, checkin_date: date, workouts_planned: int) -> str:
+    planned = max(0, workouts_planned)
     return f"""# Weekly Check-In
 
-Complete this after finishing your current training week, then run `personal-trainer refresh <workspace> <checkin.md>`.
+Complete this after finishing your current training week, then run `personal-trainer plan <workspace>`.
 
 ## Summary
-- Date: {date.today().isoformat()}
-- Workouts completed: {plan.workouts_per_week}
-- Workouts planned: {plan.workouts_per_week}
+- Date: {checkin_date.isoformat()}
+- Workouts completed: {planned}
+- Workouts planned: {planned}
 - Average difficulty (1-10): 6
 - Energy (1-10): 7
 - Soreness (1-10): 4
@@ -382,7 +396,7 @@ def render_coach_notes(
             "## Next Action",
             "- Follow the plan for one week.",
             f"- {plan.next_checkin_prompt}",
-            "- Regenerate the plan with `personal-trainer refresh`.",
+            "- Regenerate the plan with `personal-trainer plan`.",
             "",
         ]
     )

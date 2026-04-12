@@ -4,6 +4,7 @@ import json
 import logging
 import re
 from dataclasses import dataclass
+from datetime import date, datetime
 from pathlib import Path
 from typing import cast
 
@@ -22,6 +23,7 @@ from personal_trainer.markdown_io import (
     ensure_workspace,
     load_checkin,
     load_profile,
+    read_planned_workouts_from_plan_json,
     load_state,
     render_checkin_template,
     render_coach_notes,
@@ -42,6 +44,7 @@ from personal_trainer.workout_planner import (
 
 WORKSPACES_ROOT = Path(__file__).resolve().parents[3] / "workspaces"
 LOGGER = logging.getLogger(__name__)
+CHECKIN_FILENAME_PATTERN = re.compile(r"^(?P<date>\d{4}-\d{2}-\d{2})-checkin\.md$")
 
 
 def _workspace_argument(_: click.Context, __: click.Parameter, value: str) -> Path:
@@ -49,23 +52,7 @@ def _workspace_argument(_: click.Context, __: click.Parameter, value: str) -> Pa
     return (WORKSPACES_ROOT / workspace_name).resolve()
 
 
-def _resolve_checkin_path(workspace: Path, checkin: str) -> Path:
-    raw_path = Path(checkin).expanduser()
-    if raw_path.is_absolute():
-        return raw_path.resolve()
-
-    candidates = [
-        workspace / "checkins" / raw_path.name,
-        workspace / raw_path,
-    ]
-    for candidate in candidates:
-        if candidate.exists():
-            return candidate.resolve()
-    return candidates[0].resolve()
-
-
 WORKSPACE_ARGUMENT = click.argument("workspace", callback=_workspace_argument)
-CHECKIN_ARGUMENT = click.argument("checkin")
 
 
 @dataclass(frozen=True, slots=True)
@@ -214,6 +201,32 @@ def _resolve_session_id(
     return start_session(workflow_name)
 
 
+def _find_latest_checkin(workspace: Path):
+    dated_checkins: list[tuple[date, Path]] = []
+    checkins_dir = workspace / "checkins"
+    if not checkins_dir.exists():
+        return None
+
+    for candidate in checkins_dir.iterdir():
+        if not candidate.is_file():
+            continue
+        match = CHECKIN_FILENAME_PATTERN.fullmatch(candidate.name)
+        if match is None:
+            continue
+        dated_checkins.append((date.fromisoformat(match.group("date")), candidate))
+
+    if not dated_checkins:
+        return None
+
+    _, latest_path = max(dated_checkins, key=lambda item: item[0])
+    try:
+        return load_checkin(latest_path), latest_path
+    except ValueError as error:
+        raise click.ClickException(
+            f"Latest check-in '{latest_path}' is invalid: {error}"
+        ) from error
+
+
 def _resolve_local_env_file() -> Path | None:
     env_filename = ".env.local"
     cwd = Path.cwd().resolve()
@@ -267,7 +280,10 @@ def init_command(workspace: Path) -> None:
     )
 
 
-@main.command("plan", help="Generate the first plan from profile.md.")
+@main.command(
+    "plan",
+    help="Generate a plan from profile.md, optionally using the latest check-in file.",
+)
 @WORKSPACE_ARGUMENT
 @planner_options
 def plan_command(
@@ -290,6 +306,15 @@ def plan_command(
     LOGGER.info("Loading athlete profile from %s", paths.profile)
     profile = load_profile(paths.profile)
     paths.profile_json.write_text(render_profile_json(profile), encoding="utf-8")
+    checkin_lookup = _find_latest_checkin(paths.root)
+    checkin = checkin_lookup[0] if checkin_lookup is not None else None
+    if checkin_lookup is None:
+        LOGGER.info("No check-in files found for workspace '%s'", paths.root.name)
+    else:
+        _, checkin_path = checkin_lookup
+        LOGGER.info(
+            "Using latest check-in file '%s' for plan generation", checkin_path.name
+        )
     state = load_state(paths.state)
     targets = _resolve_planner_targets(
         ollama_models=ollama_model,
@@ -308,6 +333,7 @@ def plan_command(
         workspace=paths.root,
         profile=profile,
         plan_version=state.plan_version + 1,
+        checkin=checkin,
         targets=targets,
         session_id=resolved_session_id,
         ollama_base_url=ollama_base_url,
@@ -316,17 +342,10 @@ def plan_command(
         timeout_seconds=timeout_seconds,
         max_review_iterations=max_review_iterations,
     )
-    checkin_template_path = (
-        paths.checkins_dir
-        / f"{generated_plans[0].result.plan.generated_on.isoformat()}-checkin.md"
-    )
-    if not checkin_template_path.exists():
-        checkin_template_path.write_text(
-            render_checkin_template(generated_plans[0].result.plan), encoding="utf-8"
-        )
 
     state.plan_version = generated_plans[0].result.plan.plan_version
     state.generated_plans += len(generated_plans)
+    state.last_check_in = checkin.check_in_date.isoformat() if checkin is not None else None
     save_state(paths.state, state)
     LOGGER.info("Plan generation finished successfully")
 
@@ -344,96 +363,47 @@ def plan_command(
                 f"{generated.target.provider}/{generated.target.model}. "
                 f"Unresolved reviewers: {', '.join(unresolved) if unresolved else 'unknown'}."
             )
-    click.echo(f"Check-in template written to {checkin_template_path}")
 
 
-@main.command("refresh", help="Update the plan using a check-in Markdown file.")
+@main.command("checkin", help="Create a new weekly check-in Markdown file.")
 @WORKSPACE_ARGUMENT
-@CHECKIN_ARGUMENT
-@planner_options
-def refresh_command(
-    workspace: Path,
-    checkin: str,
-    ollama_model: tuple[str, ...],
-    openai_model: tuple[str, ...],
-    ollama_base_url: str,
-    openai_base_url: str,
-    openai_api_key: str,
-    session_id: str,
-    timeout_seconds: int,
-    max_review_iterations: int,
-) -> None:
+@click.option(
+    "--date",
+    "checkin_date",
+    type=click.DateTime(formats=["%Y-%m-%d"]),
+    default=None,
+    help="Check-in date in YYYY-MM-DD format. Defaults to today.",
+)
+def checkin_command(workspace: Path, checkin_date: datetime | None) -> None:
     _configure_progress_logging()
     paths = ensure_workspace(workspace)
-    LOGGER.info("Preparing workspace '%s' for plan refresh", paths.root.name)
-    checkin_path = _resolve_checkin_path(paths.root, checkin)
-    if not paths.profile.exists():
-        raise click.ClickException(f"Missing profile: {paths.profile}")
-    if not checkin_path.exists():
-        raise click.ClickException(f"Missing check-in: {checkin_path}")
+    resolved_date = checkin_date.date() if checkin_date is not None else date.today()
+    workouts_planned = read_planned_workouts_from_plan_json(paths.plan_json)
+    checkin_path = paths.checkins_dir / f"{resolved_date.isoformat()}-checkin.md"
 
-    LOGGER.info("Loading athlete profile and check-in data")
-    profile = load_profile(paths.profile)
-    paths.profile_json.write_text(render_profile_json(profile), encoding="utf-8")
-    checkin = load_checkin(checkin_path)
-    state = load_state(paths.state)
-    targets = _resolve_planner_targets(
-        ollama_models=ollama_model,
-        openai_models=openai_model,
-        openai_api_key=openai_api_key,
-    )
-    resolved_session_id = _resolve_session_id(
-        session_id=session_id,
-        workflow_name="weekly_plan_generation",
-    )
-    LOGGER.info(
-        "Using Langfuse session id '%s' for this refresh command",
-        resolved_session_id,
-    )
-    generated_plans, outputs = _build_plans(
-        workspace=paths.root,
-        profile=profile,
-        plan_version=state.plan_version + 1,
-        checkin=checkin,
-        targets=targets,
-        session_id=resolved_session_id,
-        ollama_base_url=ollama_base_url,
-        openai_base_url=openai_base_url,
-        openai_api_key=openai_api_key,
-        timeout_seconds=timeout_seconds,
-        max_review_iterations=max_review_iterations,
-    )
+    LOGGER.info("Creating check-in template for workspace '%s'", paths.root.name)
+    if checkin_date is None:
+        LOGGER.info("No --date provided; using today's date %s", resolved_date.isoformat())
+    else:
+        LOGGER.info("Using provided check-in date %s", resolved_date.isoformat())
+    LOGGER.info("Planned workouts default resolved to %s", workouts_planned)
 
-    next_checkin_path = (
-        paths.checkins_dir
-        / f"{generated_plans[0].result.plan.generated_on.isoformat()}-checkin.md"
-    )
-    if not next_checkin_path.exists():
-        next_checkin_path.write_text(
-            render_checkin_template(generated_plans[0].result.plan), encoding="utf-8"
+    if checkin_path.exists():
+        LOGGER.error("Check-in template already exists at %s", checkin_path)
+        raise click.ClickException(
+            f"Check-in already exists: {checkin_path}. "
+            "Edit the existing file or choose another date with --date."
         )
 
-    state.plan_version = generated_plans[0].result.plan.plan_version
-    state.generated_plans += len(generated_plans)
-    state.last_check_in = checkin.check_in_date.isoformat()
-    save_state(paths.state, state)
-    LOGGER.info("Plan refresh finished successfully")
-
-    click.echo(f"Profile data written to {paths.profile_json}")
-    for output in outputs:
-        click.echo(f"Updated plan written to {output.plan_markdown}")
-        click.echo(f"Updated plan data written to {output.plan_json}")
-        click.echo(f"Updated plan review written to {output.plan_review_json}")
-        click.echo(f"Updated coach notes written to {output.coach_notes_markdown}")
-    for generated in generated_plans:
-        if generated.result.reached_max_iterations:
-            unresolved = generated.result.review_report.get("unresolved_personas", [])
-            click.echo(
-                "Warning: review loop hit max iterations for "
-                f"{generated.target.provider}/{generated.target.model}. "
-                f"Unresolved reviewers: {', '.join(unresolved) if unresolved else 'unknown'}."
-            )
-    click.echo(f"Next check-in template written to {next_checkin_path}")
+    checkin_path.write_text(
+        render_checkin_template(
+            checkin_date=resolved_date,
+            workouts_planned=workouts_planned,
+        ),
+        encoding="utf-8",
+    )
+    LOGGER.info("Created check-in template at %s", checkin_path)
+    click.echo(f"Check-in template written to {checkin_path}")
 
 
 def _resolve_planner_targets(
