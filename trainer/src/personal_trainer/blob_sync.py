@@ -111,7 +111,6 @@ def _iter_workspace_files(workspace_root: Path) -> list[Path]:
         "profile.md",
         "profile.json",
         "plan.md",
-        "plan.pdf",
         "plan.json",
         "coach_notes.md",
     ):
@@ -121,7 +120,7 @@ def _iter_workspace_files(workspace_root: Path) -> list[Path]:
 
     files.extend(
         path
-        for pattern in ("plan-*.md", "plan-*.pdf", "plan-*.json", "coach-notes-*.md")
+        for pattern in ("plan-*.md", "plan-*.json", "coach-notes-*.md")
         for path in workspace_root.glob(pattern)
         if path.is_file() and not path.name.startswith(".")
     )

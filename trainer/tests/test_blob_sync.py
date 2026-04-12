@@ -53,7 +53,6 @@ def test_publish_workspace_to_blob_uploads_workspace_files(tmp_path, monkeypatch
     (workspace / "profile.md").write_text("# Profile", encoding="utf-8")
     (workspace / "profile.json").write_text("{}", encoding="utf-8")
     (workspace / "plan.md").write_text("# Plan", encoding="utf-8")
-    (workspace / "plan.pdf").write_bytes(b"%PDF-1.4\n")
     (workspace / "plan.json").write_text("{}", encoding="utf-8")
     (workspace / "coach_notes.md").write_text("# Notes", encoding="utf-8")
     client = FakeBlobClient()
@@ -67,7 +66,7 @@ def test_publish_workspace_to_blob_uploads_workspace_files(tmp_path, monkeypatch
 
     assert result.workspace == "athlete"
     assert result.prefix == "pt-test"
-    assert result.workspace_files_uploaded == 6
+    assert result.workspace_files_uploaded == 5
     assert result.remote_files_deleted == 2
     assert client.deleted == [
         "pt-test/workspaces/athlete/plan.md",
@@ -75,7 +74,6 @@ def test_publish_workspace_to_blob_uploads_workspace_files(tmp_path, monkeypatch
     ]
     uploaded_paths = [remote_path for _, remote_path, *_ in client.uploads]
     assert "pt-test/workspaces/athlete/plan.md" in uploaded_paths
-    assert "pt-test/workspaces/athlete/plan.pdf" in uploaded_paths
     assert "pt-test/workspaces/athlete/plan.json" in uploaded_paths
     assert "pt-test/workspaces/athlete/profile.json" in uploaded_paths
 

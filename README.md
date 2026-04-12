@@ -28,7 +28,7 @@ Generated plans now include explicit workout timing metadata (active durations, 
 The trainer app owns the trainer workflow:
 
 - creates workspaces under `./workspaces/<name>`
-- generates `profile.json`, `plan.json`, `profile.md`, `plan.md`, `plan.pdf`, `coach_notes.md`, and check-in templates through Ollama or OpenAI trainer agents
+- generates `profile.json`, `plan.json`, `profile.md`, `plan.md`, `coach_notes.md`, and check-in templates through Ollama or OpenAI trainer agents
 - can generate multiple plans in one run so you can compare model outputs side by side
 - maintains the bundled exercise catalog used for planner guidance and exercise image mapping
 - publishes a text-only version of the current plan to Apple Notes
@@ -102,7 +102,6 @@ workspaces/albert/
 ├── profile.md
 ├── plan.json
 ├── plan.md
-├── plan.pdf
 ├── coach_notes.md
 └── checkins/
 ```
@@ -111,7 +110,6 @@ workspaces/albert/
 
 - The frontend now owns recipe generation and saved recipe persistence.
 - The trainer app is the source of truth for plan generation.
-- Every generated plan also writes a PDF copy so it is easier to view offline on a phone.
 - `plan` and `refresh` use Ollama by default with `gpt-oss:20b`.
 - You can compare multiple models in one run with repeated `--ollama-model` and `--openai-model` flags.
 - Multi-model runs write separate model-specific plan files directly under `workspaces/<workspace>/`.

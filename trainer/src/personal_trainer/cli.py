@@ -31,7 +31,6 @@ from personal_trainer.markdown_io import (
 from personal_trainer.notes_publisher import NotesPublishError, publish_plan_to_notes
 from personal_trainer.ollama_client import OllamaClientConfig
 from personal_trainer.openai_client import OpenAIClientConfig
-from personal_trainer.pdf_io import write_plan_pdf
 from personal_trainer.workout_planner import WorkoutPlannerError, build_plan
 
 WORKSPACES_ROOT = Path(__file__).resolve().parents[3] / "workspaces"
@@ -71,7 +70,6 @@ class PlannerTarget:
 @dataclass(frozen=True, slots=True)
 class PlannerOutputPaths:
     plan_markdown: Path
-    plan_pdf: Path
     plan_json: Path
     coach_notes_markdown: Path
 
@@ -104,7 +102,6 @@ def _planner_output_paths(
     if not comparison_mode:
         return PlannerOutputPaths(
             plan_markdown=workspace / "plan.md",
-            plan_pdf=workspace / "plan.pdf",
             plan_json=workspace / "plan.json",
             coach_notes_markdown=workspace / "coach_notes.md",
         )
@@ -112,7 +109,6 @@ def _planner_output_paths(
     slug = _sanitize_target_slug(target)
     return PlannerOutputPaths(
         plan_markdown=workspace / f"plan-{slug}.md",
-        plan_pdf=workspace / f"plan-{slug}.pdf",
         plan_json=workspace / f"plan-{slug}.json",
         coach_notes_markdown=workspace / f"coach-notes-{slug}.md",
     )
@@ -250,7 +246,6 @@ def plan_command(
     click.echo(f"Profile data written to {paths.profile_json}")
     for output in outputs:
         click.echo(f"Plan written to {output.plan_markdown}")
-        click.echo(f"Plan PDF written to {output.plan_pdf}")
         click.echo(f"Plan data written to {output.plan_json}")
         click.echo(f"Coach notes written to {output.coach_notes_markdown}")
     click.echo(f"Check-in template written to {checkin_template_path}")
@@ -318,7 +313,6 @@ def refresh_command(
     click.echo(f"Profile data written to {paths.profile_json}")
     for output in outputs:
         click.echo(f"Updated plan written to {output.plan_markdown}")
-        click.echo(f"Updated plan PDF written to {output.plan_pdf}")
         click.echo(f"Updated plan data written to {output.plan_json}")
         click.echo(f"Updated coach notes written to {output.coach_notes_markdown}")
     click.echo(f"Next check-in template written to {next_checkin_path}")
@@ -395,17 +389,15 @@ def _build_plans(
             workspace, target, comparison_mode=comparison_mode
         )
         LOGGER.info(
-            "Writing %s artifacts for model '%s' to %s, %s, %s, and %s",
+            "Writing %s artifacts for model '%s' to %s, %s, and %s",
             target.provider,
             target.model,
             output_paths.plan_markdown,
-            output_paths.plan_pdf,
             output_paths.plan_json,
             output_paths.coach_notes_markdown,
         )
         plan_markdown = render_plan(plan, profile)
         output_paths.plan_markdown.write_text(plan_markdown, encoding="utf-8")
-        write_plan_pdf(plan_markdown, output_paths.plan_pdf)
         output_paths.plan_json.write_text(
             render_plan_json(plan, profile), encoding="utf-8"
         )

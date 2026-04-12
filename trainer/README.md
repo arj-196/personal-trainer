@@ -13,9 +13,8 @@ It generates workout plans with Ollama and OpenAI-backed trainer agents, manages
 
 - create workspaces under `../workspaces/<name>`
 - parse `profile.md` and check-in files
-- generate `profile.json`, `plan.json`, `plan.md`, `plan.pdf`, and `coach_notes.md` from structured LLM output instead of hardcoded split logic
+- generate `profile.json`, `plan.json`, `plan.md`, and `coach_notes.md` from structured LLM output instead of hardcoded split logic
 - generate explicit workout timing metadata (`activeSeconds`, set counts, and rest durations) in `plan.json` for the start-workout timer flow
-- render `plan.pdf` with the same document structure as `plan.md`, including embedded exercise images
 - generate side-by-side comparison plans when you request multiple models
 - publish workspace artifacts to Vercel Blob for the hosted frontend
 - publish a text-only workout note to Apple Notes on macOS
@@ -77,20 +76,17 @@ If you pass one model, the trainer writes:
 - `profile.json`
 - `plan.json`
 - `plan.md`
-- `plan.pdf`
 - `coach_notes.md`
 
-If you pass multiple models, the trainer writes one plan pair per model in the workspace root, for example:
+If you pass multiple models, the trainer writes one plan set per model in the workspace root, for example:
 
 ```text
 ../workspaces/albert/
 ├── profile.json
 ├── plan-ollama-gpt-oss-20b.md
-├── plan-ollama-gpt-oss-20b.pdf
 ├── plan-ollama-gpt-oss-20b.json
 ├── coach-notes-ollama-gpt-oss-20b.md
 ├── plan-openai-gpt-5-4-mini.md
-├── plan-openai-gpt-5-4-mini.pdf
 ├── plan-openai-gpt-5-4-mini.json
 └── coach-notes-openai-gpt-5-4-mini.md
 ```
