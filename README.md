@@ -15,18 +15,11 @@ Generated plans now include explicit workout timing metadata (active durations, 
 
 ```text
 .
-├── jeff_the_cook_prd.md
-├── jeff_the_cook.png
 ├── trainer/
 ├── frontend/
 ├── workspaces/
 └── README.md
 ```
-
-## Product docs
-
-- `jeff_the_cook_prd.md`: product requirements for the Jeff the Cook recipe workspace
-- `jeff_the_cook.png`: UI mockup for the recipe workspace
 
 ## What each app does
 
