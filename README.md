@@ -4,6 +4,7 @@ Personal Trainer is a multi-app repository for generating workout plans, running
 
 The workout planner now uses Ollama and OpenAI-backed trainer agents instead of hardcoded split and exercise rules. The Python app packages the athlete profile, check-in history, and exercise catalog context into a structured LLM request, then writes the resulting week plan to JSON plus Markdown.
 Generated plans now include explicit workout timing metadata (active durations, set counts, and rest durations) so the start-workout experience can run a guided timer workflow.
+Trainer prompts now live in file-based Jinja templates, and each model call is traced with workspace-scoped JSONL logs plus optional Langfuse integration.
 
 ## Apps
 
@@ -114,4 +115,6 @@ workspaces/albert/
 - You can compare multiple models in one run with repeated `--ollama-model` and `--openai-model` flags.
 - Multi-model runs write separate model-specific plan files directly under `workspaces/<workspace>/`.
 - You can override provider settings with `--ollama-base-url`, `--openai-base-url`, `OPENAI_API_KEY`, and the corresponding planner environment variables.
+- Each trainer model call writes a JSONL trace record to `workspaces/<workspace>/.trainer/logs/llm_calls.jsonl`.
+- Langfuse tracing is optional via `LANGFUSE_PUBLIC_KEY`, `LANGFUSE_SECRET_KEY`, and optional `LANGFUSE_HOST`.
 - The frontend reads generated JSON files rather than parsing Markdown as a data source.

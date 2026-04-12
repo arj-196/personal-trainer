@@ -9,6 +9,8 @@ from personal_trainer.workout_planner import (
     TrainerPlanDraft,
     TrainerPlanRequest,
     WorkoutPlannerError,
+    _build_system_prompt,
+    _build_user_prompt,
     build_plan,
 )
 
@@ -228,3 +230,22 @@ def test_build_plan_rejects_non_positive_timing_values() -> None:
 
     with pytest.raises(WorkoutPlannerError, match="positive integer 'active_seconds'"):
         build_plan(profile, plan_version=1, agent=agent)
+
+
+def test_build_user_prompt_renders_template_with_payload_json() -> None:
+    profile = UserProfile(name="Jordan", training_days=3, session_length_minutes=45)
+    request = TrainerPlanRequest(profile=profile, plan_version=5)
+
+    prompt = _build_user_prompt(request)
+
+    assert "Create the athlete's best customized workout plan for the next week." in prompt
+    assert "Planning context JSON:" in prompt
+    assert '"target_plan_version": 5' in prompt
+    assert '"name": "Jordan"' in prompt
+
+
+def test_build_system_prompt_renders_template() -> None:
+    prompt = _build_system_prompt()
+
+    assert "You are an elite personal trainer and strength coach." in prompt
+    assert "Return only JSON that matches the provided schema." in prompt

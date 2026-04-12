@@ -16,6 +16,8 @@ It generates workout plans with Ollama and OpenAI-backed trainer agents, manages
 - generate `profile.json`, `plan.json`, `plan.md`, and `coach_notes.md` from structured LLM output instead of hardcoded split logic
 - generate explicit workout timing metadata (`activeSeconds`, set counts, and rest durations) in `plan.json` for the start-workout timer flow
 - generate side-by-side comparison plans when you request multiple models
+- render planner prompts from Jinja templates under `prompts/`
+- trace each model call with optional Langfuse instrumentation and local JSONL fallback logs
 - publish workspace artifacts to Vercel Blob for the hosted frontend
 - publish a text-only workout note to Apple Notes on macOS
 
@@ -70,6 +72,13 @@ These commands read and write files in:
 - the bundled exercise catalog metadata so the model can prefer known exercise names
 
 Each model must return structured JSON, which the app validates before writing both JSON data files and Markdown views.
+Each model call also writes a trace record to:
+
+```text
+../workspaces/<workspace>/.trainer/logs/llm_calls.jsonl
+```
+
+Each JSONL record includes timestamp, trace id, workflow, step, model, prompt, response, metadata, duration, success, and error when relevant.
 
 If you pass one model, the trainer writes:
 
@@ -110,6 +119,9 @@ Matching environment variables are also supported:
 - `TRAINER_OLLAMA_TIMEOUT_SECONDS`
 - `OPENAI_BASE_URL`
 - `OPENAI_API_KEY`
+- `LANGFUSE_PUBLIC_KEY` (optional)
+- `LANGFUSE_SECRET_KEY` (optional)
+- `LANGFUSE_HOST` (optional, defaults to Langfuse cloud host)
 
 ### Recommended local models
 

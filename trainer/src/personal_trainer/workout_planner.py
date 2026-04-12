@@ -4,9 +4,11 @@ import json
 import logging
 from dataclasses import asdict, dataclass
 from datetime import date
+from pathlib import Path
 from typing import Any, Protocol
 
 from personal_trainer.exercise_library import all_references
+from personal_trainer.llm import LLMRunner, start_workflow
 from personal_trainer.models import (
     CheckIn,
     Exercise,
@@ -24,8 +26,12 @@ from personal_trainer.openai_client import (
     OpenAIClientConfig,
     OpenAIError,
 )
+from personal_trainer.prompting import PromptManager, PromptManagerError
 
 LOGGER = logging.getLogger(__name__)
+PROMPT_MANAGER = PromptManager()
+WEEKLY_PLAN_TEMPLATE = "trainer/weekly_plan.jinja"
+SYSTEM_PROMPT_TEMPLATE = "trainer/system_prompt.jinja"
 
 PLAN_SCHEMA: dict[str, Any] = {
     "type": "object",
@@ -125,6 +131,9 @@ class TrainerPlanRequest:
     profile: UserProfile
     plan_version: int
     checkin: CheckIn | None = None
+    trace_id: str | None = None
+    workflow_name: str = "weekly_plan_generation"
+    llm_log_path: Path | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -142,14 +151,6 @@ class TrainerAgent(Protocol):
 
 
 class OllamaTrainerAgent:
-    SYSTEM_PROMPT = """You are an elite personal trainer and strength coach.
-
-Build the best possible training plan for the next week from the athlete profile and optional weekly check-in.
-Act like a real coach: adapt to goals, recovery, equipment, experience, limitations, and preferences.
-Do not mention being an AI model. Do not ask follow-up questions. Make reasonable assumptions and keep the plan practical.
-Return only JSON that matches the provided schema.
-"""
-
     def __init__(self, client: OllamaChatClient) -> None:
         self._client = client
         self.model_name = client.config.model
@@ -161,11 +162,31 @@ Return only JSON that matches the provided schema.
             request.profile.training_days,
             request.profile.session_length_minutes,
         )
-        payload = self._client.chat_json(
-            system_prompt=self.SYSTEM_PROMPT,
-            user_prompt=_build_user_prompt(request),
-            schema=PLAN_SCHEMA,
+        system_prompt = _build_system_prompt()
+        user_prompt = _build_user_prompt(request)
+        runner = LLMRunner(jsonl_path=request.llm_log_path)
+        result = runner.run_step(
+            trace_id=request.trace_id,
+            workflow_name=request.workflow_name,
+            step_name="planner",
+            model=self.model_name,
+            prompt=user_prompt,
+            metadata={
+                "provider": "ollama",
+                "target_plan_version": request.plan_version,
+                "athlete_name": request.profile.name,
+            },
+            execute=lambda: self._client.chat_json(
+                system_prompt=system_prompt,
+                user_prompt=user_prompt,
+                schema=PLAN_SCHEMA,
+            ),
         )
+        payload = result.output
+        if not isinstance(payload, dict):
+            raise WorkoutPlannerError(
+                "Structured planner output must be a JSON object"
+            )
         LOGGER.info(
             "Received structured planner response from model '%s'", self.model_name
         )
@@ -177,8 +198,6 @@ Return only JSON that matches the provided schema.
 
 
 class OpenAITrainerAgent:
-    SYSTEM_PROMPT = OllamaTrainerAgent.SYSTEM_PROMPT
-
     def __init__(self, client: OpenAIChatClient) -> None:
         self._client = client
         self.model_name = client.config.model
@@ -190,11 +209,31 @@ class OpenAITrainerAgent:
             request.profile.training_days,
             request.profile.session_length_minutes,
         )
-        payload = self._client.chat_json(
-            system_prompt=self.SYSTEM_PROMPT,
-            user_prompt=_build_user_prompt(request),
-            schema=PLAN_SCHEMA,
+        system_prompt = _build_system_prompt()
+        user_prompt = _build_user_prompt(request)
+        runner = LLMRunner(jsonl_path=request.llm_log_path)
+        result = runner.run_step(
+            trace_id=request.trace_id,
+            workflow_name=request.workflow_name,
+            step_name="planner",
+            model=self.model_name,
+            prompt=user_prompt,
+            metadata={
+                "provider": "openai",
+                "target_plan_version": request.plan_version,
+                "athlete_name": request.profile.name,
+            },
+            execute=lambda: self._client.chat_json(
+                system_prompt=system_prompt,
+                user_prompt=user_prompt,
+                schema=PLAN_SCHEMA,
+            ),
         )
+        payload = result.output
+        if not isinstance(payload, dict):
+            raise WorkoutPlannerError(
+                "Structured planner output must be a JSON object"
+            )
         LOGGER.info(
             "Received structured planner response from model '%s'", self.model_name
         )
@@ -213,6 +252,9 @@ def build_plan(
     agent: TrainerAgent | None = None,
     client_config: OllamaClientConfig | None = None,
     openai_client_config: OpenAIClientConfig | None = None,
+    workflow_name: str = "weekly_plan_generation",
+    trace_id: str | None = None,
+    llm_log_path: Path | None = None,
 ) -> WorkoutPlan:
     planner: TrainerAgent
     if agent is not None:
@@ -228,10 +270,15 @@ def build_plan(
         profile=profile,
         plan_version=plan_version,
         checkin=checkin,
+        trace_id=trace_id or start_workflow(workflow_name),
+        workflow_name=workflow_name,
+        llm_log_path=llm_log_path,
     )
 
     try:
         draft = planner.generate_weekly_plan(request)
+    except WorkoutPlannerError:
+        raise
     except (OllamaError, OpenAIError) as error:
         raise WorkoutPlannerError(
             f"Unable to generate a plan with model '{planner.model_name}': {error}"
@@ -265,27 +312,25 @@ def _build_user_prompt(request: TrainerPlanRequest) -> str:
         "latest_checkin": asdict(request.checkin) if request.checkin else None,
         "exercise_library": references,
     }
-    return f"""Create the athlete's best customized workout plan for the next week.
+    payload_json = json.dumps(payload, indent=2, default=str)
+    try:
+        return PROMPT_MANAGER.render(
+            WEEKLY_PLAN_TEMPLATE,
+            payload_json=payload_json,
+        )
+    except PromptManagerError as error:
+        raise WorkoutPlannerError(
+            f"Unable to render workout planner prompt: {error}"
+        ) from error
 
-Use the profile and latest check-in to choose the split, exercise selection, volume, intensity, and recovery emphasis. There are no hardcoded split rules outside your judgment.
 
-Important requirements:
-- Keep `day_label` in the form `Day 1`, `Day 2`, and so on.
-- Prefer exercise names from the provided exercise catalog when they fit, because the app can map those names to known exercise images.
-- You may use an exercise not in the catalog when it is clearly better for the athlete.
-- Match the athlete's available training days and session length unless the recovery picture strongly justifies fewer sessions.
-- Keep `summary`, `progression_note`, `warmup`, `finisher`, `recovery`, and `next_checkin_prompt` concise and practical.
-- Each exercise needs a compact `prescription` string, for example `4 sets x 6-8 reps @ RPE 7`.
-- Add timing values as integer seconds.
-- For each day include `warmup_active_seconds`, `finisher_active_seconds`, and `recovery_active_seconds`.
-- For each exercise include: `sets`, `active_seconds` (per-set work duration), `rest_between_sets_seconds`, and `rest_between_exercises_seconds`.
-- Keep timing realistic for the athlete's target session length.
-- `coach_notes_focus` should contain the main coaching priorities for the week.
-- `coach_notes_cautions` should call out pain, recovery, or execution risks only when relevant.
-
-Planning context JSON:
-{json.dumps(payload, indent=2, default=str)}
-"""
+def _build_system_prompt() -> str:
+    try:
+        return PROMPT_MANAGER.render(SYSTEM_PROMPT_TEMPLATE)
+    except PromptManagerError as error:
+        raise WorkoutPlannerError(
+            f"Unable to render workout planner system prompt: {error}"
+        ) from error
 
 
 def _normalize_plan(

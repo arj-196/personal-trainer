@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+
 from click.testing import CliRunner
 
 from personal_trainer.blob_sync import BlobPublishResult
@@ -219,6 +221,18 @@ def test_plan_writes_comparison_files_for_multiple_models(
     state = load_state(workspace / ".trainer" / "state.json")
     assert state.plan_version == 1
     assert state.generated_plans == 2
+
+    llm_log_path = workspace / ".trainer" / "logs" / "llm_calls.jsonl"
+    assert llm_log_path.exists()
+    records = [
+        json.loads(line)
+        for line in llm_log_path.read_text(encoding="utf-8").splitlines()
+        if line.strip()
+    ]
+    assert len(records) == 2
+    assert all(record["workflow_name"] == "weekly_plan_generation" for record in records)
+    assert all(record["step_name"] == "planner" for record in records)
+    assert all(record["success"] is True for record in records)
 
 
 def test_status_runs(tmp_path, monkeypatch) -> None:

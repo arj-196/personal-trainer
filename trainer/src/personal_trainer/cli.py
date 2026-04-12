@@ -364,6 +364,8 @@ def _build_plans(
                     profile,
                     plan_version=plan_version,
                     checkin=checkin,
+                    workflow_name="weekly_plan_generation",
+                    llm_log_path=workspace / ".trainer" / "logs" / "llm_calls.jsonl",
                     openai_client_config=OpenAIClientConfig(
                         api_key=openai_api_key,
                         model=target.model,
@@ -376,6 +378,8 @@ def _build_plans(
                     profile,
                     plan_version=plan_version,
                     checkin=checkin,
+                    workflow_name="weekly_plan_generation",
+                    llm_log_path=workspace / ".trainer" / "logs" / "llm_calls.jsonl",
                     client_config=OllamaClientConfig(
                         model=target.model,
                         base_url=ollama_base_url,
@@ -396,6 +400,10 @@ def _build_plans(
             output_paths.plan_json,
             output_paths.coach_notes_markdown,
         )
+        legacy_pdf = output_paths.plan_markdown.with_suffix(".pdf")
+        if legacy_pdf.exists():
+            LOGGER.info("Removing stale PDF artifact at %s", legacy_pdf)
+            legacy_pdf.unlink()
         plan_markdown = render_plan(plan, profile)
         output_paths.plan_markdown.write_text(plan_markdown, encoding="utf-8")
         output_paths.plan_json.write_text(
