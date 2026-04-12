@@ -2,7 +2,7 @@
 
 Personal Trainer is a multi-app repository for generating workout plans, running the Jeff the Cook recipe workspace, and publishing a gym-friendly view of the plan.
 
-The workout planner now uses Ollama and OpenAI-backed trainer agents instead of hardcoded split and exercise rules. The Python app packages the athlete profile, check-in history, and exercise catalog context into a structured LLM request, then writes the resulting week plan to JSON plus Markdown.
+The workout planner now uses Ollama and OpenAI-backed trainer agents instead of hardcoded split and exercise rules. The Python app packages the athlete profile, check-in history, and a compact exercise catalog names context into a structured LLM request, then runs a planner-reviewer loop where Arnold Schwarzenegger and Doctor Mike review each draft until approval or max iterations, then writes the resulting week plan to JSON plus Markdown.
 Generated plans now include explicit workout timing metadata (active durations, set counts, and rest durations) so the start-workout experience can run a guided timer workflow.
 Trainer prompts now live in file-based Jinja templates, and each model call is traced with workspace-scoped JSONL logs plus optional Langfuse integration.
 
@@ -29,7 +29,8 @@ Trainer prompts now live in file-based Jinja templates, and each model call is t
 The trainer app owns the trainer workflow:
 
 - creates workspaces under `./workspaces/<name>`
-- generates `profile.json`, `plan.json`, `profile.md`, `plan.md`, `coach_notes.md`, and check-in templates through Ollama or OpenAI trainer agents
+- generates `profile.json`, `plan.json`, `plan_review.json`, `profile.md`, `plan.md`, and `coach_notes.md` through Ollama or OpenAI trainer agents
+- creates check-in templates with a dedicated command: `personal-trainer checkin <workspace>`
 - can generate multiple plans in one run so you can compare model outputs side by side
 - maintains the bundled exercise catalog used for planner guidance and exercise image mapping
 - publishes a text-only version of the current plan to Apple Notes
@@ -82,10 +83,11 @@ Open `http://localhost:3000`.
 
 1. Create or update a workspace from the trainer CLI.
 2. Make sure Ollama is running locally for Ollama targets, or set `OPENAI_API_KEY` for OpenAI targets.
-3. Generate or refresh the workout plan.
-4. If you host the frontend on Vercel, run `poetry run personal-trainer publish-web <workspace>`.
-5. Open the frontend to view the current workout or use Jeff the Cook.
-6. Optionally publish the current plan to Apple Notes from the trainer app.
+3. Generate the workout plan with `poetry run personal-trainer plan <workspace>`.
+4. Create check-ins with `poetry run personal-trainer checkin <workspace>`, fill them manually, then run `plan` again.
+5. If you host the frontend on Vercel, run `poetry run personal-trainer publish-web <workspace>`.
+6. Open the frontend to view the current workout or use Jeff the Cook.
+7. Optionally publish the current plan to Apple Notes from the trainer app.
 
 ## Workspace model
 
@@ -111,11 +113,15 @@ workspaces/albert/
 
 - The frontend now owns recipe generation and saved recipe persistence.
 - The trainer app is the source of truth for plan generation.
-- `plan` and `refresh` use Ollama by default with `gpt-oss:20b`.
+- `plan` uses Ollama by default with `gpt-oss:20b`.
+- `plan` automatically uses the latest `checkins/YYYY-MM-DD-checkin.md` file when present.
+- `checkin` is the only command that creates check-in templates.
 - You can compare multiple models in one run with repeated `--ollama-model` and `--openai-model` flags.
 - Multi-model runs write separate model-specific plan files directly under `workspaces/<workspace>/`.
 - You can override provider settings with `--ollama-base-url`, `--openai-base-url`, `OPENAI_API_KEY`, and the corresponding planner environment variables.
+- You can control review loop depth with `--max-review-iterations` or `TRAINER_PLAN_REVIEW_MAX_ITERATIONS` (default `5`).
 - Each trainer model call writes a JSONL trace record to `workspaces/<workspace>/.trainer/logs/llm_calls.jsonl`.
+- Review loop runs add multiple LLM trace records per generated plan (`planner_initial`, persona reviews, and optional planner revisions).
 - Langfuse tracing is optional via `LANGFUSE_PUBLIC_KEY`, `LANGFUSE_SECRET_KEY`, and optional `LANGFUSE_HOST`.
 - Langfuse tracing is automatically disabled during `pytest` runs, while local JSONL trace logging remains enabled where configured.
 - The frontend reads generated JSON files rather than parsing Markdown as a data source.

@@ -1,0 +1,15 @@
+Revise the current weekly workout plan using the authority reviewer feedback.
+
+Your task is to update the plan so it better aligns with the athlete context while preserving practical execution.
+
+Important requirements:
+- Return only JSON that matches the provided weekly plan schema.
+- Address all blocking issues from reviewer feedback.
+- Apply suggested changes when they improve quality and remain feasible.
+- Keep the plan realistic for the athlete's training days and session duration.
+- Prefer exercise names from the provided exercise catalog when they fit, because the app maps those names to known exercise images.
+- Keep `summary`, `progression_note`, `warmup`, `finisher`, `recovery`, and `next_checkin_prompt` concise.
+- Maintain `day_label` format as `Day 1`, `Day 2`, and so on.
+
+Revision context JSON:
+{{ payload_json }}

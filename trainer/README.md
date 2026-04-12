@@ -13,7 +13,8 @@ It generates workout plans with Ollama and OpenAI-backed trainer agents, manages
 
 - create workspaces under `../workspaces/<name>`
 - parse `profile.md` and check-in files
-- generate `profile.json`, `plan.json`, `plan.md`, and `coach_notes.md` from structured LLM output instead of hardcoded split logic
+- generate `profile.json`, `plan.json`, `plan_review.json`, `plan.md`, and `coach_notes.md` from structured LLM output instead of hardcoded split logic
+- create check-in templates on demand with `personal-trainer checkin <workspace>`
 - generate explicit workout timing metadata (`activeSeconds`, set counts, and rest durations) in `plan.json` for the start-workout timer flow
 - generate side-by-side comparison plans when you request multiple models
 - render planner prompts from Jinja templates under `prompts/`
@@ -37,10 +38,11 @@ Workspaces are always resolved under the repo-level `./workspaces` directory.
 
 ```bash
 poetry run personal-trainer init albert
-poetry run personal-trainer plan albert
+poetry run personal-trainer plan albert --openai-model gpt-5.4-mini
 poetry run personal-trainer plan albert --ollama-model gpt-oss:20b --ollama-model qwen3:30b
 poetry run personal-trainer plan albert --ollama-model qwen3:30b --openai-model gpt-5.4-mini
-poetry run personal-trainer refresh albert 2026-03-30-checkin.md
+poetry run personal-trainer checkin albert
+poetry run personal-trainer checkin albert --date 2026-04-12
 poetry run personal-trainer status albert
 poetry run personal-trainer publish-web albert
 poetry run personal-trainer publish-notes albert
@@ -58,33 +60,45 @@ These commands read and write files in:
 2. Fill out `profile.md`.
 3. Start Ollama locally and make sure the chosen model is available, or export `OPENAI_API_KEY` for OpenAI models.
 4. Generate the first plan.
-5. Add a weekly check-in file in `checkins/`.
-6. Refresh the plan.
+5. Create a weekly check-in file with `personal-trainer checkin <workspace>` and fill it in.
+6. Run `plan` again to generate the next plan from the latest check-in file.
 7. Optionally publish the workspace to Vercel Blob for the hosted frontend.
 8. Optionally publish the plan to Apple Notes.
 
 ## Planner
 
-`plan` and `refresh` call one or more planner models and ask each one to act like a professional trainer. The app sends:
+`plan` calls one or more planner models and runs a conversational validation loop per model target:
+
+1. planner drafts a structured plan
+2. Arnold Schwarzenegger reviews the draft
+3. Doctor Mike reviews the draft
+4. planner revises the draft if either reviewer rejects
+5. loop repeats until both approve or max iterations is reached
+
+`plan` does not create check-in files. Use `checkin` to create check-in templates.
+When check-in files are present under `checkins/`, `plan` picks the latest file by `YYYY-MM-DD-checkin.md` filename.
+
+The app sends:
 
 - the parsed athlete profile
 - the latest check-in when present
-- the bundled exercise catalog metadata so the model can prefer known exercise names
+- a compact bundled exercise catalog name list so the model can prefer known exercise names
 
-Each model must return structured JSON, which the app validates before writing both JSON data files and Markdown views.
-Each model call also writes a trace record to:
+Planner and reviewer steps must return structured JSON, which the app validates before writing both JSON data files and Markdown views.
+Each step call also writes a trace record to:
 
 ```text
 ../workspaces/<workspace>/.trainer/logs/llm_calls.jsonl
 ```
 
 Each JSONL record includes timestamp, trace id, session id, workflow, step, model, prompt, response, metadata, duration, success, and error when relevant.
-For `plan` and `refresh`, one session id is used per CLI invocation and shared across all model calls in that run (including multi-model comparison mode).
+For `plan`, one session id is used per CLI invocation and shared across all model calls in that run (including multi-model comparison mode).
 
 If you pass one model, the trainer writes:
 
 - `profile.json`
 - `plan.json`
+- `plan_review.json`
 - `plan.md`
 - `coach_notes.md`
 
@@ -95,15 +109,17 @@ If you pass multiple models, the trainer writes one plan set per model in the wo
 ├── profile.json
 ├── plan-ollama-gpt-oss-20b.md
 ├── plan-ollama-gpt-oss-20b.json
+├── plan_review-ollama-gpt-oss-20b.json
 ├── coach-notes-ollama-gpt-oss-20b.md
 ├── plan-openai-gpt-5-4-mini.md
 ├── plan-openai-gpt-5-4-mini.json
+├── plan_review-openai-gpt-5-4-mini.json
 └── coach-notes-openai-gpt-5-4-mini.md
 ```
 
 ### Planner options
 
-Both `plan` and `refresh` accept:
+`plan` accepts:
 
 - repeatable `--ollama-model`
 - repeatable `--openai-model`
@@ -112,6 +128,16 @@ Both `plan` and `refresh` accept:
 - `--openai-api-key` or `OPENAI_API_KEY` for OpenAI requests
 - `--session-id` to pin a Langfuse session id across all model calls in a single command
 - `--timeout-seconds` with default `180`
+- `--max-review-iterations` with default `5`
+
+### Check-in options
+
+`checkin` accepts:
+
+- optional `--date YYYY-MM-DD` (defaults to today)
+- creates `checkins/YYYY-MM-DD-checkin.md`
+- fails if that file already exists
+- pre-fills planned/completed workouts from `plan.json` day count when available, otherwise `0`
 
 Matching environment variables are also supported:
 
@@ -119,6 +145,7 @@ Matching environment variables are also supported:
 - `TRAINER_OPENAI_MODELS`
 - `TRAINER_OLLAMA_BASE_URL`
 - `TRAINER_OLLAMA_TIMEOUT_SECONDS`
+- `TRAINER_PLAN_REVIEW_MAX_ITERATIONS`
 - `OPENAI_BASE_URL`
 - `OPENAI_API_KEY`
 - `LANGFUSE_PUBLIC_KEY` (optional)
@@ -204,6 +231,14 @@ Notes:
 ```bash
 cd trainer
 poetry run pytest -q
+```
+
+`paid_openai` tests are skipped by default so routine runs stay on local/free paths.
+To include OpenAI-path tests explicitly:
+
+```bash
+cd trainer
+poetry run pytest -q --run-paid
 ```
 
 ## Blob publish
