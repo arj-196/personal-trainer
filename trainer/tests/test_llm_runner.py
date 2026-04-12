@@ -110,6 +110,27 @@ def test_runner_without_langfuse_env_still_runs(monkeypatch) -> None:
     assert result.trace_id == "trace-local-only"
 
 
+def test_runner_disables_langfuse_automatically_in_pytest(monkeypatch) -> None:
+    monkeypatch.setenv("PYTEST_CURRENT_TEST", "trainer/tests/test_llm_runner.py::test")
+    monkeypatch.setenv("LANGFUSE_PUBLIC_KEY", "public-test-key")
+    monkeypatch.setenv("LANGFUSE_SECRET_KEY", "secret-test-key")
+    monkeypatch.setenv("LANGFUSE_HOST", "https://cloud.langfuse.com")
+
+    runner = LLMRunner(jsonl_path=None)
+    assert runner._langfuse is None
+
+    result = runner.run_step(
+        trace_id="trace-pytest-no-langfuse",
+        workflow_name="weekly_plan_generation",
+        step_name="planner",
+        model="gpt-oss:20b",
+        prompt="plan this",
+        execute=lambda: {"summary": "ok"},
+    )
+
+    assert result.trace_id == "trace-pytest-no-langfuse"
+
+
 def test_runner_allows_multi_step_with_shared_trace_id(tmp_path) -> None:
     log_path = tmp_path / ".trainer" / "logs" / "llm_calls.jsonl"
     runner = LLMRunner(jsonl_path=log_path)

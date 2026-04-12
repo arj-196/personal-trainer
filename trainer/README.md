@@ -123,6 +123,8 @@ Matching environment variables are also supported:
 - `LANGFUSE_SECRET_KEY` (optional)
 - `LANGFUSE_HOST` (optional, defaults to Langfuse cloud host)
 
+Langfuse tracing is automatically disabled during `pytest` runs. Local JSONL trace logging still works when `llm_log_path` is configured.
+
 ### Recommended local models
 
 - `gpt-oss:20b`: default choice for strong local reasoning with moderate hardware requirements

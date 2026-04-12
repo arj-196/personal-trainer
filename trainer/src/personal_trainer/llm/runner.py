@@ -237,6 +237,10 @@ def _stringify_output(output: Any) -> str:
 
 
 def _build_langfuse_client() -> Any | None:
+    if os.getenv("PYTEST_CURRENT_TEST", "").strip():
+        LOGGER.info("Langfuse tracing disabled for pytest runtime")
+        return None
+
     public_key = os.getenv("LANGFUSE_PUBLIC_KEY", "").strip()
     secret_key = os.getenv("LANGFUSE_SECRET_KEY", "").strip()
     if not public_key or not secret_key:

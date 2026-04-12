@@ -235,6 +235,33 @@ def test_plan_writes_comparison_files_for_multiple_models(
     assert all(record["success"] is True for record in records)
 
 
+def test_plan_succeeds_with_langfuse_env_set_in_pytest(tmp_path, monkeypatch) -> None:
+    workspaces_root = tmp_path / "workspaces"
+    workspace = workspaces_root / "athlete"
+    monkeypatch.setattr("personal_trainer.cli.WORKSPACES_ROOT", workspaces_root)
+    monkeypatch.setenv("PYTEST_CURRENT_TEST", "trainer/tests/test_cli_flow.py::test")
+    monkeypatch.setenv("LANGFUSE_PUBLIC_KEY", "public-test-key")
+    monkeypatch.setenv("LANGFUSE_SECRET_KEY", "secret-test-key")
+    monkeypatch.setenv("LANGFUSE_HOST", "https://cloud.langfuse.com")
+    _install_stub_ollama(monkeypatch, day_count=3)
+    runner = CliRunner()
+
+    assert runner.invoke(main, ["init", "athlete"]).exit_code == 0
+    result = runner.invoke(main, ["plan", "athlete"])
+
+    assert result.exit_code == 0
+    assert (workspace / "plan.md").exists()
+    llm_log_path = workspace / ".trainer" / "logs" / "llm_calls.jsonl"
+    assert llm_log_path.exists()
+    records = [
+        json.loads(line)
+        for line in llm_log_path.read_text(encoding="utf-8").splitlines()
+        if line.strip()
+    ]
+    assert len(records) == 1
+    assert records[0]["success"] is True
+
+
 def test_status_runs(tmp_path, monkeypatch) -> None:
     workspaces_root = tmp_path / "workspaces"
     workspace = workspaces_root / "athlete"

@@ -117,4 +117,5 @@ workspaces/albert/
 - You can override provider settings with `--ollama-base-url`, `--openai-base-url`, `OPENAI_API_KEY`, and the corresponding planner environment variables.
 - Each trainer model call writes a JSONL trace record to `workspaces/<workspace>/.trainer/logs/llm_calls.jsonl`.
 - Langfuse tracing is optional via `LANGFUSE_PUBLIC_KEY`, `LANGFUSE_SECRET_KEY`, and optional `LANGFUSE_HOST`.
+- Langfuse tracing is automatically disabled during `pytest` runs, while local JSONL trace logging remains enabled where configured.
 - The frontend reads generated JSON files rather than parsing Markdown as a data source.
