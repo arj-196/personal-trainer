@@ -9,7 +9,9 @@ Trainer prompts now live in file-based Jinja templates, and each model call is t
 ## Apps
 
 - `trainer/`: Python + Poetry trainer engine and CLI
-- `frontend/`: Next.js workout and recipe UI
+- `app_web/`: Next.js workout and recipe UI plus mobile read API
+- `app_mobile/`: Expo React Native workout app
+- `packages/shared/`: shared TypeScript domain logic for web and mobile
 - `workspaces/`: generated user workspaces and plan files
 
 ## Repo layout
@@ -17,7 +19,9 @@ Trainer prompts now live in file-based Jinja templates, and each model call is t
 ```text
 .
 ├── trainer/
-├── frontend/
+├── app_web/
+├── app_mobile/
+├── packages/
 ├── workspaces/
 └── README.md
 ```
@@ -37,9 +41,9 @@ The trainer app owns the trainer workflow:
 
 See [trainer/README.md](/Users/arjun/Personal/apps/personal_trainer/trainer/README.md).
 
-### Frontend
+### Web app
 
-The frontend reads generated workspace JSON and provides the user-facing app:
+The web app reads generated workspace JSON and provides the browser-facing app:
 
 - Tailwind CSS utility-first styling on top of Next.js + React
 - homepage hub with workout summary and a dedicated Recipes entry point
@@ -47,9 +51,21 @@ The frontend reads generated workspace JSON and provides the user-facing app:
 - single-day workout view with per-device checklist persistence
 - fixed start-workout timer panel with set-by-set active/rest pacing
 - Jeff the Cook recipe workspace with voice-first draft updates, explicit generation, and saved recipe snapshots
+- read-only mobile API routes under `/api/mobile/...` for the Expo app
 
 
-See [frontend/README.md](/Users/arjun/Personal/apps/personal_trainer/frontend/README.md).
+See [app_web/README.md](/Users/arjun/Personal/apps/personal_trainer/app_web/README.md).
+
+### Mobile app
+
+The mobile app is an Expo React Native app focused on workout execution:
+
+- loads workspace, profile, and plan data from the web app mobile API
+- shows a native workspace hub and workout overview
+- runs the same shared timer state machine as the web start-workout flow
+- persists completion progress locally on the device
+
+See [app_mobile/README.md](/Users/arjun/Personal/apps/personal_trainer/app_mobile/README.md).
 
 ## Quick start
 
@@ -68,16 +84,28 @@ poetry run personal-trainer plan albert --ollama-model gpt-oss:20b --openai-mode
 
 This creates files under `./workspaces/albert/`.
 
-### 2. Run the frontend
+### 2. Install JavaScript workspaces
 
 ```bash
-cd frontend
 npm install
 npm test
-npm run dev
+```
+
+### 3. Run the web app
+
+```bash
+npm run dev:web
 ```
 
 Open `http://localhost:3000`.
+
+### 4. Run the mobile app
+
+```bash
+EXPO_PUBLIC_TRAINER_API_BASE_URL=http://localhost:3000 npm run dev:mobile
+```
+
+Set `EXPO_PUBLIC_TRAINER_API_TOKEN` too if the web app has `TRAINER_MOBILE_API_TOKEN` configured.
 
 ## Typical workflow
 
@@ -85,9 +113,10 @@ Open `http://localhost:3000`.
 2. Make sure Ollama is running locally for Ollama targets, or set `OPENAI_API_KEY` for OpenAI targets.
 3. Generate the workout plan with `poetry run personal-trainer plan <workspace>`.
 4. Create check-ins with `poetry run personal-trainer checkin <workspace>`, fill them manually, then run `plan` again.
-5. If you host the frontend on Vercel, run `poetry run personal-trainer publish-web <workspace>`.
-6. Open the frontend to view the current workout or use Jeff the Cook.
-7. Optionally publish the current plan to Apple Notes from the trainer app.
+5. If you host the web app on Vercel, run `poetry run personal-trainer publish-web <workspace>`.
+6. Open the web app to view the current workout or use Jeff the Cook.
+7. Open the mobile app to run a native workout session from the same published plan.
+8. Optionally publish the current plan to Apple Notes from the trainer app.
 
 ## Workspace model
 
@@ -111,7 +140,7 @@ workspaces/albert/
 
 ## Notes
 
-- The frontend now owns recipe generation and saved recipe persistence.
+- The web app now owns recipe generation and saved recipe persistence.
 - The trainer app is the source of truth for plan generation.
 - `plan` uses Ollama by default with `gpt-oss:20b`.
 - `plan` automatically uses the latest `checkins/YYYY-MM-DD-checkin.md` file when present.
@@ -124,4 +153,6 @@ workspaces/albert/
 - Review loop runs add multiple LLM trace records per generated plan (`planner_initial`, persona reviews, and optional planner revisions).
 - Langfuse tracing is optional via `LANGFUSE_PUBLIC_KEY`, `LANGFUSE_SECRET_KEY`, and optional `LANGFUSE_HOST`.
 - Langfuse tracing is automatically disabled during `pytest` runs, while local JSONL trace logging remains enabled where configured.
-- The frontend reads generated JSON files rather than parsing Markdown as a data source.
+- The web and mobile apps share workout and recipe domain helpers from `packages/shared`.
+- The web app reads generated JSON files rather than parsing Markdown as a data source.
+- The mobile app reads plans through the web app mobile API and stores completion state locally.
