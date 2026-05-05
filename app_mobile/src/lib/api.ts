@@ -5,6 +5,8 @@ import type {
 } from '@personal-trainer/shared/api';
 import type { UserProfileSummary, WorkoutPlan } from '@personal-trainer/shared/workout';
 
+// Local Expo development talks to the web app on localhost. Preview and production
+// iPhone builds should override this with EXPO_PUBLIC_TRAINER_API_BASE_URL.
 const DEFAULT_API_BASE_URL = 'http://localhost:3000';
 
 function apiBaseUrl(): string {

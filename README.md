@@ -107,6 +107,33 @@ EXPO_PUBLIC_TRAINER_API_BASE_URL=http://localhost:3000 npm run dev:mobile
 
 Set `EXPO_PUBLIC_TRAINER_API_TOKEN` too if the web app has `TRAINER_MOBILE_API_TOKEN` configured.
 
+### 5. Deploy the mobile app to iPhone with TestFlight
+
+The Expo app in `app_mobile/` is configured for native iPhone builds with EAS and does not require Expo Go.
+
+Prerequisites:
+
+- paid Apple Developer account
+- App Store Connect app for bundle ID `com.arjun.personaltrainer`
+- production mobile API available at `https://personal-trainer-orpin.vercel.app/`
+
+Run the EAS setup and release commands from `app_mobile/`:
+
+```bash
+npx eas-cli@latest login
+npx eas-cli@latest init
+npx eas-cli@latest build --platform ios --profile production
+npx eas-cli@latest submit --platform ios --latest
+```
+
+For internal device testing before TestFlight release, build the preview profile instead:
+
+```bash
+npx eas-cli@latest build --platform ios --profile preview
+```
+
+Local mobile development should still point to `http://localhost:3000`, but preview and production EAS builds use the public Vercel backend configured in `eas.json`.
+
 ## Typical workflow
 
 1. Create or update a workspace from the trainer CLI.
@@ -115,7 +142,7 @@ Set `EXPO_PUBLIC_TRAINER_API_TOKEN` too if the web app has `TRAINER_MOBILE_API_T
 4. Create check-ins with `poetry run personal-trainer checkin <workspace>`, fill them manually, then run `plan` again.
 5. If you host the web app on Vercel, run `poetry run personal-trainer publish-web <workspace>`.
 6. Open the web app to view the current workout or use Jeff the Cook.
-7. Open the mobile app to run a native workout session from the same published plan.
+7. Open the mobile app locally or install the TestFlight build to run a native workout session from the same published plan.
 8. Optionally publish the current plan to Apple Notes from the trainer app.
 
 ## Workspace model

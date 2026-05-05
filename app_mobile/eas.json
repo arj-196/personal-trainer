@@ -1,0 +1,19 @@
+{
+  "cli": {
+    "version": ">= 18.0.0",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "preview": {
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_TRAINER_API_BASE_URL": "https://personal-trainer-orpin.vercel.app/"
+      }
+    },
+    "production": {
+      "env": {
+        "EXPO_PUBLIC_TRAINER_API_BASE_URL": "https://personal-trainer-orpin.vercel.app/"
+      }
+    }
+  }
+}
