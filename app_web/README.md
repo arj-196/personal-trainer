@@ -38,6 +38,8 @@ npm install
 
 Tailwind is integrated through `postcss.config.mjs` using `@tailwindcss/postcss`.
 
+`app_web/package.json` also pins `@tailwindcss/oxide-linux-x64-gnu` as an explicit optional dependency. Vercel installs from a Linux host while this repo is often locked on macOS, and this avoids npm dropping Tailwind's transitive Linux native package during workspace installs.
+
 ## Run
 
 ```bash
@@ -54,12 +56,15 @@ npm run build -w personal-trainer-frontend
 
 ## Docker
 
-Build the web container from `app_web/`:
+Build the web container from the repo root so npm workspaces and `packages/shared` are available to Docker:
 
 ```bash
-cd app_web
-docker build -t personal-trainer-frontend .
+docker build -f app_web/Dockerfile -t personal-trainer-frontend .
 ```
+
+The Dockerfile expects the monorepo root as the build context. Building from `app_web/` directly will fail because npm cannot resolve the root workspace lockfile and shared package from that narrower context.
+
+When you build with `TRAINER_DATA_SOURCE=local`, the image contains the current `workspaces/` directory from build time.
 
 Run it locally:
 
@@ -110,8 +115,9 @@ See `.env.example`.
 2. Use the repo root as the install root so npm workspaces can resolve `packages/shared`.
 3. Create a Vercel Blob store and attach it to the same Vercel project.
 4. Set the web app environment variables from `app_web/.env.example`.
-5. Use `npm run build -w personal-trainer-frontend` as the build command if Vercel does not infer the workspace automatically.
-6. Publish workout data from the trainer app with:
+5. If the project Root Directory is `app_web`, keep the default install in place so npm can still see the repo workspace root and resolve `@personal-trainer/shared`.
+6. Use `npm run build -w personal-trainer-frontend` as the build command if Vercel does not infer the workspace automatically.
+7. Publish workout data from the trainer app with:
 
 ```bash
 cd trainer
@@ -119,7 +125,7 @@ poetry install
 poetry run personal-trainer publish-web wk_arj
 ```
 
-7. Deploy the web app.
+8. Deploy the web app.
 
 After every `plan`, run `publish-web` again so Blob stays in sync with the latest workspace files.
 

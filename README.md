@@ -91,6 +91,8 @@ npm install
 npm test
 ```
 
+The web workspace explicitly lists `@tailwindcss/oxide-linux-x64-gnu` as an optional dependency so Linux Vercel builds do not miss Tailwind's native binding when npm installs from the monorepo workspace lockfile generated on macOS.
+
 ### 3. Run the web app
 
 ```bash
@@ -98,6 +100,12 @@ npm run dev:web
 ```
 
 Open `http://localhost:3000`.
+
+To build the web app Docker image from the monorepo root:
+
+```bash
+docker build -f app_web/Dockerfile -t personal-trainer-frontend .
+```
 
 ### 4. Run the mobile app
 

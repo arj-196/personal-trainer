@@ -1,0 +1,14 @@
+.git
+.gitignore
+.DS_Store
+node_modules
+**/node_modules
+app_web/.next
+app_mobile/.expo
+app_mobile/.next
+.vercel
+.pytest_cache
+**/__pycache__
+**/*.pyc
+trainer/.venv
+.venv
