@@ -17,7 +17,7 @@ The web app is a Next.js app for the workout UI, Jeff the Cook recipe workspace,
 - view a high-level workout summary on the homepage instead of the full exercise list
 - open a larger read-only workout focus view
 - start a single-day workout session from a specific workout day with a persistent per-device checklist
-- use a compact fixed stopwatch panel in the start-workout session with active/rest coaching cues
+- use a compact fixed stopwatch panel docked at the bottom of the start-workout session with active/rest coaching cues
 - play a short non-media Web Audio cue when an exercise starts
 - use Jeff the Cook as a voice-first recipe workspace with draft review before generation
 - save immutable recipe snapshots to Vercel Blob and reopen or delete them later

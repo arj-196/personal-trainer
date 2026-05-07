@@ -213,8 +213,8 @@ export function StartWorkoutView({ day, workspace }: StartWorkoutViewProps) {
         : 'Tap Start when you begin the next exercise.';
 
   return (
-    <section className="grid gap-4 sm:gap-5">
-      <section className="sticky top-1 z-20 rounded-[1.5rem] border border-white/50 bg-[radial-gradient(circle_at_top_right,rgba(34,184,199,0.28),transparent_35%),linear-gradient(160deg,#15171c_0%,#21252d_65%,#191d24_100%)] p-2 text-white shadow-[0_22px_60px_rgba(20,24,30,0.16)] sm:p-2.5">
+    <section className="grid gap-4 pb-[calc(182px+env(safe-area-inset-bottom))] sm:gap-5 sm:pb-[calc(194px+env(safe-area-inset-bottom))]">
+      <section className="fixed inset-x-3 bottom-[calc(12px+env(safe-area-inset-bottom))] z-20 mx-auto w-[min(100%-1.5rem,72rem)] rounded-[1.5rem] border border-white/50 bg-[radial-gradient(circle_at_top_right,rgba(34,184,199,0.28),transparent_35%),linear-gradient(160deg,#15171c_0%,#21252d_65%,#191d24_100%)] p-2 text-white shadow-[0_22px_60px_rgba(20,24,30,0.16)] sm:bottom-[calc(16px+env(safe-area-inset-bottom))] sm:p-2.5">
         <div className="grid grid-cols-[minmax(0,1fr)_96px] items-stretch gap-2 sm:grid-cols-[minmax(0,1fr)_102px] md:grid-cols-[minmax(0,1fr)_112px] md:gap-2.5">
           <div className="min-w-0">
             <h2 className="m-0 truncate font-[Avenir_Next_Condensed,Arial_Narrow,sans-serif] text-[clamp(1rem,2.5vw,1.28rem)] leading-tight">{currentBlock?.name ?? 'No block selected'}</h2>
