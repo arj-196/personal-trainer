@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 
 import type { WorkoutDay } from '@/lib/trainer-data';
+import { playExerciseStartCue } from '@/lib/audio-cues';
 import { buildWorkoutDayBlocks } from '@/lib/workout-helpers';
 import {
   readWorkoutProgress,
@@ -123,6 +124,7 @@ export function StartWorkoutView({ day, workspace }: StartWorkoutViewProps) {
     setTimerPhase('active');
     setRemainingSeconds(block.activeSeconds);
     setIsRunning(true);
+    playExerciseStartCue();
   };
 
   const handleStartPauseToggle = () => {
