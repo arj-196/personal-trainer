@@ -19,6 +19,8 @@ type StartWorkoutViewProps = {
   workspace: string;
 };
 
+const PRE_START_BUFFER_SECONDS = 3;
+
 function PlayIcon() {
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true" className="h-6 w-6">
@@ -43,6 +45,7 @@ export function StartWorkoutView({ day, workspace }: StartWorkoutViewProps) {
   const [isRunning, setIsRunning] = useState(false);
   const [remainingSeconds, setRemainingSeconds] = useState(0);
   const [currentSet, setCurrentSet] = useState(1);
+  const [pendingStartBlockIndex, setPendingStartBlockIndex] = useState<number | null>(null);
 
   useEffect(() => {
     const storedProgress = readWorkoutProgress(workspace, day.heading);
@@ -53,6 +56,7 @@ export function StartWorkoutView({ day, workspace }: StartWorkoutViewProps) {
     setIsRunning(false);
     setRemainingSeconds(0);
     setCurrentSet(1);
+    setPendingStartBlockIndex(null);
   }, [workspace, day.heading]);
 
   useEffect(() => {
@@ -76,6 +80,23 @@ export function StartWorkoutView({ day, workspace }: StartWorkoutViewProps) {
 
   useEffect(() => {
     if (!isRunning || remainingSeconds > 0 || !currentBlock) {
+      return;
+    }
+
+    if (pendingStartBlockIndex !== null) {
+      const blockToStart = blocks[pendingStartBlockIndex];
+      if (!blockToStart) {
+        setPendingStartBlockIndex(null);
+        setIsRunning(false);
+        setTimerPhase('idle');
+        return;
+      }
+      setTimerPhase('active');
+      setRemainingSeconds(blockToStart.activeSeconds);
+      setCurrentSet(1);
+      setIsRunning(true);
+      setPendingStartBlockIndex(null);
+      playExerciseStartCue();
       return;
     }
 
@@ -110,7 +131,17 @@ export function StartWorkoutView({ day, workspace }: StartWorkoutViewProps) {
     setTimerPhase(nextState.phase);
     setIsRunning(nextState.isRunning);
     setRemainingSeconds(nextRemaining);
-  }, [isCurrentExercise, isRunning, remainingSeconds, timerPhase, currentSet, currentBlock, currentBlockIndex, blocks.length]);
+  }, [
+    isCurrentExercise,
+    isRunning,
+    remainingSeconds,
+    timerPhase,
+    currentSet,
+    currentBlock,
+    currentBlockIndex,
+    blocks,
+    pendingStartBlockIndex,
+  ]);
 
   const startPauseLabel = isRunning ? 'Pause' : 'Start';
 
@@ -121,10 +152,10 @@ export function StartWorkoutView({ day, workspace }: StartWorkoutViewProps) {
     }
     setCurrentBlockIndex(blockIndex);
     setCurrentSet(1);
-    setTimerPhase('active');
-    setRemainingSeconds(block.activeSeconds);
+    setPendingStartBlockIndex(blockIndex);
+    setTimerPhase('idle');
+    setRemainingSeconds(PRE_START_BUFFER_SECONDS);
     setIsRunning(true);
-    playExerciseStartCue();
   };
 
   const handleStartPauseToggle = () => {
@@ -164,9 +195,18 @@ export function StartWorkoutView({ day, workspace }: StartWorkoutViewProps) {
   const totalCount = blocks.length;
   const progressLabel = `${completedCount}/${totalCount}`;
   const isRestPhase = timerPhase === 'rest-between-sets' || timerPhase === 'rest-between-exercises';
-  const coachMode = timerPhase === 'active' ? 'Exercise' : isRestPhase ? 'Rest' : 'Ready';
+  const coachMode =
+    pendingStartBlockIndex !== null
+      ? 'Get ready'
+      : timerPhase === 'active'
+        ? 'Exercise'
+        : isRestPhase
+          ? 'Rest'
+          : 'Ready';
   const coachCopy =
-    timerPhase === 'active'
+    pendingStartBlockIndex !== null
+      ? 'Starting in 3 seconds. Set your position.'
+      : timerPhase === 'active'
       ? 'Push now. Keep form clean.'
       : isRestPhase
         ? 'Recover now. Breathe and reset.'
@@ -192,6 +232,8 @@ export function StartWorkoutView({ day, workspace }: StartWorkoutViewProps) {
                 ? 'border-[#ff6359]/50 bg-[#ff6359]/20'
                 : coachMode === 'Rest'
                   ? 'border-cyan-400/50 bg-cyan-400/20'
+                  : coachMode === 'Get ready'
+                    ? 'border-amber-300/60 bg-amber-300/20'
                   : 'border-white/20 bg-white/10',
             ].join(' ')}>
               <p className="m-0 text-[0.72rem] font-extrabold uppercase tracking-[0.13em]">{coachMode}</p>
