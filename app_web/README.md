@@ -178,6 +178,7 @@ If `TRAINER_MOBILE_API_TOKEN` is set, all mobile API requests must include `Auth
 - The workout checklist state is browser-local and does not sync across devices.
 - The start workout route accepts `?day=<1-based index>` so each workout day card can open its own fixed session view.
 - Start workout uses timing fields from `plan.json` (`warmupActiveSeconds`, `activeSeconds`, `restBetweenSetsSeconds`, `restBetweenExercisesSeconds`) and falls back to safe defaults for older plans.
+- Tapping Start for a new block begins with a 3-second get-ready countdown before the active timer starts.
 - Within an exercise, the timer runs continuously (active set -> rest -> next set) after a single Start tap; the next exercise still starts manually.
 - Exercise start cues use the Web Audio API (generated tones, not `<audio>` media playback) to reduce the chance of interrupting other media like podcasts.
 - The web app is read-only for workout data, but Jeff the Cook can save immutable recipe snapshots to Blob.
