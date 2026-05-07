@@ -18,6 +18,7 @@ The web app is a Next.js app for the workout UI, Jeff the Cook recipe workspace,
 - open a larger read-only workout focus view
 - start a single-day workout session from a specific workout day with a persistent per-device checklist
 - use a compact fixed stopwatch panel in the start-workout session with active/rest coaching cues
+- play a short non-media Web Audio cue when an exercise starts
 - use Jeff the Cook as a voice-first recipe workspace with draft review before generation
 - save immutable recipe snapshots to Vercel Blob and reopen or delete them later
 - open Google Images for each exercise card when you need a quick visual lookup
@@ -178,6 +179,7 @@ If `TRAINER_MOBILE_API_TOKEN` is set, all mobile API requests must include `Auth
 - The start workout route accepts `?day=<1-based index>` so each workout day card can open its own fixed session view.
 - Start workout uses timing fields from `plan.json` (`warmupActiveSeconds`, `activeSeconds`, `restBetweenSetsSeconds`, `restBetweenExercisesSeconds`) and falls back to safe defaults for older plans.
 - Within an exercise, the timer runs continuously (active set -> rest -> next set) after a single Start tap; the next exercise still starts manually.
+- Exercise start cues use the Web Audio API (generated tones, not `<audio>` media playback) to reduce the chance of interrupting other media like podcasts.
 - The web app is read-only for workout data, but Jeff the Cook can save immutable recipe snapshots to Blob.
 - Jeff the Cook interpretation requests use strict JSON schema with nullable patch fields so `gpt-5.4-mini` accepts the payload while still returning partial state updates.
 - Jeff the Cook microphone uploads now preserve browser-native audio MIME/container and extension (including iPhone/WebKit `audio/mp4`/`.m4a`) instead of forcing `.webm`.
