@@ -33,6 +33,7 @@ export function playExerciseStartCue(): void {
   }
 
   const scopedWindow = window as Window & {
+    AudioContext?: typeof AudioContext;
     webkitAudioContext?: typeof AudioContext;
   };
   const AudioContextCtor = scopedWindow.AudioContext ?? scopedWindow.webkitAudioContext;
