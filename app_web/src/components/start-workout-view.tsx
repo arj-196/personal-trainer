@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import type { WorkoutDay } from '@/lib/trainer-data';
 import { playExerciseStartCue } from '@/lib/audio-cues';
@@ -39,6 +39,7 @@ function PauseIcon() {
 
 export function StartWorkoutView({ day, workspace }: StartWorkoutViewProps) {
   const blocks = buildWorkoutDayBlocks(day);
+  const blockRefs = useRef<Array<HTMLElement | null>>([]);
   const [completedIds, setCompletedIds] = useState<string[]>([]);
   const [currentBlockIndex, setCurrentBlockIndex] = useState(0);
   const [timerPhase, setTimerPhase] = useState<TimerPhase>('idle');
@@ -57,7 +58,24 @@ export function StartWorkoutView({ day, workspace }: StartWorkoutViewProps) {
     setRemainingSeconds(0);
     setCurrentSet(1);
     setPendingStartBlockIndex(null);
+    blockRefs.current = [];
   }, [workspace, day.heading]);
+
+  const moveToNextBlock = (fromBlockIndex: number) => {
+    const nextBlockIndex = fromBlockIndex + 1;
+    if (nextBlockIndex >= blocks.length) {
+      return;
+    }
+
+    const nextBlockElement = blockRefs.current[nextBlockIndex];
+    setCurrentBlockIndex(nextBlockIndex);
+    if (!nextBlockElement) {
+      return;
+    }
+
+    nextBlockElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    nextBlockElement.focus({ preventScroll: true });
+  };
 
   useEffect(() => {
     writeWorkoutProgress(workspace, day.heading, completedIds);
@@ -116,6 +134,7 @@ export function StartWorkoutView({ day, workspace }: StartWorkoutViewProps) {
       setCompletedIds((current) =>
         current.includes(currentBlock.id) ? current : [...current, currentBlock.id]
       );
+      moveToNextBlock(currentBlockIndex);
     }
 
     let nextRemaining = nextState.remainingSeconds;
@@ -296,14 +315,30 @@ export function StartWorkoutView({ day, workspace }: StartWorkoutViewProps) {
         </div>
 
         <div className="grid gap-4">
-          {blocks.map((block) => (
-            <WorkoutBlockCard
+          {blocks.map((block, index) => (
+            <div
               key={block.id}
-              block={block}
-              display="start"
-              checked={completedIds.includes(block.id)}
-              onToggle={(blockId) => setCompletedIds((current) => toggleWorkoutBlock(current, blockId))}
-            />
+              ref={(element) => {
+                blockRefs.current[index] = element;
+              }}
+              tabIndex={-1}
+            >
+              <WorkoutBlockCard
+                block={block}
+                display="start"
+                checked={completedIds.includes(block.id)}
+                onToggle={(blockId) => {
+                  setCompletedIds((current) => {
+                    const isAlreadyComplete = current.includes(blockId);
+                    const next = toggleWorkoutBlock(current, blockId);
+                    if (!isAlreadyComplete) {
+                      moveToNextBlock(index);
+                    }
+                    return next;
+                  });
+                }}
+              />
+            </div>
           ))}
         </div>
       </section>
