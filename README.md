@@ -50,7 +50,7 @@ The web app reads generated workspace JSON and provides the browser-facing app:
 - read-only workout overview with per-day summaries before the session starts
 - single-day workout view with per-device checklist persistence
 - fixed start-workout timer panel with set-by-set active/rest pacing
-- Jeff the Cook recipe workspace with voice-first draft updates, explicit generation, and saved recipe snapshots
+- Jeff the Cook recipe workspace with voice-first draft updates, explicit generation, measured ingredient lists, and saved recipe snapshots
 - read-only mobile API routes under `/api/mobile/...` for the Expo app
 
 
@@ -189,5 +189,6 @@ workspaces/albert/
 - Langfuse tracing is optional via `LANGFUSE_PUBLIC_KEY`, `LANGFUSE_SECRET_KEY`, and optional `LANGFUSE_HOST`.
 - Langfuse tracing is automatically disabled during `pytest` runs, while local JSONL trace logging remains enabled where configured.
 - The web and mobile apps share workout and recipe domain helpers from `packages/shared`.
+- Jeff the Cook recommendations now require measured ingredient lines and validate that every used/extra ingredient is listed.
 - The web app reads generated JSON files rather than parsing Markdown as a data source.
 - The mobile app reads plans through the web app mobile API and stores completion state locally.

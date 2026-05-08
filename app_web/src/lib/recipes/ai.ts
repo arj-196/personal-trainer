@@ -35,13 +35,14 @@ const recommendationSchema = {
       items: {
         type: 'object',
         additionalProperties: false,
-        required: ['id', 'title', 'summary', 'rationale', 'totalMinutes', 'availableIngredientsUsed', 'availableIngredientsUnused', 'extraIngredients', 'steps'],
+        required: ['id', 'title', 'summary', 'rationale', 'totalMinutes', 'ingredientLines', 'availableIngredientsUsed', 'availableIngredientsUnused', 'extraIngredients', 'steps'],
         properties: {
           id: { type: 'string' },
           title: { type: 'string' },
           summary: { type: 'string' },
           rationale: { type: 'string' },
           totalMinutes: { type: 'number' },
+          ingredientLines: { type: 'array', minItems: 1, items: { type: 'string' } },
           availableIngredientsUsed: { type: 'array', items: { type: 'string' } },
           availableIngredientsUnused: { type: 'array', items: { type: 'string' } },
           extraIngredients: { type: 'array', items: { type: 'string' } },
@@ -103,6 +104,8 @@ export async function generateRecommendations(state: RecipeState): Promise<Recom
       'Hybrid mode only allows extra ingredients from the hybrid pantry extras list.',
       'Anything mode may introduce extra ingredients freely.',
       'Return exactly 3 options.',
+      'Each recommendation must include ingredientLines where every ingredient line includes a measurement (for example: "200 g chicken breast", "1 tbsp olive oil", "salt to taste").',
+      'ingredientLines must include all availableIngredientsUsed and all extraIngredients for that recommendation.',
     ].join('\n'),
     recommendationSchema
   );
