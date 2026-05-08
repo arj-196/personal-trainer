@@ -130,6 +130,14 @@ export function SavedRecipesView({
                   ))}
                 </ol>
               </section>
+              <section className="border-t border-slate-200/70 pt-3">
+                <span className="mb-1 block text-[0.72rem] uppercase tracking-[0.1em] text-slate-500">Measured Ingredients</span>
+                <ul className="m-0 list-disc pl-5 text-sm leading-relaxed text-slate-600">
+                  {snapshot.recommendation.ingredientLines.map((line) => (
+                    <li key={line}>{line}</li>
+                  ))}
+                </ul>
+              </section>
             </div>
           ) : (
             <div className="mt-4 rounded-[1.5rem] border border-white/70 bg-white/80 p-4">

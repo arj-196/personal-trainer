@@ -10,6 +10,7 @@ const baseRecommendation: Recommendation = {
   summary: 'Fast bowl',
   rationale: 'Uses your chicken and rice.',
   totalMinutes: 18,
+  ingredientLines: ['200 g chicken', '150 g rice', '1 tsp salt'],
   availableIngredientsUsed: ['chicken', 'rice'],
   availableIngredientsUnused: [],
   extraIngredients: ['salt'],

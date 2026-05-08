@@ -339,6 +339,14 @@ export function RecipeWorkspace() {
                             <p className="m-0 text-sm leading-relaxed text-slate-500">{recommendation.rationale}</p>
                           </section>
                           <section className="border-t border-slate-200/70 pt-3">
+                            <span className="mb-1 block text-[0.72rem] uppercase tracking-[0.1em] text-slate-500">Measured Ingredients</span>
+                            <ul className="m-0 list-disc space-y-1 pl-5 text-sm leading-relaxed text-slate-600">
+                              {recommendation.ingredientLines.map((line) => (
+                                <li key={line}>{line}</li>
+                              ))}
+                            </ul>
+                          </section>
+                          <section className="border-t border-slate-200/70 pt-3">
                             <span className="mb-1 block text-[0.72rem] uppercase tracking-[0.1em] text-slate-500">Available Ingredients Used</span>
                             <div className="flex flex-wrap gap-2">
                               {recommendation.availableIngredientsUsed.map((item) => (

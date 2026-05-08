@@ -27,6 +27,7 @@ export type Recommendation = {
   summary: string;
   rationale: string;
   totalMinutes?: number;
+  ingredientLines: string[];
   availableIngredientsUsed: string[];
   availableIngredientsUnused: string[];
   extraIngredients: string[];
@@ -211,6 +212,14 @@ export function validateRecommendations(recommendations: Recommendation[], state
     if (recommendation.steps.length === 0) {
       errors.push(`${prefix} has no steps.`);
     }
+    if (recommendation.ingredientLines.length === 0) {
+      errors.push(`${prefix} is missing a measured ingredient list.`);
+    }
+    recommendation.ingredientLines.forEach((line) => {
+      if (!lineHasMeasurement(line)) {
+        errors.push(`${prefix} has ingredient line without a clear measurement: "${line}".`);
+      }
+    });
     if (state.parsedConstraints.maxMinutes && recommendation.totalMinutes && recommendation.totalMinutes > state.parsedConstraints.maxMinutes) {
       errors.push(`${prefix} exceeds the max minutes constraint.`);
     }
@@ -238,6 +247,19 @@ export function validateRecommendations(recommendations: Recommendation[], state
         }
       });
     }
+
+    const listedIngredients = recommendation.ingredientLines.map(normalizeIngredientFromLine).filter(Boolean);
+    const listedSet = new Set(listedIngredients);
+    recommendation.availableIngredientsUsed.forEach((item) => {
+      if (!listedSet.has(item)) {
+        errors.push(`${prefix} is missing measured ingredient line for used ingredient "${item}".`);
+      }
+    });
+    recommendation.extraIngredients.forEach((item) => {
+      if (!listedSet.has(item)) {
+        errors.push(`${prefix} is missing measured ingredient line for extra ingredient "${item}".`);
+      }
+    });
   });
 
   return {
@@ -317,6 +339,7 @@ function normalizeRecommendation(recommendation: Recommendation, state: RecipeSt
     summary: recommendation.summary.trim(),
     rationale: recommendation.rationale.trim(),
     totalMinutes: recommendation.totalMinutes,
+    ingredientLines: (recommendation.ingredientLines || []).map((line) => line.trim()).filter(Boolean),
     availableIngredientsUsed: used,
     availableIngredientsUnused: unused,
     extraIngredients: extra,
@@ -330,4 +353,26 @@ function normalizeMimeInput(value: string): string {
 
 function slugify(value: string): string {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || 'recipe';
+}
+
+function normalizeIngredientFromLine(line: string): string {
+  const measurementPrefix = line
+    .toLowerCase()
+    .replace(/\bof\b/g, ' ')
+    .replace(/\b(to taste|as needed)\b/g, ' ')
+    .replace(/\b\d+(?:[./]\d+)?\b/g, ' ')
+    .replace(/\b(?:cup|cups|tbsp|tablespoon|tablespoons|tsp|teaspoon|teaspoons|g|gram|grams|kg|oz|lb|ml|milliliter|milliliters|l|liter|liters|clove|cloves|slice|slices|piece|pieces|can|cans|packet|packets|bunch|bunches|dash|pinch|pinches)\b/g, ' ')
+    .replace(/[^a-z\s-]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  return normalizeIngredient(measurementPrefix);
+}
+
+function lineHasMeasurement(line: string): boolean {
+  const normalized = line.toLowerCase();
+  if (/\b(to taste|as needed)\b/.test(normalized)) {
+    return true;
+  }
+  return /\b\d+(?:[./]\d+)?\b/.test(normalized);
 }

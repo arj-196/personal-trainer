@@ -35,6 +35,7 @@ describe('recommendation validation', () => {
     summary: 'A bowl.',
     rationale: 'Uses available ingredients.',
     totalMinutes: 15,
+    ingredientLines: ['200 g chicken', '1 tsp salt'],
     availableIngredientsUsed: ['chicken'],
     availableIngredientsUnused: [],
     extraIngredients: ['salt'],

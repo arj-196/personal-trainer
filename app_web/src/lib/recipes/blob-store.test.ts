@@ -24,6 +24,7 @@ const recommendation: Recommendation = {
   summary: 'Fast dinner',
   rationale: 'Uses chicken.',
   totalMinutes: 15,
+  ingredientLines: ['200 g chicken', '1 tsp salt'],
   availableIngredientsUsed: ['chicken'],
   availableIngredientsUnused: [],
   extraIngredients: ['salt'],
