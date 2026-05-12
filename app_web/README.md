@@ -1,6 +1,6 @@
 # Web App
 
-The web app is a Next.js app for the workout UI, Jeff the Cook recipe workspace, and read-only mobile API.
+The web app is a Next.js app for the workout UI and Jeff the Cook recipe workspace.
 
 ## Stack
 
@@ -29,7 +29,6 @@ The web app is a Next.js app for the workout UI, Jeff the Cook recipe workspace,
 - read data from either local repo files or Vercel Blob storage
 - show the current git commit id in the homepage header
 - optionally show a homepage debug panel with the current commit hash and environment variables
-- expose read-only mobile API routes for the Expo app
 
 ## Install
 
@@ -107,7 +106,6 @@ Relevant variables:
 - `OPENAI_RECIPE_MODEL`
 - `OPENAI_TRANSCRIPTION_MODEL`
 - `DEBUG=true` to show the homepage debug panel
-- `TRAINER_MOBILE_API_TOKEN` to require `Authorization: Bearer <token>` on `/api/mobile/...` routes
 
 See `.env.example`.
 
@@ -155,14 +153,6 @@ In `blob` mode the web app reads the same logical data from Vercel Blob:
 
 - `personal-trainer/workspaces/<name>/...`
 - `personal-trainer/saved-recipes/YYYY/MM/recipe_<id>.json`
-
-## Mobile API
-
-- `GET /api/mobile/workspaces`
-- `GET /api/mobile/workspaces/[workspace]/profile`
-- `GET /api/mobile/workspaces/[workspace]/plan`
-
-If `TRAINER_MOBILE_API_TOKEN` is set, all mobile API requests must include `Authorization: Bearer <token>`.
 
 ## Routes
 

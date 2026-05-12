@@ -5,14 +5,12 @@
   "packageManager": "npm@10.9.7",
   "workspaces": [
     "app_web",
-    "app_mobile",
     "packages/*"
   ],
   "scripts": {
     "test": "npm run test --workspaces --if-present",
     "test:shared": "npm run test -w @personal-trainer/shared",
     "test:web": "npm run test -w personal-trainer-frontend",
-    "dev:web": "npm run dev -w personal-trainer-frontend",
-    "dev:mobile": "npm run start -w personal-trainer-mobile"
+    "dev:web": "npm run dev -w personal-trainer-frontend"
   }
 }

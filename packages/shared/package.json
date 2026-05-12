@@ -8,8 +8,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./workout": "./src/workout.ts",
-    "./recipes": "./src/recipes.ts",
-    "./api": "./src/api.ts"
+    "./recipes": "./src/recipes.ts"
   },
   "scripts": {
     "test": "vitest run",

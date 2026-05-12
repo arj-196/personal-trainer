@@ -3,7 +3,6 @@ WORKDIR /repo
 
 COPY package.json package-lock.json ./
 COPY app_web/package.json app_web/package.json
-COPY app_mobile/package.json app_mobile/package.json
 COPY packages/shared/package.json packages/shared/package.json
 
 RUN npm install
@@ -30,7 +29,6 @@ COPY --from=deps /repo/app_web/node_modules ./app_web/node_modules
 COPY --from=deps /repo/packages/shared/node_modules ./packages/shared/node_modules
 COPY package.json package-lock.json ./
 COPY app_web ./app_web
-COPY app_mobile/package.json ./app_mobile/package.json
 COPY packages/shared ./packages/shared
 COPY workspaces ./workspaces
 

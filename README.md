@@ -1,6 +1,6 @@
 # Personal Trainer Monorepo
 
-Personal Trainer is a multi-app repository for generating workout plans, running the Jeff the Cook recipe workspace, and publishing a gym-friendly view of the plan.
+Personal Trainer is a repository for generating workout plans, running the Jeff the Cook recipe workspace, and publishing a gym-friendly web view of the plan.
 
 The workout planner now uses Ollama and OpenAI-backed trainer agents instead of hardcoded split and exercise rules. The Python app packages the athlete profile, check-in history, and a compact exercise catalog names context into a structured LLM request, then runs a planner-reviewer loop where Arnold Schwarzenegger and Doctor Mike review each draft until approval or max iterations, then writes the resulting week plan to JSON plus Markdown.
 Generated plans now include explicit workout timing metadata (active durations, set counts, and rest durations) so the start-workout experience can run a guided timer workflow.
@@ -9,9 +9,8 @@ Trainer prompts now live in file-based Jinja templates, and each model call is t
 ## Apps
 
 - `trainer/`: Python + Poetry trainer engine and CLI
-- `app_web/`: Next.js workout and recipe UI plus mobile read API
-- `app_mobile/`: Expo React Native workout app
-- `packages/shared/`: shared TypeScript domain logic for web and mobile
+- `app_web/`: Next.js workout and recipe UI
+- `packages/shared/`: shared TypeScript domain logic for the web app
 - `workspaces/`: generated user workspaces and plan files
 
 ## Repo layout
@@ -20,7 +19,6 @@ Trainer prompts now live in file-based Jinja templates, and each model call is t
 .
 ├── trainer/
 ├── app_web/
-├── app_mobile/
 ├── packages/
 ├── workspaces/
 └── README.md
@@ -50,22 +48,9 @@ The web app reads generated workspace JSON and provides the browser-facing app:
 - read-only workout overview with per-day summaries before the session starts
 - single-day workout view with per-device checklist persistence
 - fixed start-workout timer panel with set-by-set active/rest pacing
-- Jeff the Cook recipe workspace with voice-first draft updates, explicit generation, measured ingredient lists, and saved recipe snapshots
-- read-only mobile API routes under `/api/mobile/...` for the Expo app
-
+- Jeff the Cook recipe workspace with voice-first draft updates, explicit generation, and saved recipe snapshots
 
 See [app_web/README.md](/Users/arjun/Personal/apps/personal_trainer/app_web/README.md).
-
-### Mobile app
-
-The mobile app is an Expo React Native app focused on workout execution:
-
-- loads workspace, profile, and plan data from the web app mobile API
-- shows a native workspace hub and workout overview
-- runs the same shared timer state machine as the web start-workout flow
-- persists completion progress locally on the device
-
-See [app_mobile/README.md](/Users/arjun/Personal/apps/personal_trainer/app_mobile/README.md).
 
 ## Quick start
 
@@ -107,41 +92,6 @@ To build the web app Docker image from the monorepo root:
 docker build -f app_web/Dockerfile -t personal-trainer-frontend .
 ```
 
-### 4. Run the mobile app
-
-```bash
-EXPO_PUBLIC_TRAINER_API_BASE_URL=http://localhost:3000 npm run dev:mobile
-```
-
-Set `EXPO_PUBLIC_TRAINER_API_TOKEN` too if the web app has `TRAINER_MOBILE_API_TOKEN` configured.
-
-### 5. Deploy the mobile app to iPhone with TestFlight
-
-The Expo app in `app_mobile/` is configured for native iPhone builds with EAS and does not require Expo Go.
-
-Prerequisites:
-
-- paid Apple Developer account
-- App Store Connect app for bundle ID `com.arjun.personaltrainer`
-- production mobile API available at `https://personal-trainer-orpin.vercel.app/`
-
-Run the EAS setup and release commands from `app_mobile/`:
-
-```bash
-npx eas-cli@latest login
-npx eas-cli@latest init
-npx eas-cli@latest build --platform ios --profile production
-npx eas-cli@latest submit --platform ios --latest
-```
-
-For internal device testing before TestFlight release, build the preview profile instead:
-
-```bash
-npx eas-cli@latest build --platform ios --profile preview
-```
-
-Local mobile development should still point to `http://localhost:3000`, but preview and production EAS builds use the public Vercel backend configured in `eas.json`.
-
 ## Typical workflow
 
 1. Create or update a workspace from the trainer CLI.
@@ -150,8 +100,7 @@ Local mobile development should still point to `http://localhost:3000`, but prev
 4. Create check-ins with `poetry run personal-trainer checkin <workspace>`, fill them manually, then run `plan` again.
 5. If you host the web app on Vercel, run `poetry run personal-trainer publish-web <workspace>`.
 6. Open the web app to view the current workout or use Jeff the Cook.
-7. Open the mobile app locally or install the TestFlight build to run a native workout session from the same published plan.
-8. Optionally publish the current plan to Apple Notes from the trainer app.
+7. Optionally publish the current plan to Apple Notes from the trainer app.
 
 ## Workspace model
 
@@ -188,7 +137,5 @@ workspaces/albert/
 - Review loop runs add multiple LLM trace records per generated plan (`planner_initial`, persona reviews, and optional planner revisions).
 - Langfuse tracing is optional via `LANGFUSE_PUBLIC_KEY`, `LANGFUSE_SECRET_KEY`, and optional `LANGFUSE_HOST`.
 - Langfuse tracing is automatically disabled during `pytest` runs, while local JSONL trace logging remains enabled where configured.
-- The web and mobile apps share workout and recipe domain helpers from `packages/shared`.
-- Jeff the Cook recommendations now require measured ingredient lines and validate that every used/extra ingredient is listed.
+- The web app uses workout and recipe domain helpers from `packages/shared`.
 - The web app reads generated JSON files rather than parsing Markdown as a data source.
-- The mobile app reads plans through the web app mobile API and stores completion state locally.

@@ -1,6 +1,6 @@
 # Personal Trainer
 
-Personal Trainer generates training plans and recipe recommendations, then exposes them through web and mobile execution surfaces.
+Personal Trainer generates training plans and recipe recommendations, then exposes them through the web app.
 
 ## Language
 
@@ -56,4 +56,4 @@ _Avoid_: Recipe, favorite
 
 ## Flagged ambiguities
 
-- "frontend" previously referred to all user-facing app code. Resolved: use **web app** for `app_web/`, **mobile app** for `app_mobile/`, and **shared package** for platform-neutral domain logic.
+- "frontend" previously referred to all user-facing app code. Resolved: use **web app** for `app_web/` and **shared package** for TypeScript domain logic used by the web app.
