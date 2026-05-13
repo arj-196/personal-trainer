@@ -4,8 +4,13 @@ import json
 import logging
 from pathlib import Path
 
-from personal_trainer.db import create_workspace, upsert_checkin, upsert_profile
-from personal_trainer.markdown_io import load_checkin, load_profile
+from personal_trainer.db import (
+    create_workspace,
+    insert_imported_workout_plan,
+    upsert_checkin,
+    upsert_profile,
+)
+from personal_trainer.markdown_io import load_checkin, load_profile, load_workout_plan
 
 LOGGER = logging.getLogger(__name__)
 
@@ -22,8 +27,11 @@ def import_filesystem_workspaces(workspaces_root: Path, *, database_url: str | N
         workspace_slug = workspace_root.name
         LOGGER.info("Importing filesystem workspace '%s'", workspace_slug)
         create_workspace(workspace_slug, database_url=database_url)
-        upsert_profile(workspace_slug, load_profile(profile_path), database_url=database_url)
+        profile = load_profile(profile_path)
+        upsert_profile(workspace_slug, profile, database_url=database_url)
+        LOGGER.info("Imported athlete profile for workspace '%s'", workspace_slug)
         checkins_dir = workspace_root / "checkins"
+        checkins_imported = 0
         if checkins_dir.exists():
             for checkin_path in sorted(checkins_dir.glob("*-checkin.md")):
                 upsert_checkin(
@@ -31,6 +39,35 @@ def import_filesystem_workspaces(workspaces_root: Path, *, database_url: str | N
                     load_checkin(checkin_path),
                     database_url=database_url,
                 )
+                checkins_imported += 1
+        LOGGER.info(
+            "Imported %s check-in(s) for workspace '%s'",
+            checkins_imported,
+            workspace_slug,
+        )
+        plan_json_path = workspace_root / "plan.json"
+        plan_markdown_path = workspace_root / "plan.md"
+        if plan_json_path.exists() or plan_markdown_path.exists():
+            LOGGER.info("Validating Workout Plan for workspace '%s'", workspace_slug)
+            try:
+                plan = load_workout_plan(plan_json_path, plan_markdown_path, profile)
+            except ValueError:
+                LOGGER.exception(
+                    "Workout Plan validation failed for workspace '%s'",
+                    workspace_slug,
+                )
+                raise
+            insert_imported_workout_plan(
+                workspace_slug,
+                plan,
+                profile,
+                database_url=database_url,
+            )
+            LOGGER.info(
+                "Imported Workout Plan version %s for workspace '%s'",
+                plan.plan_version,
+                workspace_slug,
+            )
         imported += 1
     return imported
 

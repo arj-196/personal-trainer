@@ -42,6 +42,11 @@ cd trainer
 poetry run personal-trainer import-filesystem
 ```
 
+This imports each filesystem Workspace's Athlete Profile, Check-ins, and current
+Workout Plan. Workout Plan import is strict: when plan files are present,
+`plan.json` and `plan.md` must both exist, and `plan.md` must match the plan
+rendered from `plan.json`'s `rawPlan`.
+
 Saved recipe snapshots exported to JSON:
 
 ```bash

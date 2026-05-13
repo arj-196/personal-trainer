@@ -313,6 +313,77 @@ def save_workout_plan(
         connection.commit()
 
 
+def insert_imported_workout_plan(
+    slug: str,
+    plan: WorkoutPlan,
+    profile: UserProfile,
+    *,
+    database_url: str | None = None,
+) -> None:
+    create_workspace(slug, database_url=database_url)
+    rendered_plan = json.loads(render_plan_json(plan, profile))
+    raw_plan = asdict(plan)
+    now = datetime.utcnow()
+    with connect(database_url) as connection:
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT 1
+                FROM workout_plans wp
+                JOIN workspaces w ON w.id = wp.workspace_id
+                WHERE w.slug = %s
+                  AND wp.plan_version = %s
+                """,
+                (slug, plan.plan_version),
+            )
+            if cursor.fetchone() is not None:
+                raise RuntimeError(
+                    f"Workout Plan version {plan.plan_version} already exists "
+                    f"for workspace '{slug}'."
+                )
+
+            cursor.execute(
+                """
+                UPDATE workout_plans
+                SET is_current = FALSE,
+                    updated_at = %s
+                FROM workspaces
+                WHERE workout_plans.workspace_id = workspaces.id
+                  AND workspaces.slug = %s
+                  AND workout_plans.is_current = TRUE
+                """,
+                (now, slug),
+            )
+            cursor.execute(
+                """
+                INSERT INTO workout_plans (
+                    workspace_id, plan_version, generated_on, planner_backend, summary, progression_note,
+                    next_checkin_prompt, coach_notes_focus, coach_notes_cautions, raw_plan, rendered_plan,
+                    is_current, created_at, updated_at
+                )
+                SELECT w.id, %s, %s, %s, %s, %s, %s, %s::jsonb, %s::jsonb, %s::jsonb, %s::jsonb, TRUE, %s, %s
+                FROM workspaces w
+                WHERE w.slug = %s
+                """,
+                (
+                    plan.plan_version,
+                    plan.generated_on,
+                    plan.planner_backend,
+                    plan.summary,
+                    plan.progression_note,
+                    plan.next_checkin_prompt,
+                    json.dumps(plan.coach_notes_focus),
+                    json.dumps(plan.coach_notes_cautions),
+                    json.dumps(raw_plan, default=str),
+                    json.dumps(rendered_plan),
+                    now,
+                    now,
+                    slug,
+                ),
+            )
+        connection.commit()
+
+
 def export_table_rows(database_url: str, table_name: str) -> list[dict[str, Any]]:
     with connect(database_url) as connection:
         with connection.cursor() as cursor:

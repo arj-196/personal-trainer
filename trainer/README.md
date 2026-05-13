@@ -48,6 +48,11 @@ Import existing filesystem workspaces:
 poetry run personal-trainer import-filesystem
 ```
 
+This imports Athlete Profiles, Check-ins, and the current Workout Plan for each
+filesystem Workspace. Workout Plan import requires matching `plan.json` and
+`plan.md` files; the command reconstructs the plan from `plan.json.rawPlan` and
+fails if the rendered Markdown does not match `plan.md`.
+
 Import saved recipe snapshots from a JSON export:
 
 ```bash
