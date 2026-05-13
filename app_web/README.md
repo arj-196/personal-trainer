@@ -17,8 +17,9 @@ The web app is a Next.js app for the workout UI and Jeff the Cook recipe workspa
 - view a high-level workout summary on the homepage instead of the full exercise list
 - open a larger read-only workout focus view
 - start a single-day workout session from a specific workout day with a persistent per-device checklist
-- use a compact fixed stopwatch panel docked at the bottom of the start-workout session with active/rest coaching cues
-- play a short non-media Web Audio cue when an exercise starts
+- optionally show a compact fixed stopwatch panel in the start-workout session through a floating bottom-right control
+- remember the stopwatch panel visibility per device, defaulting to hidden until the user enables it
+- play distinct non-media Web Audio cues for exercise start, set rest, exercise rest, and session completion
 - use Jeff the Cook as a voice-first recipe workspace with draft review before generation
 - render recipe ingredient details as measured ingredient lines instead of a text block
 - save immutable recipe snapshots to Vercel Blob and reopen or delete them later
@@ -170,9 +171,10 @@ In `blob` mode the web app reads the same logical data from Vercel Blob:
 - The start workout route accepts `?day=<1-based index>` so each workout day card can open its own fixed session view.
 - Start workout uses timing fields from `plan.json` (`warmupActiveSeconds`, `activeSeconds`, `restBetweenSetsSeconds`, `restBetweenExercisesSeconds`) and falls back to safe defaults for older plans.
 - Tapping Start for a new block begins with a 3-second get-ready countdown before the active timer starts.
-- Within an exercise, the timer runs continuously (active set -> rest -> next set) after a single Start tap; the next exercise still starts manually.
-- Marking a block complete in start workout automatically scrolls to the next block and moves focus to it to keep the session flow moving.
-- Exercise start cues use the Web Audio API (generated tones, not `<audio>` media playback) to reduce the chance of interrupting other media like podcasts.
+- Within an exercise, the timer runs continuously (active set -> rest -> next set) after a single Start tap; after between-exercises rest, the next exercise is selected and waits for a new Start tap.
+- Marking a block complete in start workout updates only that block's completion state; it does not auto-focus or auto-advance the session.
+- Stopwatch visibility is stored in browser local storage per workspace/day, and an active or paused stopwatch cannot be hidden mid-run.
+- Workout cues use the Web Audio API (generated tones, not `<audio>` media playback) to reduce the chance of interrupting other media like podcasts.
 - The web app is read-only for workout data, but Jeff the Cook can save immutable recipe snapshots to Blob.
 - Jeff the Cook interpretation requests use strict JSON schema with nullable patch fields so `gpt-5.4-mini` accepts the payload while still returning partial state updates.
 - Jeff the Cook generation now requires a measured `ingredientLines` list per recipe and validates that all used and extra ingredients are explicitly listed there.

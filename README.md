@@ -47,7 +47,7 @@ The web app reads generated workspace JSON and provides the browser-facing app:
 - homepage hub with workout summary and a dedicated Recipes entry point
 - read-only workout overview with per-day summaries before the session starts
 - single-day workout view with per-device checklist persistence
-- fixed start-workout timer panel with set-by-set active/rest pacing
+- start-workout session with an optional timer panel, set-by-set active/rest pacing, and stronger audio coaching cues
 - Jeff the Cook recipe workspace with voice-first draft updates, explicit generation, and saved recipe snapshots
 
 See [app_web/README.md](/Users/arjun/Personal/apps/personal_trainer/app_web/README.md).

@@ -2,7 +2,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   readWorkoutProgress,
+  readWorkoutStopwatchVisibility,
   toggleWorkoutBlock,
+  writeWorkoutStopwatchVisibility,
   writeWorkoutProgress,
 } from './workout-progress';
 
@@ -43,6 +45,15 @@ describe('workout progress storage', () => {
     );
 
     expect(readWorkoutProgress('wk_arj', 'Day 1')).toEqual([]);
+  });
+
+  it('defaults stopwatch visibility to hidden and persists visibility per workout day', () => {
+    expect(readWorkoutStopwatchVisibility('wk_arj', 'Day 1')).toBe(false);
+
+    writeWorkoutStopwatchVisibility('wk_arj', 'Day 1', true);
+
+    expect(readWorkoutStopwatchVisibility('wk_arj', 'Day 1')).toBe(true);
+    expect(readWorkoutStopwatchVisibility('wk_arj', 'Day 2')).toBe(false);
   });
 });
 

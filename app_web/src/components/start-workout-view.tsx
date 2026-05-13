@@ -3,12 +3,14 @@
 import { useEffect, useRef, useState } from 'react';
 
 import type { WorkoutDay } from '@/lib/trainer-data';
-import { playExerciseStartCue } from '@/lib/audio-cues';
+import { playWorkoutCue } from '@/lib/audio-cues';
 import { buildWorkoutDayBlocks } from '@/lib/workout-helpers';
 import {
   readWorkoutProgress,
+  readWorkoutStopwatchVisibility,
   toggleWorkoutBlock,
   writeWorkoutProgress,
+  writeWorkoutStopwatchVisibility,
 } from '@/lib/workout-progress';
 import { advanceTimerPhase, type TimerPhase } from '@/lib/workout-timer-state';
 
@@ -47,9 +49,11 @@ export function StartWorkoutView({ day, workspace }: StartWorkoutViewProps) {
   const [remainingSeconds, setRemainingSeconds] = useState(0);
   const [currentSet, setCurrentSet] = useState(1);
   const [pendingStartBlockIndex, setPendingStartBlockIndex] = useState<number | null>(null);
+  const [isStopwatchVisible, setIsStopwatchVisible] = useState(false);
 
   useEffect(() => {
     const storedProgress = readWorkoutProgress(workspace, day.heading);
+    const storedStopwatchVisibility = readWorkoutStopwatchVisibility(workspace, day.heading);
     setCompletedIds(storedProgress);
     const firstIncompleteIndex = blocks.findIndex((block) => !storedProgress.includes(block.id));
     setCurrentBlockIndex(firstIncompleteIndex >= 0 ? firstIncompleteIndex : 0);
@@ -58,31 +62,46 @@ export function StartWorkoutView({ day, workspace }: StartWorkoutViewProps) {
     setRemainingSeconds(0);
     setCurrentSet(1);
     setPendingStartBlockIndex(null);
+    setIsStopwatchVisible(storedStopwatchVisibility);
     blockRefs.current = [];
   }, [workspace, day.heading]);
 
-  const moveToNextBlock = (fromBlockIndex: number) => {
-    const nextBlockIndex = fromBlockIndex + 1;
-    if (nextBlockIndex >= blocks.length) {
+  const selectBlock = (blockIndex: number, options?: { shouldFocus?: boolean }) => {
+    const block = blocks[blockIndex];
+    if (!block) {
       return;
     }
 
-    const nextBlockElement = blockRefs.current[nextBlockIndex];
-    setCurrentBlockIndex(nextBlockIndex);
-    if (!nextBlockElement) {
+    setCurrentBlockIndex(blockIndex);
+    if (!options?.shouldFocus) {
       return;
     }
 
-    nextBlockElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    nextBlockElement.focus({ preventScroll: true });
+    const blockElement = blockRefs.current[blockIndex];
+    if (!blockElement) {
+      return;
+    }
+
+    blockElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    blockElement.focus({ preventScroll: true });
   };
 
   useEffect(() => {
     writeWorkoutProgress(workspace, day.heading, completedIds);
   }, [workspace, day.heading, completedIds]);
 
+  useEffect(() => {
+    writeWorkoutStopwatchVisibility(workspace, day.heading, isStopwatchVisible);
+  }, [workspace, day.heading, isStopwatchVisible]);
+
   const currentBlock = blocks[Math.min(currentBlockIndex, Math.max(blocks.length - 1, 0))];
   const isCurrentExercise = currentBlock?.kind === 'exercise';
+  const isTimerLocked =
+    pendingStartBlockIndex !== null ||
+    timerPhase === 'active' ||
+    timerPhase === 'rest-between-sets' ||
+    timerPhase === 'rest-between-exercises' ||
+    (timerPhase === 'idle' && remainingSeconds > 0);
 
   useEffect(() => {
     if (!isRunning || remainingSeconds <= 0) {
@@ -114,7 +133,7 @@ export function StartWorkoutView({ day, workspace }: StartWorkoutViewProps) {
       setCurrentSet(1);
       setIsRunning(true);
       setPendingStartBlockIndex(null);
-      playExerciseStartCue();
+      void playWorkoutCue('exercise-start');
       return;
     }
 
@@ -134,22 +153,36 @@ export function StartWorkoutView({ day, workspace }: StartWorkoutViewProps) {
       setCompletedIds((current) =>
         current.includes(currentBlock.id) ? current : [...current, currentBlock.id]
       );
-      moveToNextBlock(currentBlockIndex);
     }
 
-    let nextRemaining = nextState.remainingSeconds;
+    const previousPhase = timerPhase;
+    const nextBlock = nextState.selectBlockIndex !== null ? blocks[nextState.selectBlockIndex] : null;
     if (nextState.selectBlockIndex !== null) {
-      const nextBlock = blocks[nextState.selectBlockIndex];
-      setCurrentBlockIndex(nextState.selectBlockIndex);
-      setCurrentSet(1);
-      nextRemaining = nextState.phase === 'idle' ? nextBlock?.activeSeconds ?? 0 : nextRemaining;
-    } else {
-      setCurrentSet(nextState.currentSet);
+      selectBlock(nextState.selectBlockIndex, { shouldFocus: true });
     }
+
+    setCurrentSet(nextState.currentSet);
 
     setTimerPhase(nextState.phase);
     setIsRunning(nextState.isRunning);
-    setRemainingSeconds(nextRemaining);
+    setRemainingSeconds(
+      nextState.phase === 'idle' && nextBlock ? nextBlock.activeSeconds : nextState.remainingSeconds
+    );
+
+    if (previousPhase !== nextState.phase) {
+      if (nextState.phase === 'rest-between-sets') {
+        void playWorkoutCue('rest-between-sets');
+      } else if (nextState.phase === 'rest-between-exercises') {
+        void playWorkoutCue('rest-between-exercises');
+      } else if (nextState.phase === 'complete') {
+        void playWorkoutCue('session-complete');
+      } else if (
+        previousPhase === 'rest-between-sets' &&
+        nextState.phase === 'active'
+      ) {
+        void playWorkoutCue('exercise-start');
+      }
+    }
   }, [
     isCurrentExercise,
     isRunning,
@@ -169,7 +202,8 @@ export function StartWorkoutView({ day, workspace }: StartWorkoutViewProps) {
     if (!block) {
       return;
     }
-    setCurrentBlockIndex(blockIndex);
+    selectBlock(blockIndex, { shouldFocus: true });
+    setIsStopwatchVisible(true);
     setCurrentSet(1);
     setPendingStartBlockIndex(blockIndex);
     setTimerPhase('idle');
@@ -181,6 +215,8 @@ export function StartWorkoutView({ day, workspace }: StartWorkoutViewProps) {
     if (!currentBlock) {
       return;
     }
+
+    setIsStopwatchVisible(true);
 
     if (isRunning) {
       setIsRunning(false);
@@ -203,11 +239,12 @@ export function StartWorkoutView({ day, workspace }: StartWorkoutViewProps) {
       return;
     }
     const block = blocks[targetIndex];
-    setCurrentBlockIndex(targetIndex);
+    selectBlock(targetIndex, { shouldFocus: true });
     setCurrentSet(1);
     setTimerPhase('idle');
     setRemainingSeconds(block.activeSeconds);
     setIsRunning(false);
+    setPendingStartBlockIndex(null);
   };
 
   const completedCount = completedIds.length;
@@ -226,76 +263,109 @@ export function StartWorkoutView({ day, workspace }: StartWorkoutViewProps) {
     pendingStartBlockIndex !== null
       ? 'Starting in 3 seconds. Set your position.'
       : timerPhase === 'active'
-      ? 'Push now. Keep form clean.'
-      : isRestPhase
-        ? 'Recover now. Breathe and reset.'
-        : 'Tap Start when you begin the next exercise.';
+        ? 'Push now. Keep form clean.'
+        : isRestPhase
+          ? 'Recover now. Breathe and reset.'
+          : 'Tap Start when you begin the next exercise.';
+
+  const toggleStopwatchVisibility = () => {
+    if (isStopwatchVisible && isTimerLocked) {
+      return;
+    }
+
+    setIsStopwatchVisible((current) => !current);
+  };
 
   return (
-    <section className="grid gap-4 pb-[calc(182px+env(safe-area-inset-bottom))] sm:gap-5 sm:pb-[calc(194px+env(safe-area-inset-bottom))]">
-      <section className="fixed inset-x-3 bottom-[calc(12px+env(safe-area-inset-bottom))] z-20 mx-auto w-[min(100%-1.5rem,72rem)] rounded-[1.5rem] border border-white/50 bg-[radial-gradient(circle_at_top_right,rgba(34,184,199,0.28),transparent_35%),linear-gradient(160deg,#15171c_0%,#21252d_65%,#191d24_100%)] p-2 text-white shadow-[0_22px_60px_rgba(20,24,30,0.16)] sm:bottom-[calc(16px+env(safe-area-inset-bottom))] sm:p-2.5">
-        <div className="grid grid-cols-[minmax(0,1fr)_96px] items-stretch gap-2 sm:grid-cols-[minmax(0,1fr)_102px] md:grid-cols-[minmax(0,1fr)_112px] md:gap-2.5">
-          <div className="min-w-0">
-            <h2 className="m-0 truncate font-[Avenir_Next_Condensed,Arial_Narrow,sans-serif] text-[clamp(1rem,2.5vw,1.28rem)] leading-tight">{currentBlock?.name ?? 'No block selected'}</h2>
-            <div className="mt-1.5 flex items-baseline gap-2">
-              <p className="m-0 text-[clamp(1.55rem,6vw,2.3rem)] font-extrabold leading-none tracking-[0.04em]">{formatDuration(remainingSeconds)}</p>
-              {isCurrentExercise && currentBlock ? (
-                <p className="m-0 text-[0.92rem] text-white/82">
-                  Set <strong className="text-[1.06rem] text-white">{currentSet}/{currentBlock.setCount}</strong>
-                </p>
-              ) : null}
+    <section
+      className={[
+        'grid gap-4 sm:gap-5',
+        isStopwatchVisible
+          ? 'pb-[calc(242px+env(safe-area-inset-bottom))] sm:pb-[calc(252px+env(safe-area-inset-bottom))]'
+          : 'pb-[calc(88px+env(safe-area-inset-bottom))] sm:pb-[calc(96px+env(safe-area-inset-bottom))]',
+      ].join(' ')}
+    >
+      {isStopwatchVisible ? (
+        <section className="fixed bottom-[calc(12px+env(safe-area-inset-bottom))] left-3 right-[calc(1rem+3.75rem)] z-20 rounded-[1.5rem] border border-white/50 bg-[radial-gradient(circle_at_top_right,rgba(34,184,199,0.28),transparent_35%),linear-gradient(160deg,#15171c_0%,#21252d_65%,#191d24_100%)] p-2 text-white shadow-[0_22px_60px_rgba(20,24,30,0.16)] sm:bottom-[calc(16px+env(safe-area-inset-bottom))] sm:left-4 sm:right-[calc(1rem+4rem)] sm:p-2.5 xl:left-[max(1rem,calc(50%-36rem))] xl:right-[max(calc(1rem+4rem),calc(50%-36rem+4rem))]">
+          <div className="grid grid-cols-[minmax(0,1fr)_96px] items-stretch gap-2 sm:grid-cols-[minmax(0,1fr)_102px] md:grid-cols-[minmax(0,1fr)_112px] md:gap-2.5">
+            <div className="min-w-0">
+              <h2 className="m-0 truncate font-[Avenir_Next_Condensed,Arial_Narrow,sans-serif] text-[clamp(1rem,2.5vw,1.28rem)] leading-tight">{currentBlock?.name ?? 'No block selected'}</h2>
+              <div className="mt-1.5 flex items-baseline gap-2">
+                <p className="m-0 text-[clamp(1.55rem,6vw,2.3rem)] font-extrabold leading-none tracking-[0.04em]">{formatDuration(remainingSeconds)}</p>
+                {isCurrentExercise && currentBlock ? (
+                  <p className="m-0 text-[0.92rem] text-white/82">
+                    Set <strong className="text-[1.06rem] text-white">{currentSet}/{currentBlock.setCount}</strong>
+                  </p>
+                ) : null}
+              </div>
+              <aside className={[
+                'mt-2 grid content-center gap-0.5 rounded-[14px] border p-2 text-white',
+                coachMode === 'Exercise'
+                  ? 'border-[#ff6359]/50 bg-[#ff6359]/20'
+                  : coachMode === 'Rest'
+                    ? 'border-cyan-400/50 bg-cyan-400/20'
+                    : coachMode === 'Get ready'
+                      ? 'border-amber-300/60 bg-amber-300/20'
+                      : 'border-white/20 bg-white/10',
+              ].join(' ')}>
+                <p className="m-0 text-[0.72rem] font-extrabold uppercase tracking-[0.13em]">{coachMode}</p>
+                <p className="m-0 text-[0.74rem] leading-[1.3] text-white/86 sm:text-[0.79rem]">{coachCopy}</p>
+              </aside>
             </div>
-            <aside className={[
-              'mt-2 grid content-center gap-0.5 rounded-[14px] border p-2 text-white',
-              coachMode === 'Exercise'
-                ? 'border-[#ff6359]/50 bg-[#ff6359]/20'
-                : coachMode === 'Rest'
-                  ? 'border-cyan-400/50 bg-cyan-400/20'
-                  : coachMode === 'Get ready'
-                    ? 'border-amber-300/60 bg-amber-300/20'
-                  : 'border-white/20 bg-white/10',
-            ].join(' ')}>
-              <p className="m-0 text-[0.72rem] font-extrabold uppercase tracking-[0.13em]">{coachMode}</p>
-              <p className="m-0 text-[0.74rem] leading-[1.3] text-white/86 sm:text-[0.79rem]">{coachCopy}</p>
+            <aside className="flex min-h-0 flex-col items-stretch gap-2 self-stretch">
+              <div className="flex justify-center gap-1.5">
+                <button
+                  type="button"
+                  className="h-8 w-8 rounded-[10px] border border-white/20 bg-white/10 p-0 text-white"
+                  onClick={() => jumpToBlock(-1)}
+                  disabled={currentBlockIndex === 0}
+                  aria-label="Previous block"
+                  title="Previous block"
+                >
+                  ◀
+                </button>
+                <button
+                  type="button"
+                  className="h-8 w-8 rounded-[10px] border border-white/20 bg-white/10 p-0 text-white disabled:opacity-40"
+                  onClick={() => jumpToBlock(1)}
+                  disabled={currentBlockIndex >= blocks.length - 1}
+                  aria-label="Next block"
+                  title="Next block"
+                >
+                  ▶
+                </button>
+              </div>
+              <div className="flex min-h-0 flex-1">
+                <button
+                  type="button"
+                  className="inline-flex h-full min-h-[84px] w-full flex-1 items-center justify-center rounded-2xl border border-transparent bg-gradient-to-br from-[#ff6a60] to-[#ff7f5d] p-2 text-white shadow-[0_12px_24px_rgba(255,99,89,0.24)] transition hover:-translate-y-0.5 sm:min-h-[84px] md:min-h-[90px]"
+                  onClick={handleStartPauseToggle}
+                  aria-label={startPauseLabel}
+                  title={startPauseLabel}
+                >
+                  {isRunning ? <PauseIcon /> : <PlayIcon />}
+                </button>
+              </div>
             </aside>
           </div>
-          <aside className="flex min-h-0 flex-col items-stretch gap-2 self-stretch">
-            <div className="flex justify-center gap-1.5">
-              <button
-                type="button"
-                className="h-8 w-8 rounded-[10px] border border-white/20 bg-white/10 p-0 text-white"
-                onClick={() => jumpToBlock(-1)}
-                disabled={currentBlockIndex === 0}
-                aria-label="Previous block"
-                title="Previous block"
-              >
-                ◀
-              </button>
-              <button
-                type="button"
-                className="h-8 w-8 rounded-[10px] border border-white/20 bg-white/10 p-0 text-white disabled:opacity-40"
-                onClick={() => jumpToBlock(1)}
-                disabled={currentBlockIndex >= blocks.length - 1}
-                aria-label="Next block"
-                title="Next block"
-              >
-                ▶
-              </button>
-            </div>
-            <div className="flex min-h-0 flex-1">
-              <button
-                type="button"
-                className="inline-flex h-full min-h-[84px] w-full flex-1 items-center justify-center rounded-2xl border border-transparent bg-gradient-to-br from-[#ff6a60] to-[#ff7f5d] p-2 text-white shadow-[0_12px_24px_rgba(255,99,89,0.24)] transition hover:-translate-y-0.5 sm:min-h-[84px] md:min-h-[90px]"
-                onClick={handleStartPauseToggle}
-                aria-label={startPauseLabel}
-                title={startPauseLabel}
-              >
-                {isRunning ? <PauseIcon /> : <PlayIcon />}
-              </button>
-            </div>
-          </aside>
-        </div>
-      </section>
+        </section>
+      ) : null}
+
+      <button
+        type="button"
+        className="fixed bottom-[calc(16px+env(safe-area-inset-bottom))] right-4 z-30 inline-flex h-12 w-12 items-center justify-center rounded-full border border-slate-900/10 bg-[#17181c] text-white shadow-[0_14px_36px_rgba(23,24,28,0.26)] transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-80"
+        onClick={toggleStopwatchVisibility}
+        aria-label={isStopwatchVisible ? 'Hide stopwatch' : 'Show stopwatch'}
+        title={
+          isStopwatchVisible
+            ? isTimerLocked
+              ? 'Pause or finish the stopwatch before hiding it'
+              : 'Hide stopwatch'
+            : 'Show stopwatch'
+        }
+      >
+        ⏱
+      </button>
 
       <section className="rounded-[1.75rem] border border-white/70 bg-[linear-gradient(180deg,rgba(255,255,255,0.95),rgba(248,249,251,0.88)),linear-gradient(180deg,#fff,#fff)] p-5 shadow-[0_20px_45px_rgba(41,51,64,0.08)] backdrop-blur-xl sm:p-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -328,14 +398,7 @@ export function StartWorkoutView({ day, workspace }: StartWorkoutViewProps) {
                 display="start"
                 checked={completedIds.includes(block.id)}
                 onToggle={(blockId) => {
-                  setCompletedIds((current) => {
-                    const isAlreadyComplete = current.includes(blockId);
-                    const next = toggleWorkoutBlock(current, blockId);
-                    if (!isAlreadyComplete) {
-                      moveToNextBlock(index);
-                    }
-                    return next;
-                  });
+                  setCompletedIds((current) => toggleWorkoutBlock(current, blockId));
                 }}
               />
             </div>

@@ -8,6 +8,7 @@ import {
   normalizeWorkoutPlan,
   toggleWorkoutBlock,
   workoutProgressKey,
+  workoutStopwatchVisibilityKey,
 } from './workout';
 
 describe('normalizeWorkoutPlan', () => {
@@ -50,6 +51,9 @@ describe('normalizeWorkoutPlan', () => {
 describe('workout progress helpers', () => {
   it('builds stable progress keys and toggles completion ids', () => {
     expect(workoutProgressKey('wk_arj', 'Day 1')).toBe('personal-trainer:workout-progress:wk_arj:Day 1');
+    expect(workoutStopwatchVisibilityKey('wk_arj', 'Day 1')).toBe(
+      'personal-trainer:stopwatch-visible:wk_arj:Day 1'
+    );
     expect(toggleWorkoutBlock(['a'], 'b')).toEqual(['a', 'b']);
     expect(toggleWorkoutBlock(['a', 'b'], 'a')).toEqual(['b']);
     expect(normalizeCompletedWorkoutIds(['a', 1, 'b'])).toEqual(['a', 'b']);
@@ -106,6 +110,48 @@ describe('advanceTimerPhase', () => {
       isRunning: true,
       remainingSeconds: 90,
       markBlockComplete: false,
+    });
+  });
+
+  it('waits on the next block after between-exercises rest instead of advancing twice', () => {
+    const finalSetDone = advanceTimerPhase({
+      phase: 'active',
+      isExercise: true,
+      currentSet: 3,
+      setCount: 3,
+      activeSeconds: 45,
+      restBetweenSetsSeconds: 90,
+      restBetweenExercisesSeconds: 120,
+      currentBlockIndex: 1,
+      blockCount: 4,
+    });
+
+    expect(finalSetDone).toMatchObject({
+      phase: 'rest-between-exercises',
+      isRunning: true,
+      remainingSeconds: 120,
+      markBlockComplete: true,
+      selectBlockIndex: null,
+    });
+
+    const afterTransitionRest = advanceTimerPhase({
+      phase: finalSetDone.phase,
+      isExercise: true,
+      currentSet: finalSetDone.currentSet,
+      setCount: 3,
+      activeSeconds: 45,
+      restBetweenSetsSeconds: 90,
+      restBetweenExercisesSeconds: 120,
+      currentBlockIndex: 1,
+      blockCount: 4,
+    });
+
+    expect(afterTransitionRest).toMatchObject({
+      phase: 'idle',
+      isRunning: false,
+      currentSet: 1,
+      markBlockComplete: false,
+      selectBlockIndex: 2,
     });
   });
 

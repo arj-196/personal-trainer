@@ -74,9 +74,14 @@ export type TimerAdvanceResult = {
 };
 
 const WORKOUT_PROGRESS_STORAGE_PREFIX = 'personal-trainer:workout-progress';
+const WORKOUT_STOPWATCH_VISIBILITY_STORAGE_PREFIX = 'personal-trainer:stopwatch-visible';
 
 export function workoutProgressKey(workspace: string, dayHeading: string): string {
   return `${WORKOUT_PROGRESS_STORAGE_PREFIX}:${workspace}:${dayHeading}`;
+}
+
+export function workoutStopwatchVisibilityKey(workspace: string, dayHeading: string): string {
+  return `${WORKOUT_STOPWATCH_VISIBILITY_STORAGE_PREFIX}:${workspace}:${dayHeading}`;
 }
 
 export function normalizeCompletedWorkoutIds(value: unknown): string[] {
