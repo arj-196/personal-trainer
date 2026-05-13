@@ -1,5 +1,5 @@
 import { SavedRecipesView } from '@/components/saved-recipes-view';
-import { listRecipeSnapshots } from '@/lib/recipes/blob-store';
+import { listRecipeSnapshots } from '@/lib/server/recipes-db';
 
 export const dynamic = 'force-dynamic';
 

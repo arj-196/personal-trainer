@@ -56,4 +56,4 @@ _Avoid_: Recipe, favorite
 
 ## Flagged ambiguities
 
-- "frontend" previously referred to all user-facing app code. Resolved: use **web app** for `app_web/` and **shared package** for TypeScript domain logic used by the web app.
+- "web UI" previously referred to all user-facing app code. Resolved: use **web app** for `app_web/` and **shared package** for TypeScript domain logic used by the web app.

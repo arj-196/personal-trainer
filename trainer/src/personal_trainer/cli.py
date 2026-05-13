@@ -6,36 +6,39 @@ import re
 from dataclasses import dataclass
 from datetime import date, datetime
 from pathlib import Path
-from typing import cast
 
 import click
 from dotenv import load_dotenv
 
-from personal_trainer.blob_sync import (
-    BlobAccess,
-    BlobPublishError,
-    default_blob_access,
-    default_blob_prefix,
-    publish_workspace_to_blob,
+from personal_trainer.db import (
+    TRAINER_SYNC_TABLES,
+    create_workspace,
+    get_database_url,
+    get_prod_database_url,
+    latest_checkin,
+    list_checkins,
+    list_workspaces,
+    next_plan_version,
+    read_profile,
+    run_migrations,
+    slugify_workspace_name,
+    sync_tables,
+    upsert_checkin,
+)
+from personal_trainer.importers import (
+    import_filesystem_workspaces,
+    import_recipe_snapshots_from_json,
 )
 from personal_trainer.llm import start_session
 from personal_trainer.markdown_io import (
     ensure_workspace,
     load_checkin,
     load_profile,
-    read_planned_workouts_from_plan_json,
-    load_state,
-    render_checkin_template,
-    render_coach_notes,
-    render_plan,
-    render_plan_json,
-    render_profile_json,
-    render_profile_template,
-    save_state,
 )
 from personal_trainer.notes_publisher import NotesPublishError, publish_plan_to_notes
 from personal_trainer.ollama_client import OllamaClientConfig
 from personal_trainer.openai_client import OpenAIClientConfig
+from personal_trainer.db import save_workout_plan, upsert_profile
 from personal_trainer.workout_planner import (
     WorkoutPlannerError,
     WorkoutPlanBuildResult,
@@ -260,24 +263,18 @@ class TrainerGroup(click.Group):
         return super().make_context(info_name, args, parent=parent, **extra)
 
 
-@click.group(cls=TrainerGroup, help="Markdown-first personal trainer application.")
+@click.group(cls=TrainerGroup, help="Postgres-backed personal trainer application.")
 def main() -> None:
     """Top-level CLI group."""
 
 
-@main.command("init", help="Create a Markdown workspace for a user.")
+@main.command("init", help="Create a workspace and default athlete profile in Postgres.")
 @WORKSPACE_ARGUMENT
 def init_command(workspace: Path) -> None:
-    paths = ensure_workspace(workspace)
-    if not paths.profile.exists():
-        paths.profile.write_text(render_profile_template(), encoding="utf-8")
-    profile = load_profile(paths.profile)
-    paths.profile_json.write_text(render_profile_json(profile), encoding="utf-8")
-    save_state(paths.state, load_state(paths.state))
-    click.echo(f"Workspace ready at {paths.root}")
-    click.echo(
-        f"Fill out {paths.profile.name}, then run: personal-trainer plan {paths.root.name}"
-    )
+    workspace_slug = slugify_workspace_name(workspace.name)
+    create_workspace(workspace_slug)
+    click.echo(f"Workspace '{workspace_slug}' is ready in Postgres.")
+    click.echo("Fill out the athlete profile in the web app, then run personal-trainer plan.")
 
 
 @main.command(
@@ -298,24 +295,17 @@ def plan_command(
     max_review_iterations: int,
 ) -> None:
     _configure_progress_logging()
-    paths = ensure_workspace(workspace)
-    LOGGER.info("Preparing workspace '%s' for plan generation", paths.root.name)
-    if not paths.profile.exists():
-        raise click.ClickException(f"Missing profile: {paths.profile}")
-
-    LOGGER.info("Loading athlete profile from %s", paths.profile)
-    profile = load_profile(paths.profile)
-    paths.profile_json.write_text(render_profile_json(profile), encoding="utf-8")
-    checkin_lookup = _find_latest_checkin(paths.root)
-    checkin = checkin_lookup[0] if checkin_lookup is not None else None
-    if checkin_lookup is None:
-        LOGGER.info("No check-in files found for workspace '%s'", paths.root.name)
+    workspace_slug = slugify_workspace_name(workspace.name)
+    LOGGER.info("Preparing workspace '%s' for plan generation", workspace_slug)
+    profile = read_profile(workspace_slug)
+    checkin = latest_checkin(workspace_slug)
+    if checkin is None:
+        LOGGER.info("No check-ins found for workspace '%s'", workspace_slug)
     else:
-        _, checkin_path = checkin_lookup
         LOGGER.info(
-            "Using latest check-in file '%s' for plan generation", checkin_path.name
+            "Using latest check-in dated %s for plan generation",
+            checkin.check_in_date.isoformat(),
         )
-    state = load_state(paths.state)
     targets = _resolve_planner_targets(
         ollama_models=ollama_model,
         openai_models=openai_model,
@@ -330,9 +320,9 @@ def plan_command(
         resolved_session_id,
     )
     generated_plans, outputs = _build_plans(
-        workspace=paths.root,
+        workspace_slug=workspace_slug,
         profile=profile,
-        plan_version=state.plan_version + 1,
+        plan_version=next_plan_version(workspace_slug),
         checkin=checkin,
         targets=targets,
         session_id=resolved_session_id,
@@ -342,19 +332,12 @@ def plan_command(
         timeout_seconds=timeout_seconds,
         max_review_iterations=max_review_iterations,
     )
-
-    state.plan_version = generated_plans[0].result.plan.plan_version
-    state.generated_plans += len(generated_plans)
-    state.last_check_in = checkin.check_in_date.isoformat() if checkin is not None else None
-    save_state(paths.state, state)
     LOGGER.info("Plan generation finished successfully")
 
-    click.echo(f"Profile data written to {paths.profile_json}")
     for output in outputs:
-        click.echo(f"Plan written to {output.plan_markdown}")
-        click.echo(f"Plan data written to {output.plan_json}")
-        click.echo(f"Plan review written to {output.plan_review_json}")
-        click.echo(f"Coach notes written to {output.coach_notes_markdown}")
+        click.echo(
+            f"Stored workout plan version {output.result.plan.plan_version} for workspace '{workspace_slug}'"
+        )
     for generated in generated_plans:
         if generated.result.reached_max_iterations:
             unresolved = generated.result.review_report.get("unresolved_personas", [])
@@ -365,7 +348,7 @@ def plan_command(
             )
 
 
-@main.command("checkin", help="Create a new weekly check-in Markdown file.")
+@main.command("checkin", help="Create or update a check-in row in Postgres.")
 @WORKSPACE_ARGUMENT
 @click.option(
     "--date",
@@ -376,34 +359,30 @@ def plan_command(
 )
 def checkin_command(workspace: Path, checkin_date: datetime | None) -> None:
     _configure_progress_logging()
-    paths = ensure_workspace(workspace)
+    workspace_slug = slugify_workspace_name(workspace.name)
+    profile = read_profile(workspace_slug)
     resolved_date = checkin_date.date() if checkin_date is not None else date.today()
-    workouts_planned = read_planned_workouts_from_plan_json(paths.plan_json)
-    checkin_path = paths.checkins_dir / f"{resolved_date.isoformat()}-checkin.md"
+    workouts_planned = max(0, profile.training_days)
 
-    LOGGER.info("Creating check-in template for workspace '%s'", paths.root.name)
+    LOGGER.info("Creating check-in row for workspace '%s'", workspace_slug)
     if checkin_date is None:
         LOGGER.info("No --date provided; using today's date %s", resolved_date.isoformat())
     else:
         LOGGER.info("Using provided check-in date %s", resolved_date.isoformat())
     LOGGER.info("Planned workouts default resolved to %s", workouts_planned)
 
-    if checkin_path.exists():
-        LOGGER.error("Check-in template already exists at %s", checkin_path)
-        raise click.ClickException(
-            f"Check-in already exists: {checkin_path}. "
-            "Edit the existing file or choose another date with --date."
-        )
-
-    checkin_path.write_text(
-        render_checkin_template(
-            checkin_date=resolved_date,
-            workouts_planned=workouts_planned,
+    upsert_checkin(
+        workspace_slug,
+        load_checkin(
+            _write_temporary_checkin_template(
+                workspace_slug,
+                resolved_date,
+                workouts_planned,
+            )
         ),
-        encoding="utf-8",
     )
-    LOGGER.info("Created check-in template at %s", checkin_path)
-    click.echo(f"Check-in template written to {checkin_path}")
+    LOGGER.info("Created check-in row for workspace '%s'", workspace_slug)
+    click.echo(f"Check-in row stored for {workspace_slug} on {resolved_date.isoformat()}")
 
 
 def _resolve_planner_targets(
@@ -427,7 +406,7 @@ def _resolve_planner_targets(
 
 def _build_plans(
     *,
-    workspace: Path,
+    workspace_slug: str,
     profile,
     plan_version: int,
     targets: list[PlannerTarget],
@@ -440,7 +419,7 @@ def _build_plans(
     checkin=None,
 ):
     plans: list[GeneratedPlanResult] = []
-    outputs: list[PlannerOutputPaths] = []
+    outputs: list[GeneratedPlanResult] = []
     comparison_mode = len(targets) > 1
     for target in targets:
         LOGGER.info(
@@ -456,7 +435,7 @@ def _build_plans(
                     checkin=checkin,
                     workflow_name="weekly_plan_generation",
                     session_id=session_id,
-                    llm_log_path=workspace / ".trainer" / "logs" / "llm_calls.jsonl",
+                    llm_log_path=WORKSPACES_ROOT / workspace_slug / ".trainer" / "logs" / "llm_calls.jsonl",
                     openai_client_config=OpenAIClientConfig(
                         api_key=openai_api_key,
                         model=target.model,
@@ -472,7 +451,7 @@ def _build_plans(
                     checkin=checkin,
                     workflow_name="weekly_plan_generation",
                     session_id=session_id,
-                    llm_log_path=workspace / ".trainer" / "logs" / "llm_calls.jsonl",
+                    llm_log_path=WORKSPACES_ROOT / workspace_slug / ".trainer" / "logs" / "llm_calls.jsonl",
                     client_config=OllamaClientConfig(
                         model=target.model,
                         base_url=ollama_base_url,
@@ -483,48 +462,22 @@ def _build_plans(
         except WorkoutPlannerError as error:
             raise click.ClickException(str(error)) from error
         plans.append(GeneratedPlanResult(target=target, result=build_result))
-        output_paths = _planner_output_paths(
-            workspace, target, comparison_mode=comparison_mode
-        )
-        LOGGER.info(
-            "Writing %s artifacts for model '%s' to %s, %s, and %s",
-            target.provider,
-            target.model,
-            output_paths.plan_markdown,
-            output_paths.plan_json,
-            output_paths.coach_notes_markdown,
-        )
-        legacy_pdf = output_paths.plan_markdown.with_suffix(".pdf")
-        if legacy_pdf.exists():
-            LOGGER.info("Removing stale PDF artifact at %s", legacy_pdf)
-            legacy_pdf.unlink()
-        plan_markdown = render_plan(build_result.plan, profile)
-        output_paths.plan_markdown.write_text(plan_markdown, encoding="utf-8")
-        output_paths.plan_json.write_text(
-            render_plan_json(build_result.plan, profile), encoding="utf-8"
-        )
-        output_paths.plan_review_json.write_text(
-            json.dumps(build_result.review_report, indent=2), encoding="utf-8"
-        )
-        output_paths.coach_notes_markdown.write_text(
-            render_coach_notes(build_result.plan, profile, checkin=checkin),
-            encoding="utf-8",
-        )
-        outputs.append(output_paths)
+        save_workout_plan(workspace_slug, build_result.plan, profile)
+        outputs.append(plans[-1])
     return plans, outputs
 
 
 @main.command("status", help="Show the current workspace state.")
 @WORKSPACE_ARGUMENT
 def status_command(workspace: Path) -> None:
-    paths = ensure_workspace(workspace)
-    state = load_state(paths.state)
-    click.echo(f"Workspace: {paths.root}")
-    click.echo(f"Profile exists: {'yes' if paths.profile.exists() else 'no'}")
-    click.echo(f"Plan exists: {'yes' if paths.plan.exists() else 'no'}")
-    click.echo(f"Plan version: {state.plan_version}")
-    click.echo(f"Generated plans: {state.generated_plans}")
-    click.echo(f"Last check-in: {state.last_check_in or 'none'}")
+    workspace_slug = slugify_workspace_name(workspace.name)
+    profile = read_profile(workspace_slug)
+    checkins = list_checkins(workspace_slug)
+    click.echo(f"Workspace: {workspace_slug}")
+    click.echo(f"Athlete profile: {profile.name}")
+    click.echo(f"Training days: {profile.training_days}")
+    click.echo(f"Check-ins: {len(checkins)}")
+    click.echo(f"Next plan version: {next_plan_version(workspace_slug)}")
 
 
 @main.command("publish-notes", help="Publish the current plan to Apple Notes on macOS.")
@@ -560,42 +513,106 @@ def publish_notes_command(
     click.echo(f"Note ID: {result.note_id}")
 
 
-@main.command(
-    "publish-web",
-    help="Upload the workspace artifacts to Vercel Blob.",
-)
-@WORKSPACE_ARGUMENT
-@click.option(
-    "--prefix",
-    default=default_blob_prefix,
-    show_default="env TRAINER_BLOB_PREFIX or personal-trainer",
-    help="Blob pathname prefix used by the frontend.",
-)
-@click.option(
-    "--access",
-    type=click.Choice(["public", "private"]),
-    default=default_blob_access,
-    show_default="env TRAINER_BLOB_ACCESS or private",
-    help="Blob access level for the uploaded files.",
-)
-def publish_web_command(workspace: Path, prefix: str, access: str) -> None:
-    try:
-        result = publish_workspace_to_blob(
-            workspace,
-            prefix=prefix,
-            access=cast(BlobAccess, access),
-        )
-    except BlobPublishError as error:
-        raise click.ClickException(str(error)) from error
+@main.group("db", help="Manage the local PostgreSQL development database.")
+def db_group() -> None:
+    """Database management commands."""
 
-    click.echo(
-        f"Published workspace '{result.workspace}' to Blob prefix '{result.prefix}'"
-    )
-    click.echo(f"Workspace files uploaded: {result.workspace_files_uploaded}")
-    click.echo(f"Remote files deleted: {result.remote_files_deleted}")
-    click.echo(
-        "Set TRAINER_DATA_SOURCE=blob in the frontend environment before deploying."
-    )
+
+@db_group.command("up", help="Start the local PostgreSQL Docker Compose service.")
+def db_up_command() -> None:
+    _run_local_shell_command("docker compose up -d")
+    click.echo("Local Postgres service started.")
+
+
+@db_group.command("down", help="Stop the local PostgreSQL Docker Compose service.")
+def db_down_command() -> None:
+    _run_local_shell_command("docker compose down")
+    click.echo("Local Postgres service stopped.")
+
+
+@db_group.command("destroy", help="Destroy the local PostgreSQL service and volume.")
+def db_destroy_command() -> None:
+    _run_local_shell_command("docker compose down -v")
+    click.echo("Local Postgres service and data volume destroyed.")
+
+
+@db_group.command("setup", help="Apply SQL migrations to the configured database.")
+def db_setup_command() -> None:
+    applied = run_migrations(get_database_url())
+    click.echo(f"Applied {applied} SQL migration file(s).")
+
+
+@main.command("import-filesystem", help="Import filesystem workspaces from ./workspaces into Postgres.")
+def import_filesystem_command() -> None:
+    imported = import_filesystem_workspaces(WORKSPACES_ROOT, database_url=get_database_url())
+    click.echo(f"Imported {imported} workspace(s) from the filesystem.")
+
+
+@main.command("import-blob-recipes", help="Import saved recipe snapshots from a JSON export into Postgres.")
+@click.option(
+    "--snapshot-export",
+    "snapshot_export",
+    type=click.Path(path_type=Path, exists=True, dir_okay=False),
+    required=True,
+    help="Path to a JSON file containing saved recipe snapshots.",
+)
+def import_blob_recipes_command(snapshot_export: Path) -> None:
+    imported = import_recipe_snapshots_from_json(snapshot_export, database_url=get_database_url())
+    click.echo(f"Imported {imported} saved recipe snapshot(s).")
+
+
+@main.group("sync", help="Synchronize trainer-domain tables between local Postgres and Neon.")
+def sync_group() -> None:
+    """Synchronization commands."""
+
+
+@sync_group.command("pull-prod", help="Pull trainer-domain tables from Neon into local Postgres.")
+def sync_pull_prod_command() -> None:
+    sync_tables(get_prod_database_url(), get_database_url(), TRAINER_SYNC_TABLES)
+    click.echo("Pulled trainer-domain tables from production into local Postgres.")
+
+
+@sync_group.command("push-prod", help="Push local trainer-domain tables into Neon.")
+def sync_push_prod_command() -> None:
+    sync_tables(get_database_url(), get_prod_database_url(), TRAINER_SYNC_TABLES)
+    click.echo("Pushed local trainer-domain tables into production Postgres.")
+
+
+def _run_local_shell_command(command: str) -> None:
+    import subprocess
+
+    result = subprocess.run(command, shell=True, check=False)
+    if result.returncode != 0:
+        raise click.ClickException(f"Command failed: {command}")
+
+
+def _write_temporary_checkin_template(workspace_slug: str, checkin_date: date, workouts_planned: int) -> Path:
+    from tempfile import NamedTemporaryFile
+
+    content = f"""# Weekly Check-In
+
+## Summary
+- Date: {checkin_date.isoformat()}
+- Workouts completed: {workouts_planned}
+- Workouts planned: {workouts_planned}
+- Average difficulty (1-10): 6
+- Energy (1-10): 7
+- Soreness (1-10): 4
+- Body weight kg:
+
+## Wins
+-
+
+## Struggles
+-
+
+## Notes
+- Created from the CLI for workspace {workspace_slug}
+"""
+    handle = NamedTemporaryFile("w", encoding="utf-8", delete=False, suffix=".md")
+    handle.write(content)
+    handle.close()
+    return Path(handle.name)
 
 
 if __name__ == "__main__":

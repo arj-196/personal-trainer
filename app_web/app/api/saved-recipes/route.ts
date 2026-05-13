@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 
-import { listRecipeSnapshots } from '@/lib/recipes/blob-store';
 import { logger } from '@/lib/server/logger';
+import { listRecipeSnapshots } from '@/lib/server/recipes-db';
 
 export async function GET() {
   try {

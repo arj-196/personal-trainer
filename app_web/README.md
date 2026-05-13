@@ -1,54 +1,43 @@
 # Web App
 
-The web app is a Next.js app for the workout UI and Jeff the Cook recipe workspace.
+The web app is the authenticated interface for managing Personal Trainer data stored in PostgreSQL.
 
-## Stack
+## Features
 
-- Next.js
-- React
-- TypeScript
-- Tailwind CSS (utility-first styling)
-- shared domain logic from `@personal-trainer/shared`
+- shared username/password login backed by env vars and a signed session cookie
+- create `Workspace` records
+- edit the single current `Athlete Profile` for a workspace
+- create and edit `Check-in` records after a current workout plan exists
+- view the current `Workout Plan`
+- run the Jeff the Cook recipe workflow
+- save and delete recipe snapshots in PostgreSQL
 
-## Current features
+## Trainer Workflow
 
-- use the homepage as the hub for both workout and recipe flows
-- switch between generated workspaces
-- view a high-level workout summary on the homepage instead of the full exercise list
-- open a larger read-only workout focus view
-- start a single-day workout session from a specific workout day with a persistent per-device checklist
-- optionally show a compact fixed stopwatch panel in the start-workout session through a floating bottom-right control
-- remember the stopwatch panel visibility per device, defaulting to hidden until the user enables it
-- play distinct non-media Web Audio cues for exercise start, set rest, exercise rest, and session completion
-- use Jeff the Cook as a voice-first recipe workspace with draft review before generation
-- render recipe ingredient details as measured ingredient lines instead of a text block
-- save immutable recipe snapshots to Vercel Blob and reopen or delete them later
-- open Google Images for each exercise card when you need a quick visual lookup
-- use compact icon actions on read-only workout cards and expanded actions in the start-workout flow
-- collapse completed workout cards in the start-workout flow so finished exercises take much less space
-- render warm-up, finisher, and recovery as full workout blocks inside the workout flows
-- read data from either local repo files or Vercel Blob storage
-- show the current git commit id in the homepage header
-- optionally show a homepage debug panel with the current commit hash and environment variables
+1. Create a workspace.
+2. Complete the athlete profile.
+3. Generate the first workout plan from the Python CLI.
+4. Use check-ins after training to inform later plans.
 
-## Install
+## Environment
+
+Required:
 
 ```bash
-cd ..
-npm install
+DATABASE_URL=postgresql://personal_trainer:personal_trainer@localhost:5432/personal_trainer
+APP_USERNAME=coach
+APP_PASSWORD=secret
+APP_SESSION_SECRET=change-me
 ```
 
-Tailwind is integrated through `postcss.config.mjs` using `@tailwindcss/postcss`.
+## Development
 
-`app_web/package.json` also pins `@tailwindcss/oxide-linux-x64-gnu` as an explicit optional dependency. Vercel installs from a Linux host while this repo is often locked on macOS, and this avoids npm dropping Tailwind's transitive Linux native package during workspace installs.
-
-## Run
+From the repo root:
 
 ```bash
+npm install
 npm run dev:web
 ```
-
-Open `http://localhost:3000`.
 
 ## Build
 
@@ -56,133 +45,12 @@ Open `http://localhost:3000`.
 npm run build -w personal-trainer-frontend
 ```
 
-## Docker
+## Production
 
-Build the web container from the repo root so npm workspaces and `packages/shared` are available to Docker:
-
-```bash
-docker build -f app_web/Dockerfile -t personal-trainer-frontend .
-```
-
-The Dockerfile expects the monorepo root as the build context. Building from `app_web/` directly will fail because npm cannot resolve the root workspace lockfile and shared package from that narrower context.
-
-When you build with `TRAINER_DATA_SOURCE=local`, the image contains the current `workspaces/` directory from build time.
-
-Run it locally:
-
-```bash
-docker run --rm -p 3000:3000 \
-  -e TRAINER_DATA_SOURCE=blob \
-  -e TRAINER_BLOB_ACCESS=private \
-  -e TRAINER_BLOB_PREFIX=personal-trainer \
-  -e BLOB_READ_WRITE_TOKEN=your-token \
-  personal-trainer-frontend
-```
-
-For local file mode, replace `TRAINER_DATA_SOURCE=blob` with `TRAINER_DATA_SOURCE=local`.
-
-## Test
-
-```bash
-npm run test:web
-```
-
-Vitest uses [`vitest.config.ts`](/Users/arjun/Personal/apps/personal_trainer/app_web/vitest.config.ts) for Node-based unit tests and `@/*` path alias resolution.
-
-## Environment
-
-The web app supports two data sources:
-
-- `TRAINER_DATA_SOURCE=local` for local repo files
-- `TRAINER_DATA_SOURCE=blob` for Vercel Blob-backed deployments
-
-Relevant variables:
-
-- `TRAINER_DATA_SOURCE`
-- `TRAINER_BLOB_ACCESS`
-- `TRAINER_BLOB_PREFIX`
-- `BLOB_READ_WRITE_TOKEN`
-- `OPENAI_API_KEY`
-- `OPENAI_BASE_URL`
-- `OPENAI_RECIPE_MODEL`
-- `OPENAI_TRANSCRIPTION_MODEL`
-- `DEBUG=true` to show the homepage debug panel
-
-See `.env.example`.
-
-## Deploy to Vercel
-
-1. Create a Vercel project for this repository.
-2. Use the repo root as the install root so npm workspaces can resolve `packages/shared`.
-3. Create a Vercel Blob store and attach it to the same Vercel project.
-4. Set the web app environment variables from `app_web/.env.example`.
-5. If the project Root Directory is `app_web`, keep the default install in place so npm can still see the repo workspace root and resolve `@personal-trainer/shared`.
-6. Use `npm run build -w personal-trainer-frontend` as the build command if Vercel does not infer the workspace automatically.
-7. Publish workout data from the trainer app with:
-
-```bash
-cd trainer
-poetry install
-poetry run personal-trainer publish-web wk_arj
-```
-
-8. Deploy the web app.
-
-After every `plan`, run `publish-web` again so Blob stays in sync with the latest workspace files.
-
-## Local Vercel Build
-
-To test the Vercel build locally from `app_web/`:
-
-```bash
-vercel pull --yes --environment preview
-vercel build --yes
-```
-
-`vercel pull` creates the local `.vercel/` project settings files used by the CLI. Those files are machine-local and should not be committed.
-
-## Data sources
-
-In `local` mode the web app reads directly from repo files on the server side:
-
-- `../workspaces/<name>/plan.json`
-- `../workspaces/<name>/profile.json`
-- workout reference markdown from the workspace
-- remote `wger` image URLs directly from the plan
-
-In `blob` mode the web app reads the same logical data from Vercel Blob:
-
-- `personal-trainer/workspaces/<name>/...`
-- `personal-trainer/saved-recipes/YYYY/MM/recipe_<id>.json`
-
-## Routes
-
-- `/`: homepage hub with workout summary plus a dedicated Recipes feature entry point
-- `/workout/[workspace]`: read-only workout overview with day summaries and exercise titles for one workspace
-- `/workout/[workspace]/start`: single-day workout page for one selected workout day, with completion checklist state saved in browser local storage
-- `/recipes`: Jeff the Cook recipe workspace with voice input, draft review, and explicit generation
-- `/saved-recipes`: saved recipe snapshot list
-- `/saved-recipes/[id]`: saved recipe snapshot detail
-- `/debug`: direct-entry diagnostics page for validating production feature implementations (currently mic capture + playback)
+Deploy the Next.js app to Vercel and point `DATABASE_URL` at Neon Postgres.
 
 ## Notes
 
-- The workout checklist state is browser-local and does not sync across devices.
-- The start workout route accepts `?day=<1-based index>` so each workout day card can open its own fixed session view.
-- Start workout uses timing fields from `plan.json` (`warmupActiveSeconds`, `activeSeconds`, `restBetweenSetsSeconds`, `restBetweenExercisesSeconds`) and falls back to safe defaults for older plans.
-- Tapping Start for a new block begins with a 3-second get-ready countdown before the active timer starts.
-- Within an exercise, the timer runs continuously (active set -> rest -> next set) after a single Start tap; after between-exercises rest, the next exercise is selected and waits for a new Start tap.
-- Marking a block complete in start workout updates only that block's completion state; it does not auto-focus or auto-advance the session.
-- Stopwatch visibility is stored in browser local storage per workspace/day, and an active or paused stopwatch cannot be hidden mid-run.
-- Workout cues use the Web Audio API (generated tones, not `<audio>` media playback) to reduce the chance of interrupting other media like podcasts.
-- The web app is read-only for workout data, but Jeff the Cook can save immutable recipe snapshots to Blob.
-- Jeff the Cook interpretation requests use strict JSON schema with nullable patch fields so `gpt-5.4-mini` accepts the payload while still returning partial state updates.
-- Jeff the Cook generation now requires a measured `ingredientLines` list per recipe and validates that all used and extra ingredients are explicitly listed there.
-- Jeff the Cook microphone uploads now preserve browser-native audio MIME/container and extension (including iPhone/WebKit `audio/mp4`/`.m4a`) instead of forcing `.webm`.
-- `/debug` is intentionally unlinked from the homepage and is meant for manual device verification workflows.
-- Plan generation still happens in the trainer CLI.
-- A workspace must exist in the selected data source before the web app can display it.
-- Styling is utility-first with Tailwind classes directly in route/component JSX.
-- `app/globals.css` is intentionally minimal and limited to base resets and shared global defaults.
-- Responsive behavior is mobile-first; baseline styles target small screens and scale up with `sm`/`md`/`lg` classes.
-- Root layout sets `suppressHydrationWarning` on `<html>` and `<body>` to avoid false-positive warnings when mobile Chrome injects temporary attributes before React hydration.
+- Workout plan generation stays in the Python trainer CLI.
+- The web app only displays workout plans already stored in PostgreSQL.
+- Vercel Blob is no longer used for trainer or recipe persistence.

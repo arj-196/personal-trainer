@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 
-import { deleteRecipeSnapshot, getRecipeSnapshot } from '@/lib/recipes/blob-store';
 import { logger } from '@/lib/server/logger';
+import { deleteRecipeSnapshot, getRecipeSnapshot } from '@/lib/server/recipes-db';
 
 export async function GET(_: Request, context: { params: Promise<{ id: string }> }) {
   try {
