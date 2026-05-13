@@ -96,12 +96,7 @@ export function StartWorkoutView({ day, workspace }: StartWorkoutViewProps) {
 
   const currentBlock = blocks[Math.min(currentBlockIndex, Math.max(blocks.length - 1, 0))];
   const isCurrentExercise = currentBlock?.kind === 'exercise';
-  const isTimerLocked =
-    pendingStartBlockIndex !== null ||
-    timerPhase === 'active' ||
-    timerPhase === 'rest-between-sets' ||
-    timerPhase === 'rest-between-exercises' ||
-    (timerPhase === 'idle' && remainingSeconds > 0);
+  const isTimerLocked = isRunning;
 
   useEffect(() => {
     if (!isRunning || remainingSeconds <= 0) {
