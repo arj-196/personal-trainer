@@ -17,10 +17,10 @@ from personal_trainer.models import CheckIn, UserProfile, WorkoutPlan
 LOGGER = logging.getLogger(__name__)
 MIGRATIONS_ROOT = Path(__file__).resolve().parents[3] / "db" / "migrations"
 TRAINER_SYNC_TABLES = (
-    "workout_plans",
-    "check_ins",
-    "athlete_profiles",
     "workspaces",
+    "athlete_profiles",
+    "check_ins",
+    "workout_plans",
 )
 
 
@@ -38,7 +38,7 @@ def get_prod_database_url() -> str:
         if value:
             return value
     raise RuntimeError(
-        "Missing production database URL. Set TRAINER_PROD_DATABASE_URL or NEON_DATABASE_URL."
+        "Missing production database URL. Set TRAINER_PROD_DATABASE_URL, NEON_DATABASE_URL, or PRODUCTION_DATABASE_URL."
     )
 
 
@@ -392,6 +392,14 @@ def export_table_rows(database_url: str, table_name: str) -> list[dict[str, Any]
             return [dict(row) for row in rows]
 
 
+def _adapt_sync_value(value: Any) -> Any:
+    if isinstance(value, (dict, list)):
+        from psycopg.types.json import Jsonb
+
+        return Jsonb(value)
+    return value
+
+
 def replace_table_rows(
     database_url: str, table_name: str, rows: list[dict[str, Any]], *, truncate: bool = True
 ) -> None:
@@ -411,7 +419,7 @@ def replace_table_rows(
             )
             primary_key = "id" if "id" in columns else columns[0]
             for row in rows:
-                values = [row[column] for column in columns]
+                values = [_adapt_sync_value(row[column]) for column in columns]
                 cursor.execute(
                     f"""
                     INSERT INTO {table_name} ({column_list})

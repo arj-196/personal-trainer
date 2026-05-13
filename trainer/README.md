@@ -13,13 +13,13 @@ The trainer CLI is responsible for local workout plan generation and PostgreSQL 
 Local database:
 
 ```bash
-export TRAINER_DATABASE_URL=postgresql://personal_trainer:personal_trainer@localhost:5432/personal_trainer
+export DATABASE_URL=postgresql://personal_trainer:personal_trainer@localhost:5432/personal_trainer
 ```
 
 Production sync target:
 
 ```bash
-export TRAINER_PROD_DATABASE_URL=<neon-connection-string>
+export PRODUCTION_DATABASE_URL=<neon-connection-string>
 ```
 
 Optional model configuration:
@@ -34,11 +34,14 @@ export TRAINER_PLAN_REVIEW_MAX_ITERATIONS=5
 ## Database Commands
 
 ```bash
-poetry run personal-trainer db up
-poetry run personal-trainer db down
-poetry run personal-trainer db destroy
 poetry run personal-trainer db setup
+poetry run personal-trainer db setup --prod
 ```
+
+`db setup` applies migrations to the local database. `db setup --prod` applies
+the same migrations to the database configured by `PRODUCTION_DATABASE_URL`.
+Start, stop, and destroy local PostgreSQL with Docker Compose directly from the
+repository root.
 
 ## Data Migration
 
@@ -124,3 +127,6 @@ Sync is snapshot-based and currently covers:
 - `athlete_profiles`
 - `check_ins`
 - `workout_plans`
+
+Sync restores parent workspace rows before dependent profile, check-in, and workout plan rows.
+Structured JSONB fields in these tables are preserved during sync.

@@ -21,7 +21,7 @@ Personal Trainer now uses PostgreSQL as the source of truth for workout workspac
 ### 1. Start PostgreSQL
 
 ```bash
-npm run db:up
+docker compose up -d
 cd trainer
 poetry install
 poetry run personal-trainer db setup
@@ -93,10 +93,8 @@ personal-trainer status <workspace>
 personal-trainer checkin <workspace>
 personal-trainer plan <workspace>
 
-personal-trainer db up
-personal-trainer db down
-personal-trainer db destroy
 personal-trainer db setup
+personal-trainer db setup --prod
 
 personal-trainer import-filesystem
 personal-trainer import-blob-recipes --snapshot-export /path/to/file.json
@@ -113,10 +111,16 @@ personal-trainer sync push-prod
 Set production env vars:
 
 ```bash
-DATABASE_URL=<neon-connection-string>
+PRODUCTION_DATABASE_URL=<neon-connection-string>
 APP_USERNAME=<shared-username>
 APP_PASSWORD=<shared-password>
 APP_SESSION_SECRET=<long-random-secret>
+```
+
+Apply all SQL migrations to production:
+
+```bash
+poetry run personal-trainer db setup --prod
 ```
 
 ### Sync protocol
@@ -135,3 +139,5 @@ poetry run personal-trainer sync push-prod
 ```
 
 `sync push-prod` only targets trainer tables: `workspaces`, `athlete_profiles`, `check_ins`, and `workout_plans`.
+Sync restores parent workspace rows before dependent profile, check-in, and workout plan rows.
+Structured JSONB fields in those tables are preserved during sync.

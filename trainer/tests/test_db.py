@@ -12,6 +12,7 @@ class _Cursor:
     def __init__(self, fetch_result):
         self.fetch_result = fetch_result
         self.statements: list[str] = []
+        self.params: list[object | None] = []
 
     def __enter__(self):
         return self
@@ -21,6 +22,7 @@ class _Cursor:
 
     def execute(self, statement, params=None) -> None:
         self.statements.append(statement)
+        self.params.append(params)
 
     def fetchone(self):
         return self.fetch_result
@@ -79,6 +81,60 @@ def _sample_plan() -> WorkoutPlan:
         ],
         next_checkin_prompt="Report recovery.",
     )
+
+
+def test_get_database_url_ignores_shell_underscore_when_database_url_missing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("TRAINER_DATABASE_URL", raising=False)
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+    monkeypatch.setenv("_", "/Users/arjun/.local/bin/poetry")
+
+    assert (
+        db.get_database_url()
+        == "postgresql://personal_trainer:personal_trainer@localhost:5432/personal_trainer"
+    )
+
+
+def test_get_prod_database_url_ignores_shell_underscore_when_prod_url_missing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("TRAINER_PROD_DATABASE_URL", raising=False)
+    monkeypatch.delenv("NEON_DATABASE_URL", raising=False)
+    monkeypatch.delenv("PRODUCTION_DATABASE_URL", raising=False)
+    monkeypatch.setenv("_", "/Users/arjun/.local/bin/poetry")
+
+    with pytest.raises(RuntimeError, match="PRODUCTION_DATABASE_URL"):
+        db.get_prod_database_url()
+
+
+def test_replace_table_rows_adapts_json_values_for_psycopg(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from psycopg.types.json import Jsonb
+
+    cursor = _Cursor(fetch_result=None)
+    connection = _Connection(cursor)
+    monkeypatch.setattr("personal_trainer.db.connect", lambda database_url=None: connection)
+
+    db.replace_table_rows(
+        "postgresql://test",
+        "athlete_profiles",
+        [
+            {
+                "workspace_id": "workspace-1",
+                "equipment": ["dumbbells"],
+                "metadata": {"source": "local"},
+            }
+        ],
+    )
+
+    insert_params = cursor.params[-1]
+    assert isinstance(insert_params, list)
+    assert insert_params[0] == "workspace-1"
+    assert isinstance(insert_params[1], Jsonb)
+    assert isinstance(insert_params[2], Jsonb)
+    assert connection.committed is True
 
 
 def test_insert_imported_workout_plan_fails_before_current_update_on_conflict(

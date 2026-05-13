@@ -118,28 +118,37 @@ def test_status_command_reads_workspace_summary(monkeypatch) -> None:
     assert "Next plan version: 2" in result.output
 
 
-def test_db_commands_delegate_to_shell_and_migrations(monkeypatch) -> None:
-    shell_calls: list[str] = []
-    monkeypatch.setattr("personal_trainer.cli._run_local_shell_command", lambda command: shell_calls.append(command))
+def test_db_setup_uses_local_database_url(monkeypatch) -> None:
+    migration_calls: list[str] = []
     monkeypatch.setattr("personal_trainer.cli.get_database_url", lambda: "postgresql://local/test")
-    monkeypatch.setattr("personal_trainer.cli.run_migrations", lambda database_url: 1)
+    monkeypatch.setattr(
+        "personal_trainer.cli.run_migrations",
+        lambda database_url: migration_calls.append(database_url) or 1,
+    )
     runner = CliRunner()
 
-    up_result = runner.invoke(main, ["db", "up"])
-    down_result = runner.invoke(main, ["db", "down"])
-    destroy_result = runner.invoke(main, ["db", "destroy"])
     setup_result = runner.invoke(main, ["db", "setup"])
 
-    assert up_result.exit_code == 0
-    assert down_result.exit_code == 0
-    assert destroy_result.exit_code == 0
     assert setup_result.exit_code == 0
-    assert shell_calls == [
-        "docker compose up -d",
-        "docker compose down",
-        "docker compose down -v",
-    ]
-    assert "Applied 1 SQL migration file(s)." in setup_result.output
+    assert migration_calls == ["postgresql://local/test"]
+    assert "Applied 1 SQL migration file(s) to the local database." in setup_result.output
+
+
+def test_db_setup_prod_uses_production_database_url(monkeypatch) -> None:
+    migration_calls: list[str] = []
+    monkeypatch.setattr("personal_trainer.cli.get_database_url", lambda: "postgresql://local/test")
+    monkeypatch.setattr("personal_trainer.cli.get_prod_database_url", lambda: "postgresql://prod/test")
+    monkeypatch.setattr(
+        "personal_trainer.cli.run_migrations",
+        lambda database_url: migration_calls.append(database_url) or 2,
+    )
+    runner = CliRunner()
+
+    result = runner.invoke(main, ["db", "setup", "--prod"])
+
+    assert result.exit_code == 0
+    assert migration_calls == ["postgresql://prod/test"]
+    assert "Applied 2 SQL migration file(s) to the production database." in result.output
 
 
 def test_sync_commands_use_expected_direction(monkeypatch) -> None:
@@ -158,8 +167,8 @@ def test_sync_commands_use_expected_direction(monkeypatch) -> None:
     assert pull_result.exit_code == 0
     assert push_result.exit_code == 0
     assert sync_calls == [
-        ("postgresql://prod/test", "postgresql://local/test", ("workout_plans", "check_ins", "athlete_profiles", "workspaces")),
-        ("postgresql://local/test", "postgresql://prod/test", ("workout_plans", "check_ins", "athlete_profiles", "workspaces")),
+        ("postgresql://prod/test", "postgresql://local/test", ("workspaces", "athlete_profiles", "check_ins", "workout_plans")),
+        ("postgresql://local/test", "postgresql://prod/test", ("workspaces", "athlete_profiles", "check_ins", "workout_plans")),
     ]
 
 

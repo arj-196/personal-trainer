@@ -513,33 +513,23 @@ def publish_notes_command(
     click.echo(f"Note ID: {result.note_id}")
 
 
-@main.group("db", help="Manage the local PostgreSQL development database.")
+@main.group("db", help="Manage PostgreSQL databases.")
 def db_group() -> None:
     """Database management commands."""
 
 
-@db_group.command("up", help="Start the local PostgreSQL Docker Compose service.")
-def db_up_command() -> None:
-    _run_local_shell_command("docker compose up -d")
-    click.echo("Local Postgres service started.")
-
-
-@db_group.command("down", help="Stop the local PostgreSQL Docker Compose service.")
-def db_down_command() -> None:
-    _run_local_shell_command("docker compose down")
-    click.echo("Local Postgres service stopped.")
-
-
-@db_group.command("destroy", help="Destroy the local PostgreSQL service and volume.")
-def db_destroy_command() -> None:
-    _run_local_shell_command("docker compose down -v")
-    click.echo("Local Postgres service and data volume destroyed.")
-
-
 @db_group.command("setup", help="Apply SQL migrations to the configured database.")
-def db_setup_command() -> None:
-    applied = run_migrations(get_database_url())
-    click.echo(f"Applied {applied} SQL migration file(s).")
+@click.option(
+    "--prod",
+    is_flag=True,
+    help="Apply migrations to the production database using PRODUCTION_DATABASE_URL.",
+)
+def db_setup_command(prod: bool) -> None:
+    database_url = get_prod_database_url() if prod else get_database_url()
+    target = "production" if prod else "local"
+    LOGGER.info("Applying database setup migrations to %s database", target)
+    applied = run_migrations(database_url)
+    click.echo(f"Applied {applied} SQL migration file(s) to the {target} database.")
 
 
 @main.command("import-filesystem", help="Import filesystem workspaces from ./workspaces into Postgres.")
@@ -576,14 +566,6 @@ def sync_pull_prod_command() -> None:
 def sync_push_prod_command() -> None:
     sync_tables(get_database_url(), get_prod_database_url(), TRAINER_SYNC_TABLES)
     click.echo("Pushed local trainer-domain tables into production Postgres.")
-
-
-def _run_local_shell_command(command: str) -> None:
-    import subprocess
-
-    result = subprocess.run(command, shell=True, check=False)
-    if result.returncode != 0:
-        raise click.ClickException(f"Command failed: {command}")
 
 
 def _write_temporary_checkin_template(workspace_slug: str, checkin_date: date, workouts_planned: int) -> Path:
