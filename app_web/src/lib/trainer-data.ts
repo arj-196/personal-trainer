@@ -4,9 +4,11 @@ import {
   type WorkoutPlan,
 } from '@personal-trainer/shared/workout';
 
-import { blobPath, getTrainerDataSource } from './storage-config';
-import { listBlobFolders, readBlobText } from './blob-storage';
-import { listLocalWorkspaces, readLocalWorkspaceText } from './local-storage';
+import {
+  listWorkspaces as listWorkspaceRows,
+  readWorkoutPlan as readWorkoutPlanRow,
+  readUserProfileSummary as readUserProfileSummaryRow,
+} from './server/workspaces';
 
 export type {
   UserProfileSummary,
@@ -16,45 +18,16 @@ export type {
 } from '@personal-trainer/shared/workout';
 
 export async function listWorkspaces(): Promise<string[]> {
-  if (getTrainerDataSource() === 'blob') {
-    const folders = await listBlobFolders(blobPath('workspaces') + '/');
-    return folders
-      .map((folder) => folder.replace(/\/$/, '').split('/').pop())
-      .filter((workspace): workspace is string => Boolean(workspace))
-      .sort();
-  }
-
-  return listLocalWorkspaces();
+  return listWorkspaceRows();
 }
 
 export async function readWorkoutPlan(workspace: string): Promise<WorkoutPlan | null> {
-  const text =
-    getTrainerDataSource() === 'blob'
-      ? await readBlobText(blobPath('workspaces', workspace, 'plan.json'))
-      : readLocalWorkspaceText(workspace, 'plan.json');
-
-  if (!text) {
-    return null;
-  }
-
-  return normalizeWorkoutPlan(JSON.parse(text) as Record<string, unknown>);
+  const plan = await readWorkoutPlanRow(workspace);
+  return plan ? normalizeWorkoutPlan(plan as Record<string, unknown>) : null;
 }
 
 export async function readUserProfileSummary(workspace: string): Promise<UserProfileSummary | null> {
-  const text =
-    getTrainerDataSource() === 'blob'
-      ? await readBlobText(blobPath('workspaces', workspace, 'profile.json'))
-      : readLocalWorkspaceText(workspace, 'profile.json');
-
-  if (!text) {
-    return null;
-  }
-
-  const payload = JSON.parse(text) as Partial<UserProfileSummary>;
-  return {
-    name: payload.name ?? workspace,
-    goal: payload.goal ?? 'Maintenance',
-  };
+  return readUserProfileSummaryRow(workspace);
 }
 
 export function workspaceImageUrl(workspace: string, relativePath: string | null): string | null {

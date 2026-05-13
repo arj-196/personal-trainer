@@ -1,141 +1,143 @@
 # Personal Trainer Monorepo
 
-Personal Trainer is a repository for generating workout plans, running the Jeff the Cook recipe workspace, and publishing a gym-friendly web view of the plan.
-
-The workout planner now uses Ollama and OpenAI-backed trainer agents instead of hardcoded split and exercise rules. The Python app packages the athlete profile, check-in history, and a compact exercise catalog names context into a structured LLM request, then runs a planner-reviewer loop where Arnold Schwarzenegger and Doctor Mike review each draft until approval or max iterations, then writes the resulting week plan to JSON plus Markdown.
-Generated plans now include explicit workout timing metadata (active durations, set counts, and rest durations) so the start-workout experience can run a guided timer workflow.
-Trainer prompts now live in file-based Jinja templates, and each model call is traced with workspace-scoped JSONL logs plus optional Langfuse integration.
+Personal Trainer now uses PostgreSQL as the source of truth for workout workspaces, athlete profiles, check-ins, workout plans, and saved recipe snapshots.
 
 ## Apps
 
-- `trainer/`: Python + Poetry trainer engine and CLI
-- `app_web/`: Next.js workout and recipe UI
-- `packages/shared/`: shared TypeScript domain logic for the web app
-- `workspaces/`: generated user workspaces and plan files
+- `trainer/`: Python CLI for database setup, imports, sync, and local workout plan generation.
+- `app_web/`: Next.js web app for authenticated workspace management, recipe snapshots, and workout viewing.
+- `packages/shared/`: shared TypeScript workout and recipe types/helpers.
+- `db/migrations/`: SQL-first shared PostgreSQL schema.
 
-## Repo layout
+## Data Model
 
-```text
-.
-├── trainer/
-├── app_web/
-├── packages/
-├── workspaces/
-└── README.md
+- A `Workspace` has exactly one current `Athlete Profile`.
+- A `Workspace` has many editable `Check-in` records.
+- A `Workspace` has many historical `Workout Plan` records, with one marked current.
+- Saved Jeff the Cook recipe snapshots live in PostgreSQL, not Vercel Blob.
+
+## Local Setup
+
+### 1. Start PostgreSQL
+
+```bash
+docker compose up -d
+cd trainer
+poetry install
+poetry run personal-trainer db setup
 ```
 
-## What each app does
+Default local database URL:
 
-### Trainer
+```bash
+postgresql://personal_trainer:personal_trainer@localhost:5432/personal_trainer
+```
 
-The trainer app owns the trainer workflow:
+### 2. Import existing data
 
-- creates workspaces under `./workspaces/<name>`
-- generates `profile.json`, `plan.json`, `plan_review.json`, `profile.md`, `plan.md`, and `coach_notes.md` through Ollama or OpenAI trainer agents
-- creates check-in templates with a dedicated command: `personal-trainer checkin <workspace>`
-- can generate multiple plans in one run so you can compare model outputs side by side
-- maintains the bundled exercise catalog used for planner guidance and exercise image mapping
-- publishes a text-only version of the current plan to Apple Notes
-
-See [trainer/README.md](/Users/arjun/Personal/apps/personal_trainer/trainer/README.md).
-
-### Web app
-
-The web app reads generated workspace JSON and provides the browser-facing app:
-
-- Tailwind CSS utility-first styling on top of Next.js + React
-- homepage hub with workout summary and a dedicated Recipes entry point
-- read-only workout overview with per-day summaries before the session starts
-- single-day workout view with per-device checklist persistence
-- start-workout session with an optional timer panel, set-by-set active/rest pacing, and stronger audio coaching cues
-- Jeff the Cook recipe workspace with voice-first draft updates, explicit generation, and saved recipe snapshots
-
-See [app_web/README.md](/Users/arjun/Personal/apps/personal_trainer/app_web/README.md).
-
-## Quick start
-
-### 1. Generate a workspace and plan
+Filesystem workspaces:
 
 ```bash
 cd trainer
-poetry install
-# run in a separate terminal if Ollama is not already running
-ollama serve
-ollama pull gpt-oss:20b
-poetry run personal-trainer init albert
-poetry run personal-trainer plan albert
-poetry run personal-trainer plan albert --ollama-model gpt-oss:20b --openai-model gpt-5.4-mini
+poetry run personal-trainer import-filesystem
 ```
 
-This creates files under `./workspaces/albert/`.
+This imports each filesystem Workspace's Athlete Profile, Check-ins, and current
+Workout Plan. Workout Plan import is strict: when plan files are present,
+`plan.json` and `plan.md` must both exist, and `plan.md` must match the plan
+rendered from `plan.json`'s `rawPlan`.
 
-### 2. Install JavaScript workspaces
+Saved recipe snapshots exported to JSON:
 
 ```bash
-npm install
-npm test
+poetry run personal-trainer import-blob-recipes --snapshot-export /path/to/recipes.json
 ```
-
-The web workspace explicitly lists `@tailwindcss/oxide-linux-x64-gnu` as an optional dependency so Linux Vercel builds do not miss Tailwind's native binding when npm installs from the monorepo workspace lockfile generated on macOS.
 
 ### 3. Run the web app
 
+Set:
+
 ```bash
+export DATABASE_URL=postgresql://personal_trainer:personal_trainer@localhost:5432/personal_trainer
+export APP_USERNAME=coach
+export APP_PASSWORD=secret
+export APP_SESSION_SECRET=change-me
+```
+
+Then run:
+
+```bash
+npm install
 npm run dev:web
 ```
 
 Open `http://localhost:3000`.
 
-To build the web app Docker image from the monorepo root:
+### 4. Generate workout plans locally
+
+The web app does not generate workout plans. Create a workspace, complete the athlete profile in the web app, then generate the first plan from the Python CLI:
 
 ```bash
-docker build -f app_web/Dockerfile -t personal-trainer-frontend .
+cd trainer
+poetry run personal-trainer plan <workspace>
 ```
 
-## Typical workflow
+The generated plan is saved to PostgreSQL and automatically becomes the current plan for that workspace.
+After the athlete has trained against that plan for the week, add check-ins in the web app to inform future plans.
 
-1. Create or update a workspace from the trainer CLI.
-2. Make sure Ollama is running locally for Ollama targets, or set `OPENAI_API_KEY` for OpenAI targets.
-3. Generate the workout plan with `poetry run personal-trainer plan <workspace>`.
-4. Create check-ins with `poetry run personal-trainer checkin <workspace>`, fill them manually, then run `plan` again.
-5. If you host the web app on Vercel, run `poetry run personal-trainer publish-web <workspace>`.
-6. Open the web app to view the current workout or use Jeff the Cook.
-7. Optionally publish the current plan to Apple Notes from the trainer app.
+## CLI Commands
 
-## Workspace model
+```bash
+personal-trainer init <workspace>
+personal-trainer status <workspace>
+personal-trainer checkin <workspace>
+personal-trainer plan <workspace>
 
-Every user workspace lives in:
+personal-trainer db setup
+personal-trainer db setup --prod
 
-```text
-workspaces/<workspace-name>/
+personal-trainer import-filesystem
+personal-trainer import-blob-recipes --snapshot-export /path/to/file.json
+
+personal-trainer sync pull-prod
+personal-trainer sync push-prod
 ```
 
-Typical contents:
+## Production
 
-```text
-workspaces/albert/
-├── profile.json
-├── profile.md
-├── plan.json
-├── plan.md
-├── coach_notes.md
-└── checkins/
+- Web app: Vercel
+- Database: Neon Postgres
+
+Set production env vars:
+
+```bash
+PRODUCTION_DATABASE_URL=<neon-connection-string>
+APP_USERNAME=<shared-username>
+APP_PASSWORD=<shared-password>
+APP_SESSION_SECRET=<long-random-secret>
 ```
 
-## Notes
+Apply all SQL migrations to production:
 
-- The web app now owns recipe generation and saved recipe persistence.
-- The trainer app is the source of truth for plan generation.
-- `plan` uses Ollama by default with `gpt-oss:20b`.
-- `plan` automatically uses the latest `checkins/YYYY-MM-DD-checkin.md` file when present.
-- `checkin` is the only command that creates check-in templates.
-- You can compare multiple models in one run with repeated `--ollama-model` and `--openai-model` flags.
-- Multi-model runs write separate model-specific plan files directly under `workspaces/<workspace>/`.
-- You can override provider settings with `--ollama-base-url`, `--openai-base-url`, `OPENAI_API_KEY`, and the corresponding planner environment variables.
-- You can control review loop depth with `--max-review-iterations` or `TRAINER_PLAN_REVIEW_MAX_ITERATIONS` (default `5`).
-- Each trainer model call writes a JSONL trace record to `workspaces/<workspace>/.trainer/logs/llm_calls.jsonl`.
-- Review loop runs add multiple LLM trace records per generated plan (`planner_initial`, persona reviews, and optional planner revisions).
-- Langfuse tracing is optional via `LANGFUSE_PUBLIC_KEY`, `LANGFUSE_SECRET_KEY`, and optional `LANGFUSE_HOST`.
-- Langfuse tracing is automatically disabled during `pytest` runs, while local JSONL trace logging remains enabled where configured.
-- The web app uses workout and recipe domain helpers from `packages/shared`.
-- The web app reads generated JSON files rather than parsing Markdown as a data source.
+```bash
+poetry run personal-trainer db setup --prod
+```
+
+### Sync protocol
+
+- Neon is authoritative.
+- Pull from Neon before local plan generation:
+
+```bash
+poetry run personal-trainer sync pull-prod
+```
+
+- Push trainer-domain data back only when intended:
+
+```bash
+poetry run personal-trainer sync push-prod
+```
+
+`sync push-prod` only targets trainer tables: `workspaces`, `athlete_profiles`, `check_ins`, and `workout_plans`.
+Sync restores parent workspace rows before dependent profile, check-in, and workout plan rows.
+Structured JSONB fields in those tables are preserved during sync.

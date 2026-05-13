@@ -113,11 +113,18 @@ def test_publish_notes_command_calls_publisher(tmp_path: Path, monkeypatch) -> N
     workspaces_root = tmp_path / "workspaces"
     workspace = workspaces_root / "workspace"
     monkeypatch.setattr("personal_trainer.cli.WORKSPACES_ROOT", workspaces_root)
-    _install_stub_ollama(monkeypatch)
     runner = CliRunner()
 
-    assert runner.invoke(main, ["init", "workspace"]).exit_code == 0
-    assert runner.invoke(main, ["plan", "workspace"]).exit_code == 0
+    workspace.mkdir(parents=True)
+    (workspace / "plan.md").write_text("# Albert's Training Plan", encoding="utf-8")
+    (workspace / "profile.md").write_text(
+        """# Athlete Profile
+
+## Basics
+- Name: Albert
+""",
+        encoding="utf-8",
+    )
 
     captured: dict[str, str] = {}
 

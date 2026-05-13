@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 
-import { saveRecipeSnapshot } from '@/lib/recipes/blob-store';
 import { createRecipeState } from '@/lib/recipes/state';
+import { saveRecipeSnapshot } from '@/lib/server/recipes-db';
 import { logger } from '@/lib/server/logger';
 
 export async function POST(request: Request) {

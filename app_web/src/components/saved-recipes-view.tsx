@@ -3,8 +3,8 @@
 import Link from 'next/link';
 import { useState } from 'react';
 
-import type { SavedRecipeListItem } from '@/lib/recipes/blob-store';
 import type { SavedRecipeSnapshot } from '@/lib/recipes/types';
+import type { SavedRecipeListItem } from '@/lib/server/recipes-db';
 
 const shellClass = 'mx-auto w-full max-w-6xl px-4 pb-8 pt-4 sm:px-6 sm:pt-5';
 const heroClass = 'rounded-[1.75rem] border border-white/70 bg-[linear-gradient(150deg,rgba(255,255,255,0.94),rgba(255,244,234,0.9)),linear-gradient(180deg,#fff,#f6f0e8)] p-5 shadow-[0_20px_45px_rgba(41,51,64,0.08)] backdrop-blur-xl sm:p-6';
@@ -47,7 +47,7 @@ export function SavedRecipesView({
           </div>
           <div className="grid h-16 w-16 shrink-0 place-items-center rounded-full bg-gradient-to-br from-white/95 to-slate-100/90 text-sm font-extrabold tracking-[0.08em] text-slate-800 shadow-[0_12px_24px_rgba(43,52,61,0.1)]">SV</div>
         </div>
-        <p className="mt-3 text-sm leading-relaxed text-slate-500">Immutable recipe snapshots stored in Vercel Blob.</p>
+        <p className="mt-3 text-sm leading-relaxed text-slate-500">Immutable recipe snapshots stored in Postgres.</p>
         <div className="mt-4 flex flex-wrap gap-2.5">
           <Link className={softActionClass} href="/recipes">
             Back to Jeff the Cook

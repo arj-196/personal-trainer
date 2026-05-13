@@ -1,5 +1,6 @@
 import Link from 'next/link';
 
+import { createWorkspaceAction, logoutAction } from './actions';
 import {
   getCurrentCommitHash,
   getCurrentEnvVariables,
@@ -84,7 +85,11 @@ export default async function HomePage({
               <div>
                 <p className={sectionKickerClass}>Workspace</p>
                 <h2 className={sectionTitleClass}>Pick your active plan</h2>
+                <p className={sectionCopyClass}>Workspaces, athlete profiles, and check-ins now live in Postgres.</p>
               </div>
+              <form action={logoutAction}>
+                <button className={softActionClass} type="submit">Sign out</button>
+              </form>
             </div>
             <div className="mt-4 flex flex-wrap gap-2 overflow-x-auto pb-1">
               {workspaces.map((workspace) => (
@@ -114,6 +119,9 @@ export default async function HomePage({
                 <div className="flex flex-wrap gap-2.5">
                   <Link className={primaryActionClass} href={`/workout/${selectedWorkspace}`}>
                     Open workout
+                  </Link>
+                  <Link className={softActionClass} href={`/workspace/${selectedWorkspace}`}>
+                    Edit workspace
                   </Link>
                   <Link className={softActionClass} href={`/workout/${selectedWorkspace}/start`}>
                     Start session
@@ -169,7 +177,7 @@ export default async function HomePage({
                   <div className="flex flex-wrap gap-2">
                     <span className="inline-flex items-center rounded-full bg-[#ff6359]/12 px-3 py-1.5 text-xs font-bold text-[#b54843]">Voice-first</span>
                     <span className="inline-flex items-center rounded-full bg-[#ff6359]/12 px-3 py-1.5 text-xs font-bold text-[#b54843]">Draft review</span>
-                    <span className="inline-flex items-center rounded-full bg-[#ff6359]/12 px-3 py-1.5 text-xs font-bold text-[#b54843]">Blob snapshots</span>
+                    <span className="inline-flex items-center rounded-full bg-[#ff6359]/12 px-3 py-1.5 text-xs font-bold text-[#b54843]">Postgres snapshots</span>
                   </div>
                   <div className="flex flex-wrap gap-2.5">
                     <Link className={primaryActionClass} href="/recipes">
@@ -183,7 +191,7 @@ export default async function HomePage({
             <section className={cardClass}>
               <h2 className={sectionTitleClass}>No plan yet</h2>
               <p className="mt-3 text-sm leading-relaxed text-slate-600">
-                The selected workspace exists, but <code>plan.json</code> is missing.
+                The selected workspace exists, but no current workout plan has been published to Postgres yet.
                 Run <code>personal-trainer plan {selectedWorkspace}</code> in the trainer app.
               </p>
               <div className="mt-4 grid gap-4">
@@ -203,6 +211,24 @@ export default async function HomePage({
               </div>
             </section>
           )}
+          <section className={cardClass}>
+            <form action={createWorkspaceAction} className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+              <div>
+                <p className={sectionKickerClass}>Create Workspace</p>
+                <h2 className={sectionTitleClass}>Start a new athlete workspace</h2>
+                <p className={sectionCopyClass}>Create the workspace here, then fill the athlete profile before generating a plan locally.</p>
+              </div>
+              <div className="flex flex-col gap-3 sm:flex-row">
+                <input
+                  className="min-h-11 rounded-full border border-slate-300/60 bg-white/75 px-4 py-2.5 text-sm font-medium text-slate-800"
+                  name="workspace"
+                  placeholder="workspace name"
+                  required
+                />
+                <button className={primaryActionClass} type="submit">Create</button>
+              </div>
+            </form>
+          </section>
         </div>
       )}
     </main>

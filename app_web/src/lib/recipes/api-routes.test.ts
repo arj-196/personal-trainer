@@ -64,7 +64,7 @@ vi.mock('@/lib/recipes/service', () => ({
   ])),
 }));
 
-vi.mock('@/lib/recipes/blob-store', () => ({
+vi.mock('@/lib/server/recipes-db', () => ({
   saveRecipeSnapshot: vi.fn(async (_state, recommendation) => ({
     id: 'saved-1',
     savedAt: '2026-04-07T10:00:00.000Z',
@@ -77,7 +77,6 @@ vi.mock('@/lib/recipes/blob-store', () => ({
       savedAt: '2026-04-07T10:00:00.000Z',
       title: 'Recipe 1',
       summary: 'One',
-      pathname: 'personal-trainer/saved-recipes/2026/04/recipe_saved-1.json',
     },
   ]),
   getRecipeSnapshot: vi.fn(async () => ({

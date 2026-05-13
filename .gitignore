@@ -5,7 +5,6 @@ workspaces
 .env*.local
 zsnippets
 
-
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

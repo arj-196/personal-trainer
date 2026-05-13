@@ -5,12 +5,15 @@ import re
 from dataclasses import asdict
 from datetime import date
 from pathlib import Path
+from typing import Any
 
 from personal_trainer.exercise_library import get_reference
 from personal_trainer.models import (
     AppState,
     CheckIn,
+    Exercise,
     UserProfile,
+    WorkoutDay,
     WorkoutPlan,
     WorkspacePaths,
 )
@@ -144,6 +147,159 @@ def load_checkin(path: Path) -> CheckIn:
         notes=_parse_bullets(sections.get("notes", ""))
         + _parse_bullets(sections.get("reflections", "")),
     )
+
+
+def _require_mapping(value: Any, *, label: str) -> dict[str, Any]:
+    if not isinstance(value, dict):
+        raise ValueError(f"{label} must be an object.")
+    return value
+
+
+def _require_list(value: Any, *, label: str) -> list[Any]:
+    if not isinstance(value, list):
+        raise ValueError(f"{label} must be a list.")
+    return value
+
+
+def _require_str(value: Any, *, label: str) -> str:
+    if not isinstance(value, str) or value == "":
+        raise ValueError(f"{label} must be a non-empty string.")
+    return value
+
+
+def _require_int(value: Any, *, label: str) -> int:
+    if isinstance(value, bool):
+        raise ValueError(f"{label} must be an integer.")
+    try:
+        return int(value)
+    except (TypeError, ValueError) as error:
+        raise ValueError(f"{label} must be an integer.") from error
+
+
+def _optional_str_list(value: Any, *, label: str) -> list[str]:
+    if value is None:
+        return []
+    items = _require_list(value, label=label)
+    if not all(isinstance(item, str) for item in items):
+        raise ValueError(f"{label} must contain only strings.")
+    return list(items)
+
+
+def _load_exercise_payload(payload: dict[str, Any], *, label: str) -> Exercise:
+    return Exercise(
+        name=_require_str(payload.get("name"), label=f"{label}.name"),
+        prescription=_require_str(
+            payload.get("prescription"), label=f"{label}.prescription"
+        ),
+        notes=_require_str(payload.get("notes"), label=f"{label}.notes"),
+        sets=_require_int(payload.get("sets"), label=f"{label}.sets"),
+        active_seconds=_require_int(
+            payload.get("active_seconds"), label=f"{label}.active_seconds"
+        ),
+        rest_between_sets_seconds=_require_int(
+            payload.get("rest_between_sets_seconds"),
+            label=f"{label}.rest_between_sets_seconds",
+        ),
+        rest_between_exercises_seconds=_require_int(
+            payload.get("rest_between_exercises_seconds"),
+            label=f"{label}.rest_between_exercises_seconds",
+        ),
+    )
+
+
+def _load_workout_day_payload(payload: dict[str, Any], *, label: str) -> WorkoutDay:
+    exercises = _require_list(payload.get("exercises"), label=f"{label}.exercises")
+    return WorkoutDay(
+        day_label=_require_str(payload.get("day_label"), label=f"{label}.day_label"),
+        focus=_require_str(payload.get("focus"), label=f"{label}.focus"),
+        warmup=_require_str(payload.get("warmup"), label=f"{label}.warmup"),
+        warmup_active_seconds=_require_int(
+            payload.get("warmup_active_seconds"),
+            label=f"{label}.warmup_active_seconds",
+        ),
+        exercises=[
+            _load_exercise_payload(
+                _require_mapping(exercise, label=f"{label}.exercises[{index}]"),
+                label=f"{label}.exercises[{index}]",
+            )
+            for index, exercise in enumerate(exercises)
+        ],
+        finisher=_require_str(payload.get("finisher"), label=f"{label}.finisher"),
+        finisher_active_seconds=_require_int(
+            payload.get("finisher_active_seconds"),
+            label=f"{label}.finisher_active_seconds",
+        ),
+        recovery=_require_str(payload.get("recovery"), label=f"{label}.recovery"),
+        recovery_active_seconds=_require_int(
+            payload.get("recovery_active_seconds"),
+            label=f"{label}.recovery_active_seconds",
+        ),
+    )
+
+
+def _load_workout_plan_payload(payload: dict[str, Any]) -> WorkoutPlan:
+    raw_generated_on = _require_str(
+        payload.get("generated_on"), label="rawPlan.generated_on"
+    )
+    days = _require_list(payload.get("days"), label="rawPlan.days")
+    return WorkoutPlan(
+        generated_on=date.fromisoformat(raw_generated_on),
+        plan_version=_require_int(
+            payload.get("plan_version"), label="rawPlan.plan_version"
+        ),
+        summary=_require_str(payload.get("summary"), label="rawPlan.summary"),
+        progression_note=_require_str(
+            payload.get("progression_note"), label="rawPlan.progression_note"
+        ),
+        days=[
+            _load_workout_day_payload(
+                _require_mapping(day, label=f"rawPlan.days[{index}]"),
+                label=f"rawPlan.days[{index}]",
+            )
+            for index, day in enumerate(days)
+        ],
+        next_checkin_prompt=_require_str(
+            payload.get("next_checkin_prompt"), label="rawPlan.next_checkin_prompt"
+        ),
+        planner_backend=str(payload.get("planner_backend") or ""),
+        coach_notes_focus=_optional_str_list(
+            payload.get("coach_notes_focus"), label="rawPlan.coach_notes_focus"
+        ),
+        coach_notes_cautions=_optional_str_list(
+            payload.get("coach_notes_cautions"), label="rawPlan.coach_notes_cautions"
+        ),
+    )
+
+
+def load_workout_plan(
+    plan_json_path: Path,
+    plan_markdown_path: Path,
+    profile: UserProfile,
+) -> WorkoutPlan:
+    if not plan_json_path.exists() and not plan_markdown_path.exists():
+        raise ValueError("Workout Plan files are missing.")
+    if not plan_json_path.exists():
+        raise ValueError(f"Workout Plan JSON is missing: {plan_json_path}")
+    if not plan_markdown_path.exists():
+        raise ValueError(f"Workout Plan Markdown is missing: {plan_markdown_path}")
+
+    try:
+        payload = json.loads(plan_json_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as error:
+        raise ValueError(f"Workout Plan JSON is invalid: {error}") from error
+
+    raw_plan = _require_mapping(payload, label="plan.json").get("rawPlan")
+    if raw_plan is None:
+        raise ValueError("Workout Plan JSON is missing rawPlan.")
+    plan = _load_workout_plan_payload(
+        _require_mapping(raw_plan, label="plan.json.rawPlan")
+    )
+
+    rendered_markdown = render_plan(plan, profile).strip()
+    filesystem_markdown = plan_markdown_path.read_text(encoding="utf-8").strip()
+    if rendered_markdown != filesystem_markdown:
+        raise ValueError("Workout Plan Markdown does not match plan.json rawPlan.")
+    return plan
 
 
 def load_state(path: Path) -> AppState:
