@@ -50,6 +50,7 @@ Optional model configuration:
 export OPENAI_API_KEY=...
 export OPENAI_BASE_URL=https://api.openai.com/v1
 export TRAINER_OPENAI_MODEL=gpt-5.4-mini
+export TRAINER_CHAT_OPENAI_MODEL=gpt-5.4-mini
 export TRAINER_OLLAMA_BASE_URL=http://localhost:11434
 export TRAINER_PLAN_REVIEW_MAX_ITERATIONS=5
 ```
@@ -153,12 +154,16 @@ Endpoints:
 POST /workspaces/{workspace}/workout-plan-generations
 GET /workspaces/{workspace}/workout-plan-generations/active
 GET /workout-plan-generations/{job_id}
+POST /workspaces/{workspace}/workout-session-chat
 ```
 
-Both endpoints require `Authorization: Bearer <TRAINER_API_TOKEN>`.
+All endpoints require `Authorization: Bearer <TRAINER_API_TOKEN>`.
 Generation jobs are persisted in Postgres. The status response includes
 step history and a curated Arnold/Doctor Mike review feed sourced from the
 planner review report, without exposing raw prompts.
+Workout Session chat loads the current Athlete Profile and selected Workout Day,
+returns an Arnold Schwarzenegger coaching answer, and does not persist chat
+history.
 
 ## Sync Commands
 

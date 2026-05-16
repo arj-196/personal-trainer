@@ -24,6 +24,10 @@ _Avoid_: Session, workout
 The act of executing one **Workout Day** with timer guidance and completion tracking.
 _Avoid_: Plan, workout day
 
+**Workout Session Coach Chat**:
+A temporary clarification chat inside a **Workout Session** that answers questions about the selected **Workout Day** without becoming persisted trainer history.
+_Avoid_: Check-in, plan review, support ticket
+
 **Workout Block**:
 An executable unit inside a **Workout Session**, such as warm-up, exercise, finisher, or recovery.
 _Avoid_: Card, item
@@ -52,6 +56,7 @@ _Avoid_: Recipe, favorite
 - A **Workout Plan** contains one or more **Workout Days**.
 - A **Workout Session** executes exactly one **Workout Day**.
 - A **Workout Day** produces one or more **Workout Blocks** for session execution.
+- A **Workout Session Coach Chat** belongs to the active browser execution of one **Workout Session** and is not stored in the database.
 - A **Recipe Workspace** may produce many **Saved Recipe Snapshots** over time.
 
 ## Example dialogue

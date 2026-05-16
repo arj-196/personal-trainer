@@ -42,6 +42,15 @@ export type WorkoutGenerationStartResponse = {
   created: boolean;
 };
 
+export type WorkoutSessionChatTurn = {
+  question: string;
+  arnoldResponse: string;
+};
+
+export type WorkoutSessionChatResponse = {
+  arnoldResponse: string;
+};
+
 function getTrainerApiUrl(): string {
   const value = process.env.TRAINER_API_URL?.trim();
   if (!value) {
@@ -99,5 +108,23 @@ export async function getActiveWorkoutPlanGeneration(workspace: string): Promise
   return trainerFetch<{ job: WorkoutGenerationJob | null }>(
     `/workspaces/${encodeURIComponent(workspace)}/workout-plan-generations/active`,
     { method: 'GET' }
+  );
+}
+
+export async function askWorkoutSessionChat(
+  workspace: string,
+  payload: {
+    dayHeading: string;
+    question: string;
+    history: WorkoutSessionChatTurn[];
+  }
+): Promise<WorkoutSessionChatResponse> {
+  return trainerFetch<WorkoutSessionChatResponse>(
+    `/workspaces/${encodeURIComponent(workspace)}/workout-session-chat`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    }
   );
 }

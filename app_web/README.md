@@ -10,6 +10,7 @@ The web app is the authenticated interface for managing Personal Trainer data st
 - create and edit `Check-in` records after a current workout plan exists
 - create new check-ins with server-generated UUIDs when no existing check-in id is submitted
 - view the current `Workout Plan`
+- ask temporary Workout Session coach chat questions on the start workout screen
 - run the Jeff the Cook recipe workflow
 - save and delete recipe snapshots in PostgreSQL
 - emit module-scoped server logs such as `app_web.server.workspaces` and `app_web.recipes.service`
@@ -30,6 +31,8 @@ DATABASE_URL=postgresql://personal_trainer:personal_trainer@localhost:5432/perso
 APP_USERNAME=coach
 APP_PASSWORD=secret
 APP_SESSION_SECRET=change-me
+TRAINER_API_URL=http://127.0.0.1:8010
+TRAINER_API_TOKEN=dev-secret
 ```
 
 When running through Docker Compose, the app runs with `next dev` and hot
@@ -73,5 +76,7 @@ Deploy the Next.js app to Vercel and point `DATABASE_URL` at Neon Postgres.
 
 - Workout plan generation runs through the Python trainer API when the web app
   is configured with `TRAINER_API_URL` and `TRAINER_API_TOKEN`.
+- Workout Session coach chat asks Arnold through the Python trainer API and keeps
+  chat turns only in active browser memory.
 - The web app only displays workout plans already stored in PostgreSQL.
 - Vercel Blob is no longer used for trainer or recipe persistence.

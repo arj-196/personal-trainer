@@ -145,6 +145,9 @@ poetry run personal-trainer serve --host 127.0.0.1 --port 8010
 The web app calls the trainer HTTP API through authenticated Next proxy routes.
 Workout Plan generation is stored as a Postgres-backed job and the UI polls for
 progress while Arnold and Doctor Mike review the plan.
+The start workout screen also uses the trainer API for temporary Arnold
+Workout Session coach chat answers. Chat turns are kept in browser memory only
+and are not stored in PostgreSQL.
 
 ## CLI Commands
 
@@ -181,6 +184,7 @@ APP_SESSION_SECRET=<long-random-secret>
 TRAINER_API_URL=<trainer-service-url>
 TRAINER_API_TOKEN=<shared-secret>
 OPENAI_API_KEY=<openai-key>
+TRAINER_CHAT_OPENAI_MODEL=<cheap-chat-model>
 ```
 
 Apply all SQL migrations to production:

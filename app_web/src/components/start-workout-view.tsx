@@ -15,6 +15,7 @@ import {
 import { advanceTimerPhase, type TimerPhase } from '@/lib/workout-timer-state';
 
 import { WorkoutBlockCard } from './workout-block-card';
+import { WorkoutSessionChat } from './workout-session-chat';
 
 type StartWorkoutViewProps = {
   day: WorkoutDay;
@@ -39,6 +40,22 @@ function PauseIcon() {
   );
 }
 
+function TimerIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className="h-5 w-5">
+      <path d="M10 2h4v2h-4V2Zm1 9h2v5h-2v-5Zm1-5a8 8 0 1 1 0 16 8 8 0 0 1 0-16Zm0 2a6 6 0 1 0 0 12 6 6 0 0 0 0-12Zm5.2-.8 1.4-1.4 1.6 1.6-1.4 1.4-1.6-1.6Z" fill="currentColor" />
+    </svg>
+  );
+}
+
+function ChatIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className="h-5 w-5">
+      <path d="M4 5.5C4 3.6 5.6 2 7.5 2h9C18.4 2 20 3.6 20 5.5v6c0 1.9-1.6 3.5-3.5 3.5H11l-5.2 4.3A1.1 1.1 0 0 1 4 18.5v-13Zm3.5-1.3c-.7 0-1.3.6-1.3 1.3v10.7l4-3.3h6.3c.7 0 1.3-.6 1.3-1.3v-6c0-.7-.6-1.3-1.3-1.3h-9Z" fill="currentColor" />
+    </svg>
+  );
+}
+
 export function StartWorkoutView({ day, workspace }: StartWorkoutViewProps) {
   const blocks = buildWorkoutDayBlocks(day);
   const blockRefs = useRef<Array<HTMLElement | null>>([]);
@@ -50,6 +67,7 @@ export function StartWorkoutView({ day, workspace }: StartWorkoutViewProps) {
   const [currentSet, setCurrentSet] = useState(1);
   const [pendingStartBlockIndex, setPendingStartBlockIndex] = useState<number | null>(null);
   const [isStopwatchVisible, setIsStopwatchVisible] = useState(false);
+  const [isChatVisible, setIsChatVisible] = useState(false);
 
   useEffect(() => {
     const storedProgress = readWorkoutProgress(workspace, day.heading);
@@ -346,21 +364,42 @@ export function StartWorkoutView({ day, workspace }: StartWorkoutViewProps) {
         </section>
       ) : null}
 
-      <button
-        type="button"
-        className="fixed bottom-[calc(16px+env(safe-area-inset-bottom))] right-4 z-30 inline-flex h-12 w-12 items-center justify-center rounded-full border border-slate-900/10 bg-[#17181c] text-white shadow-[0_14px_36px_rgba(23,24,28,0.26)] transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-80"
-        onClick={toggleStopwatchVisibility}
-        aria-label={isStopwatchVisible ? 'Hide stopwatch' : 'Show stopwatch'}
-        title={
-          isStopwatchVisible
-            ? isTimerLocked
-              ? 'Pause or finish the stopwatch before hiding it'
-              : 'Hide stopwatch'
-            : 'Show stopwatch'
-        }
-      >
-        ⏱
-      </button>
+      <div className="fixed bottom-[calc(16px+env(safe-area-inset-bottom))] right-4 z-50 grid gap-2 xl:right-[max(1rem,calc(50%-36rem))]">
+        <button
+          type="button"
+          className={[
+            'inline-flex h-12 w-12 items-center justify-center rounded-full border border-slate-900/10 text-white shadow-[0_14px_36px_rgba(23,24,28,0.26)] transition hover:-translate-y-0.5',
+            isChatVisible ? 'bg-cyan-600' : 'bg-[#17181c]',
+          ].join(' ')}
+          onClick={() => setIsChatVisible((current) => !current)}
+          aria-label={isChatVisible ? 'Hide coach chat' : 'Show coach chat'}
+          title={isChatVisible ? 'Hide coach chat' : 'Show coach chat'}
+        >
+          <ChatIcon />
+        </button>
+        <button
+          type="button"
+          className="inline-flex h-12 w-12 items-center justify-center rounded-full border border-slate-900/10 bg-[#17181c] text-white shadow-[0_14px_36px_rgba(23,24,28,0.26)] transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-80"
+          onClick={toggleStopwatchVisibility}
+          aria-label={isStopwatchVisible ? 'Hide stopwatch' : 'Show stopwatch'}
+          title={
+            isStopwatchVisible
+              ? isTimerLocked
+                ? 'Pause or finish the stopwatch before hiding it'
+                : 'Hide stopwatch'
+              : 'Show stopwatch'
+          }
+        >
+          <TimerIcon />
+        </button>
+      </div>
+
+      <WorkoutSessionChat
+        workspace={workspace}
+        dayHeading={day.heading}
+        isOpen={isChatVisible}
+        isStopwatchVisible={isStopwatchVisible}
+      />
 
       <section className="rounded-[1.75rem] border border-white/70 bg-[linear-gradient(180deg,rgba(255,255,255,0.95),rgba(248,249,251,0.88)),linear-gradient(180deg,#fff,#fff)] p-5 shadow-[0_20px_45px_rgba(41,51,64,0.08)] backdrop-blur-xl sm:p-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">

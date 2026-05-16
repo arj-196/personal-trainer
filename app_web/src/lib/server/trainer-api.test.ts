@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { getWorkoutPlanGeneration, startWorkoutPlanGeneration } from './trainer-api';
+import { askWorkoutSessionChat, getWorkoutPlanGeneration, startWorkoutPlanGeneration } from './trainer-api';
 
 describe('trainer api client', () => {
   afterEach(() => {
@@ -40,5 +40,41 @@ describe('trainer api client', () => {
     )));
 
     await expect(getWorkoutPlanGeneration('missing')).rejects.toThrow('Generation job not found.');
+  });
+
+  it('sends Workout Session chat requests to the trainer service', async () => {
+    vi.stubEnv('TRAINER_API_URL', 'http://trainer.test');
+    vi.stubEnv('TRAINER_API_TOKEN', 'secret');
+    const fetchMock = vi.fn(async () => new Response(
+      JSON.stringify({
+        arnoldResponse: 'Arnold answer.',
+      }),
+      { status: 200, headers: { 'Content-Type': 'application/json' } }
+    ));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(askWorkoutSessionChat('wk jordan', {
+      dayHeading: 'Day 1',
+      question: 'What muscles?',
+      history: [],
+    })).resolves.toEqual({
+      arnoldResponse: 'Arnold answer.',
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      'http://trainer.test/workspaces/wk%20jordan/workout-session-chat',
+      expect.objectContaining({
+        method: 'POST',
+        headers: expect.objectContaining({
+          Authorization: 'Bearer secret',
+          'Content-Type': 'application/json',
+        }),
+        body: JSON.stringify({
+          dayHeading: 'Day 1',
+          question: 'What muscles?',
+          history: [],
+        }),
+      })
+    );
   });
 });

@@ -258,6 +258,30 @@ def next_plan_version(slug: str, *, database_url: str | None = None) -> int:
             return int(row["current_version"]) + 1 if row else 1
 
 
+def read_current_rendered_workout_plan(
+    slug: str, *, database_url: str | None = None
+) -> dict[str, Any] | None:
+    with connect(database_url) as connection:
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT wp.rendered_plan
+                FROM workout_plans wp
+                JOIN workspaces w ON w.id = wp.workspace_id
+                WHERE w.slug = %s
+                  AND wp.is_current = TRUE
+                """,
+                (slug,),
+            )
+            row = cursor.fetchone()
+            if row is None:
+                return None
+            rendered_plan = row["rendered_plan"]
+            if isinstance(rendered_plan, str):
+                return json.loads(rendered_plan)
+            return dict(rendered_plan)
+
+
 def save_workout_plan(
     slug: str,
     plan: WorkoutPlan,

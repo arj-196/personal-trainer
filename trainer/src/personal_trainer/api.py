@@ -6,8 +6,15 @@ from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 
 from fastapi import BackgroundTasks, Depends, FastAPI, Header, HTTPException, status
+from pydantic import BaseModel, Field
 
-from personal_trainer.db import latest_checkin, next_plan_version, read_profile, save_workout_plan
+from personal_trainer.db import (
+    latest_checkin,
+    next_plan_version,
+    read_current_rendered_workout_plan,
+    read_profile,
+    save_workout_plan,
+)
 from personal_trainer.generation_jobs import (
     append_step,
     create_or_get_active_job,
@@ -21,6 +28,12 @@ from personal_trainer.generation_jobs import (
 )
 from personal_trainer.llm import start_session
 from personal_trainer.openai_client import OpenAIChatClient, OpenAIClientConfig
+from personal_trainer.workout_session_chat import (
+    WorkoutSessionChatError,
+    WorkoutSessionChatRequest,
+    WorkoutSessionChatTurn,
+    answer_workout_session_chat,
+)
 from personal_trainer.workout_planner import (
     OpenAITrainerAgent,
     TrainerAgent,
@@ -33,6 +46,17 @@ from personal_trainer.workout_planner import (
 LOGGER = logging.getLogger(__name__)
 app = FastAPI(title="Personal Trainer API")
 EXECUTOR = ThreadPoolExecutor(max_workers=int(os.getenv("TRAINER_API_WORKERS", "2")))
+
+
+class WorkoutSessionChatTurnPayload(BaseModel):
+    question: str = Field(default="", max_length=800)
+    arnoldResponse: str = Field(default="", max_length=1200)
+
+
+class WorkoutSessionChatPayload(BaseModel):
+    dayHeading: str = Field(default="", max_length=200)
+    question: str = Field(default="", max_length=800)
+    history: list[WorkoutSessionChatTurnPayload] = Field(default_factory=list, max_length=8)
 
 
 def _require_service_token(authorization: str | None = Header(default=None)) -> None:
@@ -99,6 +123,84 @@ def get_workout_plan_generation(job_id: str) -> dict[str, Any]:
     if job is None:
         raise HTTPException(status_code=404, detail="Generation job not found.")
     return {"job": serialize_job(job)}
+
+
+@app.post(
+    "/workspaces/{workspace}/workout-session-chat",
+    dependencies=[Depends(_require_service_token)],
+)
+def create_workout_session_chat(
+    workspace: str,
+    payload: WorkoutSessionChatPayload,
+) -> dict[str, str]:
+    try:
+        profile = read_profile(workspace)
+    except RuntimeError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
+
+    rendered_plan = read_current_rendered_workout_plan(workspace)
+    if rendered_plan is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Workspace '{workspace}' does not have a current Workout Plan.",
+        )
+
+    api_key = os.getenv("OPENAI_API_KEY", "").strip()
+    if not api_key:
+        raise HTTPException(
+            status_code=500,
+            detail="OPENAI_API_KEY is required for Workout Session chat.",
+        )
+
+    model = os.getenv(
+        "TRAINER_CHAT_OPENAI_MODEL",
+        os.getenv("TRAINER_OPENAI_MODEL", os.getenv("OPENAI_MODEL", "gpt-5.4-mini")),
+    )
+    base_url = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1")
+    timeout_seconds = int(os.getenv("TRAINER_CHAT_OPENAI_TIMEOUT_SECONDS", "45"))
+    client = OpenAIChatClient(
+        OpenAIClientConfig(
+            api_key=api_key,
+            model=model,
+            base_url=base_url,
+            timeout_seconds=max(10, timeout_seconds),
+            temperature=0.2,
+        )
+    )
+    request = WorkoutSessionChatRequest(
+        workspace=workspace,
+        day_heading=payload.dayHeading,
+        question=payload.question,
+        history=tuple(
+            WorkoutSessionChatTurn(
+                question=turn.question,
+                arnold_response=turn.arnoldResponse,
+            )
+            for turn in payload.history
+        ),
+    )
+    try:
+        response = answer_workout_session_chat(
+            request,
+            profile=profile,
+            rendered_plan=rendered_plan,
+            client=client,
+        )
+    except WorkoutSessionChatError as error:
+        message = str(error)
+        status_code = 400
+        if "OpenAI" in message or "could not reach" in message or "timed out" in message:
+            status_code = 502
+        LOGGER.warning(
+            "Workout Session chat failed",
+            extra={"workspace": workspace, "error": message},
+        )
+        raise HTTPException(status_code=status_code, detail=message) from error
+
+    LOGGER.info("Workout Session chat answered", extra={"workspace": workspace})
+    return {
+        "arnoldResponse": response.arnold_response,
+    }
 
 
 def _submit_generation_job(job_id: str) -> None:

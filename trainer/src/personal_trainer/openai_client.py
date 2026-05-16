@@ -33,6 +33,7 @@ class OpenAIChatClient:
         system_prompt: str,
         user_prompt: str,
         schema: dict[str, Any],
+        schema_name: str = "trainer_weekly_plan",
     ) -> dict[str, Any]:
         endpoint = f"{self.config.base_url.rstrip('/')}/chat/completions"
         LOGGER.info(
@@ -50,7 +51,7 @@ class OpenAIChatClient:
             "response_format": {
                 "type": "json_schema",
                 "json_schema": {
-                    "name": "trainer_weekly_plan",
+                    "name": schema_name,
                     "strict": True,
                     "schema": schema,
                 },

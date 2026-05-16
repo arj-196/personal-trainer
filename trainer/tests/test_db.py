@@ -160,3 +160,26 @@ def test_insert_imported_workout_plan_fails_before_current_update_on_conflict(
     assert "SELECT 1" in executed_sql
     assert "UPDATE workout_plans" not in executed_sql
     assert connection.committed is False
+
+
+def test_read_current_rendered_workout_plan_returns_current_plan(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    cursor = _Cursor(fetch_result={"rendered_plan": {"title": "Current", "days": []}})
+    connection = _Connection(cursor)
+    monkeypatch.setattr("personal_trainer.db.connect", lambda database_url=None: connection)
+
+    plan = db.read_current_rendered_workout_plan("wk_jordan", database_url="postgresql://test")
+
+    assert plan == {"title": "Current", "days": []}
+    assert "wp.is_current = TRUE" in cursor.statements[0]
+
+
+def test_read_current_rendered_workout_plan_returns_none_when_missing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    cursor = _Cursor(fetch_result=None)
+    connection = _Connection(cursor)
+    monkeypatch.setattr("personal_trainer.db.connect", lambda database_url=None: connection)
+
+    assert db.read_current_rendered_workout_plan("wk_jordan") is None
