@@ -1,12 +1,34 @@
-# Trainer CLI
+# Trainer CLI and HTTP API
 
-The trainer CLI is responsible for local workout plan generation and PostgreSQL operations. The database is the source of truth; Markdown workspace files are no longer the operational storage model.
+The trainer CLI and HTTP API are responsible for workout plan generation and PostgreSQL operations. The database is the source of truth; Markdown workspace files are no longer the operational storage model.
 
 ## Requirements
 
 - Python 3.10+
 - Poetry
 - Local PostgreSQL via Docker Compose or a remote Postgres-compatible database
+
+## Docker Compose Development
+
+From the repository root, run the full local stack:
+
+```bash
+export TRAINER_API_TOKEN=dev-secret
+export OPENAI_API_KEY=...
+docker compose up --build
+```
+
+Compose starts PostgreSQL, applies migrations with `personal-trainer db setup`,
+and runs this API on `http://localhost:8010` with Uvicorn reload enabled.
+Changes under `trainer/` are bind-mounted into the running container. The
+service uses the Compose network database URL:
+
+```bash
+postgresql://personal_trainer:personal_trainer@postgres:5432/personal_trainer
+```
+
+The web app reaches the API at `http://trainer-api:8010` inside the Compose
+network.
 
 ## Environment
 
@@ -27,6 +49,7 @@ Optional model configuration:
 ```bash
 export OPENAI_API_KEY=...
 export OPENAI_BASE_URL=https://api.openai.com/v1
+export TRAINER_OPENAI_MODEL=gpt-5.4-mini
 export TRAINER_OLLAMA_BASE_URL=http://localhost:11434
 export TRAINER_PLAN_REVIEW_MAX_ITERATIONS=5
 ```
@@ -106,6 +129,36 @@ The command:
 - generates a new workout plan locally
 - stores the full normalized plan in PostgreSQL
 - marks the new plan as current for the workspace
+
+## HTTP API
+
+Run the trainer service for web-triggered Workout Plan generation:
+
+```bash
+export TRAINER_API_TOKEN=dev-secret
+export OPENAI_API_KEY=...
+poetry run personal-trainer serve --host 127.0.0.1 --port 8010
+```
+
+The web app should be configured with:
+
+```bash
+export TRAINER_API_URL=http://127.0.0.1:8010
+export TRAINER_API_TOKEN=dev-secret
+```
+
+Endpoints:
+
+```bash
+POST /workspaces/{workspace}/workout-plan-generations
+GET /workspaces/{workspace}/workout-plan-generations/active
+GET /workout-plan-generations/{job_id}
+```
+
+Both endpoints require `Authorization: Bearer <TRAINER_API_TOKEN>`.
+Generation jobs are persisted in Postgres. The status response includes
+step history and a curated Arnold/Doctor Mike review feed sourced from the
+planner review report, without exposing raw prompts.
 
 ## Sync Commands
 

@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
 import { saveCheckInAction, saveProfileAction } from '../../actions';
+import { WorkoutGenerationPanel } from '@/components/workout-generation-panel';
 import { listCheckIns, readAthleteProfile, readWorkoutPlan } from '@/lib/server/workspaces';
 
 export const dynamic = 'force-dynamic';
@@ -52,6 +53,10 @@ export default async function WorkspacePage({
           </div>
         </div>
       </section>
+
+      <div className="mt-4">
+        <WorkoutGenerationPanel workspace={workspace} variant={currentPlan ? 'compact' : 'empty'} />
+      </div>
 
       <div className="mt-4 grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
         <section className={cardClass}>

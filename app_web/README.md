@@ -32,6 +32,24 @@ APP_PASSWORD=secret
 APP_SESSION_SECRET=change-me
 ```
 
+When running through Docker Compose, the app runs with `next dev` and hot
+reload. These variables can be exported before startup or left at their
+development defaults:
+
+```bash
+export APP_USERNAME=coach
+export APP_PASSWORD=secret
+export APP_SESSION_SECRET=change-me
+export TRAINER_API_TOKEN=dev-secret
+export OPENAI_API_KEY=...
+docker compose up --build
+```
+
+Compose serves the app at `http://localhost:3000`, sets `DATABASE_URL` to the
+PostgreSQL service, and points `TRAINER_API_URL` at `http://trainer-api:8010`.
+Local changes under `app_web/` and `packages/` are bind-mounted into the
+container.
+
 ## Development
 
 From the repo root:
@@ -53,6 +71,7 @@ Deploy the Next.js app to Vercel and point `DATABASE_URL` at Neon Postgres.
 
 ## Notes
 
-- Workout plan generation stays in the Python trainer CLI.
+- Workout plan generation runs through the Python trainer API when the web app
+  is configured with `TRAINER_API_URL` and `TRAINER_API_TOKEN`.
 - The web app only displays workout plans already stored in PostgreSQL.
 - Vercel Blob is no longer used for trainer or recipe persistence.

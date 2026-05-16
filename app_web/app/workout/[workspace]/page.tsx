@@ -1,6 +1,6 @@
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
 
+import { WorkoutGenerationPanel } from '@/components/workout-generation-panel';
 import { readWorkoutPlan } from '@/lib/trainer-data';
 
 export const dynamic = 'force-dynamic';
@@ -23,7 +23,33 @@ export default async function WorkoutPage({
   const plan = await readWorkoutPlan(workspace);
 
   if (!plan) {
-    notFound();
+    return (
+      <main className={shellClass}>
+        <section className={heroClass}>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <p className={kickerClass}>Workout overview</p>
+              <h1 className={heroTitleClass}>No current plan</h1>
+            </div>
+            <div className="grid h-16 w-16 shrink-0 place-items-center rounded-full bg-gradient-to-br from-white/95 to-slate-100/90 text-sm font-extrabold tracking-[0.08em] text-slate-800 shadow-[0_12px_24px_rgba(43,52,61,0.1)]">WK</div>
+          </div>
+          <p className="mt-3 max-w-3xl text-sm leading-relaxed text-slate-500">
+            This Workspace does not have a current Workout Plan yet. Generate one after the Athlete Profile is ready.
+          </p>
+          <div className="mt-4 flex flex-wrap gap-2.5">
+            <Link className={softActionClass} href={`/workspace/${workspace}`}>
+              Edit workspace
+            </Link>
+            <Link className={softActionClass} href={`/?workspace=${workspace}`}>
+              Back to dashboard
+            </Link>
+          </div>
+        </section>
+        <div className="mt-4">
+          <WorkoutGenerationPanel workspace={workspace} variant="empty" />
+        </div>
+      </main>
+    );
   }
 
   return (
@@ -49,6 +75,10 @@ export default async function WorkoutPage({
           </Link>
         </div>
       </section>
+
+      <div className="mt-4">
+        <WorkoutGenerationPanel workspace={workspace} />
+      </div>
 
       <section className={`${cardClass} mt-4`}>
         <div className="grid gap-4">

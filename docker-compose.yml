@@ -16,5 +16,81 @@ services:
       timeout: 5s
       retries: 10
 
+  migrate:
+    build:
+      context: .
+      dockerfile: trainer/Dockerfile
+      target: dev
+    environment:
+      DATABASE_URL: postgresql://personal_trainer:personal_trainer@postgres:5432/personal_trainer
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: ["personal-trainer", "db", "setup"]
+    volumes:
+      - ./trainer:/app/trainer
+      - ./db:/app/db
+    restart: "no"
+
+  trainer-api:
+    build:
+      context: .
+      dockerfile: trainer/Dockerfile
+      target: dev
+    container_name: personal-trainer-api
+    environment:
+      DATABASE_URL: postgresql://personal_trainer:personal_trainer@postgres:5432/personal_trainer
+      TRAINER_API_TOKEN: ${TRAINER_API_TOKEN:-dev-secret}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://api.openai.com/v1}
+      TRAINER_OPENAI_MODEL: ${TRAINER_OPENAI_MODEL:-gpt-5.4-mini}
+      TRAINER_PLAN_REVIEW_MAX_ITERATIONS: ${TRAINER_PLAN_REVIEW_MAX_ITERATIONS:-5}
+      PYTHONPATH: /app/trainer/src
+    ports:
+      - "8010:8010"
+    volumes:
+      - ./trainer:/app/trainer
+      - ./db:/app/db
+      - ./workspaces:/app/workspaces
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8010/health', timeout=2).read()\""]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  web:
+    build:
+      context: .
+      dockerfile: app_web/Dockerfile
+      target: dev
+    container_name: personal-trainer-web
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgresql://personal_trainer:personal_trainer@postgres:5432/personal_trainer
+      APP_USERNAME: ${APP_USERNAME:-coach}
+      APP_PASSWORD: ${APP_PASSWORD:-secret}
+      APP_SESSION_SECRET: ${APP_SESSION_SECRET:-local-dev-session-secret}
+      TRAINER_API_URL: http://trainer-api:8010
+      TRAINER_API_TOKEN: ${TRAINER_API_TOKEN:-dev-secret}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+    ports:
+      - "3000:3000"
+    volumes:
+      - .:/repo
+      - root_node_modules:/repo/node_modules
+      - web_node_modules:/repo/app_web/node_modules
+      - shared_node_modules:/repo/packages/shared/node_modules
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      trainer-api:
+        condition: service_healthy
+
 volumes:
   postgres_data:
+  root_node_modules:
+  web_node_modules:
+  shared_node_modules:

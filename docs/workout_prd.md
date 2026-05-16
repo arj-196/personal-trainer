@@ -9,7 +9,7 @@ The Workout Module is the frontend workout experience inside Personal Trainer. I
 - run a guided, timer-driven session flow
 - track completion state per workout block on the current device
 
-The module is driven by pre-generated plan data (`plan.json`) and is intentionally read-only for workout programming.
+The module is driven by generated Workout Plan data stored in Postgres and is intentionally read-only for workout programming.
 
 The primary interaction model is:
 - user selects a workspace from the homepage
@@ -32,12 +32,12 @@ This is not a planning editor. It is a **session execution workspace** with clea
 - Work well on mobile with sticky controls and compact card layouts
 
 ### Non-goals
-- Editing or regenerating workout plans from the frontend
+- Editing workout plans from the frontend
 - Multi-user auth and account management
 - Cross-device sync for workout completion state
 - Historical analytics, streaks, leaderboards, or social features
 - Real-time trainer chat
-- Replacing the trainer CLI as source of truth
+- Replacing generated Workout Plans as the source of truth
 
 ## 3. Primary user
 
@@ -55,7 +55,7 @@ There is no auth in MVP.
    - Start workout view is action-heavy and timer-guided.
 
 3. **Plan data is source of truth**
-   - The frontend displays normalized `plan.json` content.
+   - The frontend displays normalized current Workout Plan content.
    - Frontend does not modify training prescriptions.
 
 4. **Mobile-friendly gym ergonomics**
@@ -120,7 +120,7 @@ The module has three primary screens:
 ### Flow A: Open workout from homepage
 1. User lands on homepage
 2. User selects workspace
-3. App loads `plan.json` for selected workspace
+3. App loads the current Workout Plan for selected workspace
 4. User taps `Open workout`
 5. App opens `/workout/[workspace]`
 
@@ -163,11 +163,11 @@ The module has three primary screens:
   - `Open workout`
   - `Start session`
 - If no workspaces, must show setup guidance
-- If workspace has no `plan.json`, must show actionable empty state
+- If workspace has no current Workout Plan, must show actionable empty state
 
 ### 7.2 Workout overview route
 - Must be available at `/workout/[workspace]`
-- Must return not-found state for missing plans
+- Must show an actionable no-plan state for missing plans
 - Must show one card per workout day
 - Must show warm-up and exercises on each day
 - Must conditionally show finisher/recovery only when present
@@ -229,11 +229,16 @@ The module has three primary screens:
 - Exercise cards should expose Google Images quick-open action
 
 ### 7.8 Data source behavior
-- Frontend must read workout data from configured source:
-  - local workspace files
-  - Vercel Blob
-- `plan.json` is required input for workout module
-- Frontend must not mutate plan data
+- Frontend must read the current Workout Plan from Postgres
+- Frontend must not mutate plan data directly
+- Frontend may request a new Workout Plan through the trainer HTTP API
+
+### 7.9 Workout Plan generation
+- Workout overview and workspace settings must expose a Generate new Workout Plan action
+- If no current Workout Plan exists, workout overview must show an actionable no-plan state instead of a not-found page
+- Generation must run as a persisted Workout Plan Generation Job
+- UI must poll job status and show progress steps while the trainer drafts, reviewers inspect, revisions run, and the plan publishes
+- UI must show curated Arnold and Doctor Mike review summaries when available
 
 ## 8. Non-functional requirements
 
@@ -258,14 +263,12 @@ Frontend responsibilities:
 - optional image lookup actions
 
 ## Backend/API
-No dedicated workout-generation API is required for this module.
+Workout Plan generation is handled by a dedicated trainer HTTP API. The browser calls Next proxy routes, and the Next app calls the trainer API with a shared service token.
 
-Server responsibilities for this module are limited to reading and serving existing plan/profile data through existing data access paths.
+Server responsibilities for this module include reading current plan/profile data and proxying Workout Plan Generation Job requests to the trainer service.
 
 ## Storage
-Two read sources are supported for plan data:
-- local filesystem (server-side read in local mode)
-- Vercel Blob (server-side read in blob mode)
+Postgres stores Workspaces, Athlete Profiles, Check-ins, Workout Plans, and Workout Plan Generation Jobs.
 
 Workout completion state persistence:
 - browser `localStorage`

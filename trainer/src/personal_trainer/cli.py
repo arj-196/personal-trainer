@@ -480,6 +480,24 @@ def status_command(workspace: Path) -> None:
     click.echo(f"Next plan version: {next_plan_version(workspace_slug)}")
 
 
+@main.command("serve", help="Run the trainer HTTP API service.")
+@click.option("--host", default="127.0.0.1", show_default=True, help="HTTP bind host.")
+@click.option("--port", default=8010, show_default=True, type=int, help="HTTP bind port.")
+@click.option("--reload", is_flag=True, help="Reload the service when source files change.")
+def serve_command(host: str, port: int, reload: bool) -> None:
+    """Run the trainer HTTP API used by the web app for plan generation."""
+    _configure_progress_logging()
+    import uvicorn
+
+    LOGGER.info("Starting trainer HTTP API on %s:%s", host, port)
+    uvicorn.run(
+        "personal_trainer.api:app",
+        host=host,
+        port=port,
+        reload=reload,
+    )
+
+
 @main.command("publish-notes", help="Publish the current plan to Apple Notes on macOS.")
 @WORKSPACE_ARGUMENT
 @click.option(

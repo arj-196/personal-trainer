@@ -264,7 +264,7 @@ def save_workout_plan(
     profile: UserProfile,
     *,
     database_url: str | None = None,
-) -> None:
+) -> str:
     create_workspace(slug, database_url=database_url)
     rendered_plan = json.loads(render_plan_json(plan, profile))
     raw_plan = asdict(plan)
@@ -293,6 +293,7 @@ def save_workout_plan(
                 SELECT w.id, %s, %s, %s, %s, %s, %s, %s::jsonb, %s::jsonb, %s::jsonb, %s::jsonb, TRUE, %s, %s
                 FROM workspaces w
                 WHERE w.slug = %s
+                RETURNING id
                 """,
                 (
                     plan.plan_version,
@@ -310,7 +311,12 @@ def save_workout_plan(
                     slug,
                 ),
             )
+            row = cursor.fetchone()
+            if row is None:
+                raise RuntimeError(f"Unable to save Workout Plan for workspace '{slug}'.")
+            plan_id = str(row["id"])
         connection.commit()
+    return plan_id
 
 
 def insert_imported_workout_plan(

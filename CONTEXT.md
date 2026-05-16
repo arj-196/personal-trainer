@@ -32,6 +32,10 @@ _Avoid_: Card, item
 A dated athlete update used by the trainer workflow when generating a future **Workout Plan**.
 _Avoid_: Survey, report
 
+**Workout Plan Generation Job**:
+A long-running request to create, review, and publish a new **Workout Plan** for a **Workspace**.
+_Avoid_: Worker job, workout request, background task
+
 **Recipe Workspace**:
 The draft state used to collect ingredients, constraints, and mode before recipe recommendations are generated.
 _Avoid_: Recipe editor, pantry
@@ -44,6 +48,7 @@ _Avoid_: Recipe, favorite
 
 - A **Workspace** has exactly one current **Athlete Profile** and may have many **Check-ins**.
 - A **Workspace** may contain one current **Workout Plan**.
+- A **Workspace** may have at most one active **Workout Plan Generation Job**.
 - A **Workout Plan** contains one or more **Workout Days**.
 - A **Workout Session** executes exactly one **Workout Day**.
 - A **Workout Day** produces one or more **Workout Blocks** for session execution.

@@ -18,6 +18,24 @@ RUN arch="$(dpkg --print-architecture)" \
     && npm install --workspace personal-trainer-frontend --no-save "${oxide_pkg}@${oxide_version}"; \
   fi
 
+FROM node:22-bookworm-slim AS dev
+WORKDIR /repo
+
+ENV NODE_ENV=development
+ENV NEXT_TELEMETRY_DISABLED=1
+
+COPY --from=deps /repo/node_modules ./node_modules
+COPY --from=deps /repo/app_web/node_modules ./app_web/node_modules
+COPY --from=deps /repo/packages/shared/node_modules ./packages/shared/node_modules
+COPY package.json package-lock.json ./
+COPY app_web ./app_web
+COPY packages/shared ./packages/shared
+COPY workspaces ./workspaces
+
+EXPOSE 3000
+
+CMD ["npm", "run", "dev", "-w", "personal-trainer-frontend", "--", "--hostname", "0.0.0.0"]
+
 FROM node:22-bookworm-slim AS builder
 WORKDIR /repo
 
@@ -34,7 +52,7 @@ COPY workspaces ./workspaces
 
 RUN npm run build -w personal-trainer-frontend
 
-FROM node:22-bookworm-slim AS runner
+FROM node:22-bookworm-slim AS production
 WORKDIR /app
 
 ENV NODE_ENV=production

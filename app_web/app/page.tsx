@@ -193,6 +193,7 @@ export default async function HomePage({
               <p className="mt-3 text-sm leading-relaxed text-slate-600">
                 The selected workspace exists, but no current workout plan has been published to Postgres yet.
                 Run <code>personal-trainer plan {selectedWorkspace}</code> in the trainer app.
+                You can also open the workspace or workout page and generate a plan from the web app.
               </p>
               <div className="mt-4 grid gap-4">
                 <aside className="grid content-start gap-3 rounded-[1.5rem] border border-slate-200/70 bg-[radial-gradient(circle_at_top_right,rgba(34,184,199,0.12),transparent_35%),linear-gradient(180deg,rgba(255,241,218,0.75),rgba(255,255,255,0.92))] p-4">
