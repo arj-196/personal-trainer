@@ -8,9 +8,11 @@ The web app is the authenticated interface for managing Personal Trainer data st
 - create `Workspace` records
 - edit the single current `Athlete Profile` for a workspace
 - create and edit `Check-in` records after a current workout plan exists
+- create new check-ins with server-generated UUIDs when no existing check-in id is submitted
 - view the current `Workout Plan`
 - run the Jeff the Cook recipe workflow
 - save and delete recipe snapshots in PostgreSQL
+- emit module-scoped server logs such as `app_web.server.workspaces` and `app_web.recipes.service`
 
 ## Trainer Workflow
 

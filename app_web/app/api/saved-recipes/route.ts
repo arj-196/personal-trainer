@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server';
 
-import { logger } from '@/lib/server/logger';
+import { createLogger } from '@/lib/server/logger';
 import { listRecipeSnapshots } from '@/lib/server/recipes-db';
+
+const logger = createLogger('app_web.api.saved-recipes');
 
 export async function GET() {
   try {

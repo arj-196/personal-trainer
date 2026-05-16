@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server';
 
 import { transcribeAudio } from '@/lib/recipes/openai';
-import { logger } from '@/lib/server/logger';
+import { createLogger } from '@/lib/server/logger';
+
+const logger = createLogger('app_web.api.transcribe');
 
 export async function POST(request: Request) {
   try {

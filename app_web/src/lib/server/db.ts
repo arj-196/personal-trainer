@@ -1,6 +1,8 @@
 import { Pool } from 'pg';
 
-import { logger } from './logger';
+import { createLogger } from './logger';
+
+const logger = createLogger('app_web.server.db');
 
 let pool: Pool | null = null;
 

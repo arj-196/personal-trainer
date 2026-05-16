@@ -2,7 +2,9 @@ import { NextResponse } from 'next/server';
 
 import { createRecipeState } from '@/lib/recipes/state';
 import { saveRecipeSnapshot } from '@/lib/server/recipes-db';
-import { logger } from '@/lib/server/logger';
+import { createLogger } from '@/lib/server/logger';
+
+const logger = createLogger('app_web.api.save-recipe');
 
 export async function POST(request: Request) {
   try {

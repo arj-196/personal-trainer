@@ -1,8 +1,10 @@
-import { logger } from '@/lib/server/logger';
+import { createLogger } from '@/lib/server/logger';
 
 import { generateRecommendations as generateRecommendationsWithAi, interpretUtterance as interpretUtteranceWithAi } from './ai';
 import { repairRecommendations, validateRecommendations } from './recommendation-validation';
 import type { InterpretedUtterance, Recommendation, RecipeState } from './types';
+
+const logger = createLogger('app_web.recipes.service');
 
 export class RecipeValidationError extends Error {
   constructor(message: string, readonly details: string[] = []) {

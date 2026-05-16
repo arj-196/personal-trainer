@@ -1,7 +1,9 @@
 import { normalizeWorkoutPlan, type UserProfileSummary, type WorkoutPlan } from '@personal-trainer/shared/workout';
 
 import { query, queryOne } from './db';
-import { logger } from './logger';
+import { createLogger } from './logger';
+
+const logger = createLogger('app_web.server.workspaces');
 
 export type AthleteProfileRecord = {
   workspaceSlug: string;

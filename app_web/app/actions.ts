@@ -87,8 +87,9 @@ export async function saveProfileAction(formData: FormData): Promise<void> {
 
 export async function saveCheckInAction(formData: FormData): Promise<void> {
   const workspace = String(formData.get('workspace') ?? '');
+  const submittedId = String(formData.get('id') ?? '').trim();
   const checkIn: CheckInRecord = {
-    id: String(formData.get('id') ?? randomUUID()),
+    id: submittedId || randomUUID(),
     checkInDate: String(formData.get('checkInDate') ?? ''),
     workoutsCompleted: parseNumber(formData.get('workoutsCompleted')) ?? 0,
     workoutsPlanned: parseNumber(formData.get('workoutsPlanned')) ?? 0,

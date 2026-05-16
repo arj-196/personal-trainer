@@ -1,7 +1,9 @@
 import type { Recommendation, RecipeState, SavedRecipeSnapshot } from '@/lib/recipes/types';
 
 import { query, queryOne } from './db';
-import { logger } from './logger';
+import { createLogger } from './logger';
+
+const logger = createLogger('app_web.server.recipes-db');
 
 export type SavedRecipeListItem = {
   id: string;

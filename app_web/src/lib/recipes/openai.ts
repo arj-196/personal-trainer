@@ -1,4 +1,6 @@
-import { logger } from '@/lib/server/logger';
+import { createLogger } from '@/lib/server/logger';
+
+const logger = createLogger('app_web.recipes.openai');
 
 type JsonSchema = Record<string, unknown>;
 
