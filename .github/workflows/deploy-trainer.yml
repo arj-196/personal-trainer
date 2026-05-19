@@ -41,6 +41,7 @@ jobs:
   build-and-deploy:
     name: Build and Deploy Trainer API
     runs-on: ubuntu-latest
+    environment: production
     needs: test
     steps:
       - name: Check out repository
