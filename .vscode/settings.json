@@ -1,23 +1,21 @@
 {
-    "python-envs.defaultEnvManager": "ms-python.python:system",
-    "python-envs.defaultPackageManager": "ms-python.python:pip",
-    "python.testing.pytestArgs": [
-        "trainer"
-    ],
-    "python.testing.unittestEnabled": false,
-    "python.testing.pytestEnabled": true,
-    "vitest.rootConfig": "frontend/vitest.config.ts",
-    "sqltools.connections": [
-        {
-            "ssh": "Disabled",
-            "previewLimit": 50,
-            "server": "localhost",
-            "port": 5432,
-            "driver": "PostgreSQL",
-            "name": "personal_trainer-local",
-            "database": "personal_trainer",
-            "username": "personal_trainer",
-            "password": "personal_trainer"
-        }
-    ]
+  "python-envs.defaultEnvManager": "ms-python.python:system",
+  "python-envs.defaultPackageManager": "ms-python.python:pip",
+  "python.testing.pytestArgs": ["trainer"],
+  "python.testing.unittestEnabled": false,
+  "python.testing.pytestEnabled": true,
+  "vitest.rootConfig": "frontend/vitest.config.ts",
+  "sqltools.connections": [
+    {
+      "ssh": "Disabled",
+      "previewLimit": 50,
+      "server": "localhost",
+      "port": 5432,
+      "driver": "PostgreSQL",
+      "name": "personal_trainer-local",
+      "database": "personal_trainer",
+      "username": "personal_trainer",
+      "password": "personal_trainer"
+    }
+  ]
 }

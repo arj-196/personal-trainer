@@ -70,7 +70,24 @@ npm run build -w personal-trainer-frontend
 
 ## Production
 
-Deploy the Next.js app to Vercel and point `DATABASE_URL` at Neon Postgres.
+Deploy the Next.js app to Vercel and point it at Neon Postgres and the
+production Trainer API.
+
+Required Vercel environment variables:
+
+```bash
+DATABASE_URL=<neon-connection-string>
+APP_USERNAME=<shared-username>
+APP_PASSWORD=<shared-password>
+APP_SESSION_SECRET=<long-random-secret>
+TRAINER_API_URL=<trainer-api-https-url>
+TRAINER_API_TOKEN=<shared-secret>
+OPENAI_API_KEY=<openai-key>
+```
+
+`TRAINER_API_URL` should be the public HTTPS URL served by Caddy on the VPS.
+The web app sends `Authorization: Bearer <TRAINER_API_TOKEN>` when calling the
+Trainer API through its Next.js proxy routes.
 
 ## Notes
 
