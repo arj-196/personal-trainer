@@ -168,10 +168,11 @@ history.
 ## Production Deployment
 
 The production Trainer API runs on the VPS as a Docker Compose service. Pushes
-to the repository `main` branch trigger `.github/workflows/deploy-trainer.yml`,
+to the repository `cicd` branch trigger `.github/workflows/deploy-trainer.yml`,
 which runs the Trainer test suite, builds the `production` Docker image, pushes
 it privately to GHCR, SSHes to the VPS, runs `personal-trainer db setup --prod`,
-and restarts the service.
+restarts the service, and waits up to 60 seconds for `/health` to pass before
+marking the deployment failed.
 
 The VPS runtime directory is:
 

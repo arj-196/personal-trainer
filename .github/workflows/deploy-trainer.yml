@@ -12,6 +12,7 @@ permissions:
 
 env:
   DEPLOY_DIR: /home/github/prod/personal-trainer
+  TRAINER_HEALTHCHECK_TIMEOUT_SECONDS: 60
 
 jobs:
   test:
@@ -128,12 +129,13 @@ jobs:
           GHCR_USERNAME: ${{ secrets.GHCR_USERNAME }}
           IMAGE_NAME: ${{ steps.image.outputs.name }}
           TRAINER_IMAGE_TAG: ${{ github.sha }}
+          TRAINER_HEALTHCHECK_TIMEOUT_SECONDS: ${{ env.TRAINER_HEALTHCHECK_TIMEOUT_SECONDS }}
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           port: ${{ secrets.VPS_PORT }}
-          envs: DEPLOY_DIR,GHCR_READ_TOKEN,GHCR_USERNAME,IMAGE_NAME,TRAINER_IMAGE_TAG
+          envs: DEPLOY_DIR,GHCR_READ_TOKEN,GHCR_USERNAME,IMAGE_NAME,TRAINER_IMAGE_TAG,TRAINER_HEALTHCHECK_TIMEOUT_SECONDS
           script: |
             set -euo pipefail
 
@@ -156,4 +158,15 @@ jobs:
             docker compose --env-file .env --env-file deploy.env run --rm trainer-api personal-trainer db setup --prod
             docker compose --env-file .env --env-file deploy.env up -d trainer-api
 
-            curl --fail --silent --show-error http://127.0.0.1:8010/health
+            echo "Waiting up to ${TRAINER_HEALTHCHECK_TIMEOUT_SECONDS}s for Trainer API health check..."
+            healthcheck_deadline=$(( $(date +%s) + TRAINER_HEALTHCHECK_TIMEOUT_SECONDS ))
+            until curl --fail --silent --show-error http://127.0.0.1:8010/health; do
+              if [ "$(date +%s)" -ge "$healthcheck_deadline" ]; then
+                echo "Trainer API health check did not pass within ${TRAINER_HEALTHCHECK_TIMEOUT_SECONDS}s." >&2
+                docker compose --env-file .env --env-file deploy.env ps trainer-api >&2
+                docker compose --env-file .env --env-file deploy.env logs --tail=100 trainer-api >&2
+                exit 1
+              fi
+
+              sleep 2
+            done
