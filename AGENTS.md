@@ -10,7 +10,7 @@
 
 # Coding standards
 
-- Always make sure the README is up to date with the latest changes.
+- Always make sure the README is up to date with the latest changes. Do not duplicate docs in the root README, keep it minial. Make sure you use the appropriate README in each directory.
 - Always write unit tests for all backend code.
 - Write integration tests for all backend critical components.
 - Do not test web app components

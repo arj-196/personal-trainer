@@ -1,0 +1,172 @@
+name: Deploy Trainer API
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  DEPLOY_DIR: /home/github/prod/personal-trainer
+  TRAINER_HEALTHCHECK_TIMEOUT_SECONDS: 60
+
+jobs:
+  test:
+    name: Test Trainer
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: trainer
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install Poetry
+        run: pipx install poetry==2.2.1
+
+      - name: Install dependencies
+        run: poetry install --with dev --no-interaction --no-ansi
+
+      - name: Run trainer tests
+        run: poetry run pytest
+
+  build-and-deploy:
+    name: Build and Deploy Trainer API
+    runs-on: ubuntu-latest
+    environment: production
+    needs: test
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Validate deploy secrets
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_PORT: ${{ secrets.VPS_PORT }}
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          GHCR_USERNAME: ${{ secrets.GHCR_USERNAME }}
+          GHCR_READ_TOKEN: ${{ secrets.GHCR_READ_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          missing=0
+          for secret_name in VPS_HOST VPS_USER VPS_PORT VPS_SSH_KEY GHCR_USERNAME GHCR_READ_TOKEN; do
+            if [ -z "${!secret_name}" ]; then
+              echo "::error::Missing required GitHub secret: ${secret_name}"
+              missing=1
+            fi
+          done
+
+          if [ "$missing" -ne 0 ]; then
+            exit 1
+          fi
+
+      - name: Set image name
+        id: image
+        run: echo "name=ghcr.io/${GITHUB_REPOSITORY,,}/trainer-api" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Trainer API image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: trainer/Dockerfile
+          target: production
+          push: true
+          tags: |
+            ${{ steps.image.outputs.name }}:${{ github.sha }}
+            ${{ steps.image.outputs.name }}:latest
+
+      - name: Prepare deploy directory on VPS
+        uses: appleboy/ssh-action@v1.2.0
+        env:
+          DEPLOY_DIR: ${{ env.DEPLOY_DIR }}
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT }}
+          envs: DEPLOY_DIR
+          script: |
+            set -euo pipefail
+            mkdir -p "$DEPLOY_DIR"
+
+      - name: Copy production Compose file to VPS
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT }}
+          source: deploy/trainer/docker-compose.yml
+          target: ${{ env.DEPLOY_DIR }}
+          strip_components: 2
+
+      - name: Deploy on VPS
+        uses: appleboy/ssh-action@v1.2.0
+        env:
+          DEPLOY_DIR: ${{ env.DEPLOY_DIR }}
+          GHCR_READ_TOKEN: ${{ secrets.GHCR_READ_TOKEN }}
+          GHCR_USERNAME: ${{ secrets.GHCR_USERNAME }}
+          IMAGE_NAME: ${{ steps.image.outputs.name }}
+          TRAINER_IMAGE_TAG: ${{ github.sha }}
+          TRAINER_HEALTHCHECK_TIMEOUT_SECONDS: ${{ env.TRAINER_HEALTHCHECK_TIMEOUT_SECONDS }}
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT }}
+          envs: DEPLOY_DIR,GHCR_READ_TOKEN,GHCR_USERNAME,IMAGE_NAME,TRAINER_IMAGE_TAG,TRAINER_HEALTHCHECK_TIMEOUT_SECONDS
+          script: |
+            set -euo pipefail
+
+            mkdir -p "$DEPLOY_DIR"
+            cd "$DEPLOY_DIR"
+
+            if [ ! -f .env ]; then
+              echo "Missing $DEPLOY_DIR/.env with production runtime secrets." >&2
+              exit 1
+            fi
+
+            printf '%s\n' "$GHCR_READ_TOKEN" | docker login ghcr.io -u "$GHCR_USERNAME" --password-stdin
+
+            {
+              printf 'TRAINER_IMAGE=%s\n' "$IMAGE_NAME"
+              printf 'TRAINER_IMAGE_TAG=%s\n' "$TRAINER_IMAGE_TAG"
+            } > deploy.env
+
+            docker compose --env-file .env --env-file deploy.env pull trainer-api
+            docker compose --env-file .env --env-file deploy.env run --rm trainer-api personal-trainer db setup --prod
+            docker compose --env-file .env --env-file deploy.env up -d trainer-api
+
+            echo "Waiting up to ${TRAINER_HEALTHCHECK_TIMEOUT_SECONDS}s for Trainer API health check..."
+            healthcheck_deadline=$(( $(date +%s) + TRAINER_HEALTHCHECK_TIMEOUT_SECONDS ))
+            until curl --fail --silent --show-error http://127.0.0.1:8010/health; do
+              if [ "$(date +%s)" -ge "$healthcheck_deadline" ]; then
+                echo "Trainer API health check did not pass within ${TRAINER_HEALTHCHECK_TIMEOUT_SECONDS}s." >&2
+                docker compose --env-file .env --env-file deploy.env ps trainer-api >&2
+                docker compose --env-file .env --env-file deploy.env logs --tail=100 trainer-api >&2
+                exit 1
+              fi
+
+              sleep 2
+            done
