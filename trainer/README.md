@@ -184,6 +184,7 @@ Create `/home/github/prod/personal-trainer/.env` on the VPS with runtime
 secrets:
 
 ```bash
+DATABASE_URL=<neon-connection-string>
 PRODUCTION_DATABASE_URL=<neon-connection-string>
 TRAINER_API_TOKEN=<shared-secret>
 OPENAI_API_KEY=<openai-key>
