@@ -3,7 +3,7 @@ name: Deploy Trainer API
 on:
   push:
     branches:
-      - cicd
+      - main
   workflow_dispatch:
 
 permissions:
