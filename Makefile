@@ -2,7 +2,7 @@
 	test test-shared test-web dev-web \
 	db-up db-setup db-down db-destroy
 
-start: db-up db-setup download-from-prod
+start: db-up db-setup download-from-prod dev-web
 
 stop: db-destroy
 

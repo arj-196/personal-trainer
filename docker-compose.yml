@@ -61,33 +61,33 @@ services:
       timeout: 5s
       retries: 10
 
-  web:
-    build:
-      context: .
-      dockerfile: app_web/Dockerfile
-      target: dev
-    container_name: personal-trainer-web
-    environment:
-      NODE_ENV: development
-      DATABASE_URL: postgresql://personal_trainer:personal_trainer@postgres:5432/personal_trainer
-      APP_USERNAME: ${APP_USERNAME:-coach}
-      APP_PASSWORD: ${APP_PASSWORD:-secret}
-      APP_SESSION_SECRET: ${APP_SESSION_SECRET:-local-dev-session-secret}
-      TRAINER_API_URL: http://trainer-api:8010
-      TRAINER_API_TOKEN: ${TRAINER_API_TOKEN:-dev-secret}
-      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
-    ports:
-      - "3000:3000"
-    volumes:
-      - .:/repo
-      - root_node_modules:/repo/node_modules
-      - web_node_modules:/repo/app_web/node_modules
-      - shared_node_modules:/repo/packages/shared/node_modules
-    depends_on:
-      migrate:
-        condition: service_completed_successfully
-      trainer-api:
-        condition: service_healthy
+  # web:
+  #   build:
+  #     context: .
+  #     dockerfile: app_web/Dockerfile
+  #     target: dev
+  #   container_name: personal-trainer-web
+  #   environment:
+  #     NODE_ENV: development
+  #     DATABASE_URL: postgresql://personal_trainer:personal_trainer@postgres:5432/personal_trainer
+  #     APP_USERNAME: ${APP_USERNAME:-coach}
+  #     APP_PASSWORD: ${APP_PASSWORD:-secret}
+  #     APP_SESSION_SECRET: ${APP_SESSION_SECRET:-local-dev-session-secret}
+  #     TRAINER_API_URL: http://trainer-api:8010
+  #     TRAINER_API_TOKEN: ${TRAINER_API_TOKEN:-dev-secret}
+  #     OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+  #   ports:
+  #     - "3000:3000"
+  #   volumes:
+  #     - .:/repo
+  #     - root_node_modules:/repo/node_modules
+  #     - web_node_modules:/repo/app_web/node_modules
+  #     - shared_node_modules:/repo/packages/shared/node_modules
+  #   depends_on:
+  #     migrate:
+  #       condition: service_completed_successfully
+  #     trainer-api:
+  #       condition: service_healthy
 
 volumes:
   postgres_data:

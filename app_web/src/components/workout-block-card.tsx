@@ -53,9 +53,14 @@ export function WorkoutBlockCard({
         <span className="flex h-[19px] w-[19px] flex-none items-center justify-center rounded-full bg-teal text-[10px] text-white">
           ✓
         </span>
-        <span className="flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-[12.5px] text-mut">
-          {block.name}
-          {block.prescription ? ` · ${block.prescription}` : ''}
+        <span className="flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-[12.5px]">
+          <span className="font-semibold text-mut">{block.name}</span>
+          {block.prescription ? (
+            <>
+              <span className="text-ln2"> · </span>
+              <span className="text-fnt">{block.prescription}</span>
+            </>
+          ) : null}
         </span>
         <span className="text-[10px] text-fnt">done</span>
       </button>
@@ -77,9 +82,14 @@ export function WorkoutBlockCard({
         >
           {kindLabel}
         </span>
-        <span className="flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-[12.5px] text-ink">
-          {block.name}
-          {block.prescription ? ` · ${block.prescription}` : ''}
+        <span className="flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-[12.5px]">
+          <span className="font-semibold text-ink">{block.name}</span>
+          {block.prescription ? (
+            <>
+              <span className="text-ln2"> · </span>
+              <span className="font-medium text-fnt">{block.prescription}</span>
+            </>
+          ) : null}
         </span>
       </button>
     );
