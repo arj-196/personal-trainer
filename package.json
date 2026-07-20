@@ -6,15 +6,5 @@
   "workspaces": [
     "app_web",
     "packages/*"
-  ],
-  "scripts": {
-    "test": "npm run test --workspaces --if-present",
-    "test:shared": "npm run test -w @personal-trainer/shared",
-    "test:web": "npm run test -w personal-trainer-frontend",
-    "dev:web": "npm run dev -w personal-trainer-frontend",
-    "db:up": "docker compose up -d",
-    "db:setup": "cd trainer && poetry run trainer db setup",
-    "db:down": "docker compose down",
-    "db:destroy": "docker compose down -v"
-  }
+  ]
 }

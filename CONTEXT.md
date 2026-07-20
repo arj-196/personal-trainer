@@ -72,3 +72,4 @@ _Avoid_: Recipe, favorite
 ## Flagged ambiguities
 
 - "web UI" previously referred to all user-facing app code. Resolved: use **web app** for `app_web/` and **shared package** for TypeScript domain logic used by the web app.
+- "all my workouts" / "the workout overview screen" have been used informally to mean the **Workspace** page (athlete profile, plan generation, and **Check-ins**). Resolved: this is the **Workspace**, not the **Workout Plan** view (which shows the current plan's **Workout Days**). **Check-ins** live on the **Workspace** page; the **Workout Plan** view links up to its parent **Workspace** so a check-in is reachable from where the plan is read.

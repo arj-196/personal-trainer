@@ -1,3 +1,5 @@
+import Link from 'next/link';
+
 import { DayProgressChip } from '@/components/day-progress-chip';
 import { RememberWorkspace } from '@/components/remember-workspace';
 import { WorkoutGenerationPanel } from '@/components/workout-generation-panel';
@@ -19,9 +21,18 @@ export default async function WorkoutPage({
     return (
       <div className="flex flex-col gap-3.5 px-[18px] pb-6 pt-4">
         <RememberWorkspace slug={workspace} />
-        <Display as="h1" className="text-[26px]">
-          Workout Plan
-        </Display>
+        <header className="flex items-center gap-2.5">
+          <Link
+            href={`/workspace/${encodeURIComponent(workspace)}`}
+            aria-label="Back to workspace"
+            className="flex h-9 w-9 flex-none items-center justify-center rounded-full border border-ln2 bg-card text-ink"
+          >
+            ←
+          </Link>
+          <Display as="h1" className="flex-1 text-[26px]">
+            Workout Plan
+          </Display>
+        </header>
         <EmptyState
           emoji="🏋️"
           title="Nothing prescribed. Yet."
@@ -50,8 +61,15 @@ export default async function WorkoutPage({
       <RememberWorkspace slug={workspace} />
 
       <header className="flex flex-col gap-2">
-        <div className="flex items-baseline justify-between gap-2">
-          <Display as="h1" className="text-[25px]">
+        <div className="flex items-center justify-between gap-2.5">
+          <Link
+            href={`/workspace/${encodeURIComponent(workspace)}`}
+            aria-label="Back to workspace"
+            className="flex h-9 w-9 flex-none items-center justify-center rounded-full border border-ln2 bg-card text-ink"
+          >
+            ←
+          </Link>
+          <Display as="h1" className="flex-1 text-[25px]">
             {plan.title}
           </Display>
           <Chip className="bg-bg2 text-fnt">Current</Chip>

@@ -59,7 +59,7 @@ From the repo root:
 
 ```bash
 npm install
-npm run dev:web
+make dev-web
 ```
 
 ## Build
