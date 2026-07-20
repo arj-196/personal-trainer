@@ -1,6 +1,8 @@
 'use client';
 
-import { FormEvent, useRef, useState } from 'react';
+import { FormEvent, useEffect, useRef, useState } from 'react';
+
+import { ErrorBanner } from '@/components/ui';
 
 export type WorkoutSessionChatTurn = {
   id: string;
@@ -13,21 +15,34 @@ type WorkoutSessionChatProps = {
   dayHeading: string;
   isOpen: boolean;
   isStopwatchVisible: boolean;
+  onClose: () => void;
 };
 
 type ChatResponse = {
   arnoldResponse: string;
 };
 
-const emptyError = 'Ask a question before sending.';
-
-export function WorkoutSessionChat({ workspace, dayHeading, isOpen, isStopwatchVisible }: WorkoutSessionChatProps) {
+export function WorkoutSessionChat({
+  workspace,
+  dayHeading,
+  isOpen,
+  isStopwatchVisible,
+  onClose,
+}: WorkoutSessionChatProps) {
   const [question, setQuestion] = useState('');
   const [turns, setTurns] = useState<WorkoutSessionChatTurn[]>([]);
   const [pendingQuestion, setPendingQuestion] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const lastPayloadRef = useRef<{ question: string; history: WorkoutSessionChatTurn[] } | null>(null);
+  const listRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const list = listRef.current;
+    if (list) {
+      list.scrollTop = list.scrollHeight;
+    }
+  }, [turns, isLoading, error, isOpen]);
 
   if (!isOpen) {
     return null;
@@ -35,8 +50,7 @@ export function WorkoutSessionChat({ workspace, dayHeading, isOpen, isStopwatchV
 
   const sendQuestion = async (nextQuestion: string, history: WorkoutSessionChatTurn[]) => {
     const trimmedQuestion = nextQuestion.trim();
-    if (!trimmedQuestion) {
-      setError(emptyError);
+    if (!trimmedQuestion || isLoading) {
       return;
     }
 
@@ -60,7 +74,9 @@ export function WorkoutSessionChat({ workspace, dayHeading, isOpen, isStopwatchV
       });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) {
-        throw new Error(typeof payload.error === 'string' ? payload.error : 'The coaches could not answer right now.');
+        throw new Error(
+          typeof payload.error === 'string' ? payload.error : 'Arnold dropped the connection, not the weight.',
+        );
       }
       const chatResponse = payload as ChatResponse;
       setTurns((current) => [
@@ -73,8 +89,8 @@ export function WorkoutSessionChat({ workspace, dayHeading, isOpen, isStopwatchV
       ]);
       setQuestion('');
       lastPayloadRef.current = null;
-    } catch (caughtError) {
-      setError(caughtError instanceof Error ? caughtError.message : 'The coaches could not answer right now.');
+    } catch {
+      setError('Arnold dropped the connection, not the weight.');
     } finally {
       setIsLoading(false);
       setPendingQuestion('');
@@ -95,88 +111,95 @@ export function WorkoutSessionChat({ workspace, dayHeading, isOpen, isStopwatchV
   };
 
   return (
-    <section className={[
-      'fixed left-3 right-3 z-40 grid overflow-hidden rounded-[1.25rem] border border-slate-900/10 bg-white shadow-[0_24px_70px_rgba(23,24,28,0.22)] sm:left-auto sm:right-4 sm:w-[380px] xl:right-[max(1rem,calc(50%-36rem))]',
-      isStopwatchVisible
-        ? 'bottom-[calc(256px+env(safe-area-inset-bottom))] max-h-[min(52vh,460px)]'
-        : 'bottom-[calc(76px+env(safe-area-inset-bottom))] max-h-[min(72vh,560px)]',
-    ].join(' ')}>
-      <header className="border-b border-slate-900/8 bg-[#17181c] px-4 py-3 text-white">
-        <p className="m-0 text-xs font-extrabold uppercase tracking-[0.14em] text-white/68">Ask Arnold</p>
-        <h2 className="m-0 mt-1 truncate text-base font-extrabold leading-tight">{dayHeading}</h2>
+    <section
+      className={[
+        'fixed inset-x-0 top-[70px] z-40 mx-auto flex w-auto max-w-[460px] flex-col overflow-hidden rounded-[20px] border border-ln bg-card shadow-[0_20px_50px_rgba(0,0,0,0.5)] max-[480px]:mx-2.5',
+        isStopwatchVisible
+          ? 'bottom-[calc(232px+env(safe-area-inset-bottom))]'
+          : 'bottom-[calc(18px+env(safe-area-inset-bottom))]',
+      ].join(' ')}
+    >
+      <header className="flex items-center justify-between border-b border-ln bg-bg2 px-4 py-3">
+        <div className="flex flex-col">
+          <h2 className="m-0 font-display text-[16px] font-extrabold">Ask Arnold</h2>
+          <p className="m-0 text-[10.5px] text-fnt">ephemeral — nothing here is saved</p>
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close chat"
+          className="h-[30px] w-[30px] cursor-pointer rounded-full border border-ln bg-transparent text-ink"
+        >
+          ✕
+        </button>
       </header>
 
-      <div className="grid max-h-[calc(min(72vh,560px)-132px)] gap-3 overflow-y-auto bg-slate-50/80 p-3">
-        {turns.length === 0 && !isLoading ? (
-          <div className="rounded-2xl border border-dashed border-slate-300 bg-white/80 p-4 text-sm leading-relaxed text-slate-500">
-            Ask about the exercises, target muscles, setup, substitutions, or how to interpret today&apos;s prescription.
+      <div ref={listRef} className="flex flex-1 flex-col gap-2 overflow-y-auto p-3.5">
+        {turns.length === 0 && !isLoading && !error ? (
+          <div className="flex flex-col items-center gap-1.5 px-5 py-6 text-center">
+            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-bg2 font-display text-[18px] font-extrabold">
+              A
+            </div>
+            <p className="m-0 text-[13px] leading-relaxed text-mut">
+              Stuck on form? Want a swap?
+              <br />
+              Arnold has opinions. Ask.
+            </p>
           </div>
         ) : null}
 
-        {turns.map((turn) => (
-          <article key={turn.id} className="grid gap-2">
-            <div className="justify-self-end rounded-2xl bg-[#17181c] px-3.5 py-2 text-sm font-semibold leading-relaxed text-white">
+        {turns.map((turn, index) => (
+          <div key={turn.id} className="flex flex-col gap-2">
+            <div className="max-w-[85%] self-end rounded-[16px] rounded-br-[4px] bg-ink px-3 py-2 text-[13px] leading-snug text-onink">
               {turn.question}
             </div>
-            <PersonaReply text={turn.arnoldResponse} />
-          </article>
+            <div className="flex max-w-[85%] flex-col items-start self-start">
+              <div className="rounded-[16px] rounded-bl-[4px] border border-ln bg-bg2 px-3 py-2 text-[13px] leading-snug text-ink">
+                {turn.arnoldResponse}
+              </div>
+              {index === turns.length - 1 ? (
+                <div className="px-1 pt-0.5 text-[10px] text-fnt">Arnold Schwarzenegger</div>
+              ) : null}
+            </div>
+          </div>
         ))}
 
         {isLoading ? (
-          <article className="grid gap-2">
-            <div className="justify-self-end rounded-2xl bg-[#17181c] px-3.5 py-2 text-sm font-semibold leading-relaxed text-white">
+          <>
+            <div className="max-w-[85%] self-end rounded-[16px] rounded-br-[4px] bg-ink px-3 py-2 text-[13px] leading-snug text-onink">
               {pendingQuestion}
             </div>
-            <div className="rounded-2xl border border-slate-200 bg-white p-3 text-sm font-semibold text-slate-500">
-              Arnold is answering...
+            <div className="animate-pulse-soft self-start text-[12px] text-fnt">
+              Arnold is answering…
             </div>
-          </article>
+          </>
         ) : null}
 
-        {error ? (
-          <div className="rounded-2xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">
-            <p className="m-0">{error}</p>
-            {lastPayloadRef.current ? (
-              <button
-                type="button"
-                className="mt-2 inline-flex min-h-9 items-center justify-center rounded-full bg-red-700 px-3 text-xs font-bold text-white"
-                onClick={retryLastQuestion}
-              >
-                Retry
-              </button>
-            ) : null}
-          </div>
-        ) : null}
+        {error ? <ErrorBanner onRetry={retryLastQuestion}>{error}</ErrorBanner> : null}
       </div>
 
-      <form className="grid grid-cols-[minmax(0,1fr)_auto] gap-2 border-t border-slate-900/8 bg-white p-3" onSubmit={handleSubmit}>
-        <label className="sr-only" htmlFor="workout-session-chat-question">Ask a workout question</label>
+      <form className="flex gap-2 border-t border-ln p-2.5" onSubmit={handleSubmit}>
+        <label className="sr-only" htmlFor="workout-session-chat-question">
+          Ask Arnold anything
+        </label>
         <input
           id="workout-session-chat-question"
-          className="min-h-11 min-w-0 rounded-full border border-slate-300 bg-white px-4 text-sm text-slate-900 outline-none focus:border-cyan-500"
+          className="h-[42px] min-w-0 flex-1 rounded-full border border-ln bg-bg2 px-4 text-[13px] text-ink placeholder:text-fnt"
           value={question}
           maxLength={800}
           onChange={(event) => setQuestion(event.target.value)}
-          placeholder="Ask about this workout"
+          placeholder="Ask Arnold anything…"
           disabled={isLoading}
         />
         <button
           type="submit"
-          className="inline-flex min-h-11 items-center justify-center rounded-full border border-transparent bg-gradient-to-br from-[#ff6a60] to-[#ff7f5d] px-4 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-60"
-          disabled={isLoading}
+          aria-label="Send"
+          className="h-[42px] w-[42px] flex-none cursor-pointer rounded-full border-none bg-acc text-[15px] text-white disabled:cursor-not-allowed disabled:opacity-50"
+          disabled={isLoading || question.trim().length === 0}
         >
-          Send
+          ↑
         </button>
       </form>
     </section>
-  );
-}
-
-function PersonaReply({ text }: { text: string }) {
-  return (
-    <div className="rounded-2xl border border-[#ff6359]/35 bg-[#fff4f1] p-3">
-      <p className="m-0 text-[0.72rem] font-extrabold uppercase tracking-[0.1em] text-slate-500">Arnold Schwarzenegger</p>
-      <p className="m-0 mt-1 text-sm leading-relaxed text-slate-800">{text}</p>
-    </div>
   );
 }

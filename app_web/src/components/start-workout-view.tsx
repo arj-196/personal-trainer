@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 
 import type { WorkoutDay } from '@/lib/trainer-data';
@@ -13,8 +14,9 @@ import {
   writeWorkoutStopwatchVisibility,
 } from '@/lib/workout-progress';
 import { advanceTimerPhase, type TimerPhase } from '@/lib/workout-timer-state';
+import { ButtonLink, cx } from '@/components/ui';
 
-import { WorkoutBlockCard } from './workout-block-card';
+import { WorkoutBlockCard, type BlockCardState } from './workout-block-card';
 import { WorkoutSessionChat } from './workout-session-chat';
 
 type StartWorkoutViewProps = {
@@ -48,13 +50,52 @@ function TimerIcon() {
   );
 }
 
-function ChatIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true" className="h-5 w-5">
-      <path d="M4 5.5C4 3.6 5.6 2 7.5 2h9C18.4 2 20 3.6 20 5.5v6c0 1.9-1.6 3.5-3.5 3.5H11l-5.2 4.3A1.1 1.1 0 0 1 4 18.5v-13Zm3.5-1.3c-.7 0-1.3.6-1.3 1.3v10.7l4-3.3h6.3c.7 0 1.3-.6 1.3-1.3v-6c0-.7-.6-1.3-1.3-1.3h-9Z" fill="currentColor" />
-    </svg>
-  );
-}
+/** Timer-phase presentation: label, coach copy, chip + digit colors (light island). */
+type PhasePresentation = {
+  label: string;
+  copy: string;
+  digitClass: string;
+  chipClass: string;
+};
+
+const PHASE_PRESENTATION: Record<string, PhasePresentation> = {
+  ready: {
+    label: 'READY',
+    copy: 'Press play. Attack.',
+    digitClass: 'text-ink',
+    chipClass: 'bg-bg2 text-ink',
+  },
+  getready: {
+    label: 'GET READY',
+    copy: 'Chalk up.',
+    digitClass: 'text-gold-deep',
+    chipClass: 'bg-gold-soft text-gold-deep',
+  },
+  work: {
+    label: 'EXERCISE',
+    copy: 'Push now. Keep form clean.',
+    digitClass: 'text-acc-deep',
+    chipClass: 'bg-acc-soft text-acc-deep',
+  },
+  rest: {
+    label: 'REST',
+    copy: 'Breathe. You’re a machine.',
+    digitClass: 'text-teal-deep',
+    chipClass: 'bg-teal-soft text-teal-deep',
+  },
+  restx: {
+    label: 'NEXT UP',
+    copy: 'Walk it off. Next station.',
+    digitClass: 'text-vio-deep',
+    chipClass: 'bg-vio-soft text-vio-deep',
+  },
+  done: {
+    label: 'DONE',
+    copy: 'Day conquered.',
+    digitClass: 'text-teal-deep',
+    chipClass: 'bg-teal-soft text-teal-deep',
+  },
+};
 
 export function StartWorkoutView({ day, workspace }: StartWorkoutViewProps) {
   const blocks = buildWorkoutDayBlocks(day);
@@ -68,6 +109,7 @@ export function StartWorkoutView({ day, workspace }: StartWorkoutViewProps) {
   const [pendingStartBlockIndex, setPendingStartBlockIndex] = useState<number | null>(null);
   const [isStopwatchVisible, setIsStopwatchVisible] = useState(false);
   const [isChatVisible, setIsChatVisible] = useState(false);
+  const [zoomedBlockIndex, setZoomedBlockIndex] = useState<number | null>(null);
 
   useEffect(() => {
     const storedProgress = readWorkoutProgress(workspace, day.heading);
@@ -82,6 +124,7 @@ export function StartWorkoutView({ day, workspace }: StartWorkoutViewProps) {
     setPendingStartBlockIndex(null);
     setIsStopwatchVisible(storedStopwatchVisibility);
     blockRefs.current = [];
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [workspace, day.heading]);
 
   const selectBlock = (blockIndex: number, options?: { shouldFocus?: boolean }) => {
@@ -246,12 +289,11 @@ export function StartWorkoutView({ day, workspace }: StartWorkoutViewProps) {
     }
   };
 
-  const jumpToBlock = (offset: -1 | 1) => {
-    const targetIndex = currentBlockIndex + offset;
-    if (targetIndex < 0 || targetIndex >= blocks.length) {
+  const resetTimerAt = (targetIndex: number) => {
+    const block = blocks[targetIndex];
+    if (!block) {
       return;
     }
-    const block = blocks[targetIndex];
     selectBlock(targetIndex, { shouldFocus: true });
     setCurrentSet(1);
     setTimerPhase('idle');
@@ -260,26 +302,57 @@ export function StartWorkoutView({ day, workspace }: StartWorkoutViewProps) {
     setPendingStartBlockIndex(null);
   };
 
+  const jumpToBlock = (offset: -1 | 1) => {
+    const targetIndex = currentBlockIndex + offset;
+    if (targetIndex < 0 || targetIndex >= blocks.length) {
+      return;
+    }
+    resetTimerAt(targetIndex);
+  };
+
+  const handleToggleDone = (blockIndex: number) => {
+    const block = blocks[blockIndex];
+    if (!block) {
+      return;
+    }
+    const willComplete = !completedIds.includes(block.id);
+    setCompletedIds((current) => toggleWorkoutBlock(current, block.id));
+    if (willComplete && blockIndex === currentBlockIndex) {
+      // Move the pointer to the next unfinished block, like the auto-advance does.
+      const nextIncomplete = blocks.findIndex(
+        (candidate, index) =>
+          index !== blockIndex && !completedIds.includes(candidate.id) && index > blockIndex,
+      );
+      const fallback = blocks.findIndex(
+        (candidate, index) => index !== blockIndex && !completedIds.includes(candidate.id),
+      );
+      const targetIndex = nextIncomplete >= 0 ? nextIncomplete : fallback;
+      if (targetIndex >= 0) {
+        // Manual completion of the running block: stop the timer and re-arm
+        // it on the next unfinished block.
+        resetTimerAt(targetIndex);
+      }
+    }
+  };
+
   const completedCount = completedIds.length;
   const totalCount = blocks.length;
-  const progressLabel = `${completedCount}/${totalCount}`;
-  const isRestPhase = timerPhase === 'rest-between-sets' || timerPhase === 'rest-between-exercises';
-  const coachMode =
+  const isSessionDone = completedCount >= totalCount && totalCount > 0;
+  const cheer = completedCount === 0 ? 'Let’s go' : isSessionDone ? 'Dinner earned' : 'Earn your dinner';
+
+  const phaseKey =
     pendingStartBlockIndex !== null
-      ? 'Get ready'
+      ? 'getready'
       : timerPhase === 'active'
-        ? 'Exercise'
-        : isRestPhase
-          ? 'Rest'
-          : 'Ready';
-  const coachCopy =
-    pendingStartBlockIndex !== null
-      ? 'Starting in 3 seconds. Set your position.'
-      : timerPhase === 'active'
-        ? 'Push now. Keep form clean.'
-        : isRestPhase
-          ? 'Recover now. Breathe and reset.'
-          : 'Tap Start when you begin the next exercise.';
+        ? 'work'
+        : timerPhase === 'rest-between-sets'
+          ? 'rest'
+          : timerPhase === 'rest-between-exercises'
+            ? 'restx'
+            : timerPhase === 'complete'
+              ? 'done'
+              : 'ready';
+  const phase = PHASE_PRESENTATION[phaseKey];
 
   const toggleStopwatchVisibility = () => {
     if (isStopwatchVisible && isTimerLocked) {
@@ -289,106 +362,147 @@ export function StartWorkoutView({ day, workspace }: StartWorkoutViewProps) {
     setIsStopwatchVisible((current) => !current);
   };
 
-  return (
-    <section
-      className={[
-        'grid gap-4 sm:gap-5',
-        isStopwatchVisible
-          ? 'pb-[calc(242px+env(safe-area-inset-bottom))] sm:pb-[calc(252px+env(safe-area-inset-bottom))]'
-          : 'pb-[calc(88px+env(safe-area-inset-bottom))] sm:pb-[calc(96px+env(safe-area-inset-bottom))]',
-      ].join(' ')}
-    >
-      {isStopwatchVisible ? (
-        <section className="fixed bottom-[calc(12px+env(safe-area-inset-bottom))] left-3 right-[calc(1rem+3.75rem)] z-20 rounded-[1.5rem] border border-white/50 bg-[radial-gradient(circle_at_top_right,rgba(34,184,199,0.28),transparent_35%),linear-gradient(160deg,#15171c_0%,#21252d_65%,#191d24_100%)] p-2 text-white shadow-[0_22px_60px_rgba(20,24,30,0.16)] sm:bottom-[calc(16px+env(safe-area-inset-bottom))] sm:left-4 sm:right-[calc(1rem+4rem)] sm:p-2.5 xl:left-[max(1rem,calc(50%-36rem))] xl:right-[max(calc(1rem+4rem),calc(50%-36rem+4rem))]">
-          <div className="grid grid-cols-[minmax(0,1fr)_96px] items-stretch gap-2 sm:grid-cols-[minmax(0,1fr)_102px] md:grid-cols-[minmax(0,1fr)_112px] md:gap-2.5">
-            <div className="min-w-0">
-              <h2 className="m-0 truncate font-[Avenir_Next_Condensed,Arial_Narrow,sans-serif] text-[clamp(1rem,2.5vw,1.28rem)] leading-tight">{currentBlock?.name ?? 'No block selected'}</h2>
-              <div className="mt-1.5 flex items-baseline gap-2">
-                <p className="m-0 text-[clamp(1.55rem,6vw,2.3rem)] font-extrabold leading-none tracking-[0.04em]">{formatDuration(remainingSeconds)}</p>
-                {isCurrentExercise && currentBlock ? (
-                  <p className="m-0 text-[0.92rem] text-white/82">
-                    Set <strong className="text-[1.06rem] text-white">{currentSet}/{currentBlock.setCount}</strong>
-                  </p>
-                ) : null}
-              </div>
-              <aside className={[
-                'mt-2 grid content-center gap-0.5 rounded-[14px] border p-2 text-white',
-                coachMode === 'Exercise'
-                  ? 'border-[#ff6359]/50 bg-[#ff6359]/20'
-                  : coachMode === 'Rest'
-                    ? 'border-cyan-400/50 bg-cyan-400/20'
-                    : coachMode === 'Get ready'
-                      ? 'border-amber-300/60 bg-amber-300/20'
-                      : 'border-white/20 bg-white/10',
-              ].join(' ')}>
-                <p className="m-0 text-[0.72rem] font-extrabold uppercase tracking-[0.13em]">{coachMode}</p>
-                <p className="m-0 text-[0.74rem] leading-[1.3] text-white/86 sm:text-[0.79rem]">{coachCopy}</p>
-              </aside>
-            </div>
-            <aside className="flex min-h-0 flex-col items-stretch gap-2 self-stretch">
-              <div className="flex justify-center gap-1.5">
-                <button
-                  type="button"
-                  className="h-8 w-8 rounded-[10px] border border-white/20 bg-white/10 p-0 text-white"
-                  onClick={() => jumpToBlock(-1)}
-                  disabled={currentBlockIndex === 0}
-                  aria-label="Previous block"
-                  title="Previous block"
-                >
-                  ◀
-                </button>
-                <button
-                  type="button"
-                  className="h-8 w-8 rounded-[10px] border border-white/20 bg-white/10 p-0 text-white disabled:opacity-40"
-                  onClick={() => jumpToBlock(1)}
-                  disabled={currentBlockIndex >= blocks.length - 1}
-                  aria-label="Next block"
-                  title="Next block"
-                >
-                  ▶
-                </button>
-              </div>
-              <div className="flex min-h-0 flex-1">
-                <button
-                  type="button"
-                  className="inline-flex h-full min-h-[84px] w-full flex-1 items-center justify-center rounded-2xl border border-transparent bg-gradient-to-br from-[#ff6a60] to-[#ff7f5d] p-2 text-white shadow-[0_12px_24px_rgba(255,99,89,0.24)] transition hover:-translate-y-0.5 sm:min-h-[84px] md:min-h-[90px]"
-                  onClick={handleStartPauseToggle}
-                  aria-label={startPauseLabel}
-                  title={startPauseLabel}
-                >
-                  {isRunning ? <PauseIcon /> : <PlayIcon />}
-                </button>
-              </div>
-            </aside>
-          </div>
-        </section>
-      ) : null}
+  const exerciseCount = blocks.filter((block) => block.kind === 'exercise').length;
+  const kindLabelFor = (blockIndex: number): string => {
+    const block = blocks[blockIndex];
+    switch (block.kind) {
+      case 'warmup':
+        return 'Warm-up';
+      case 'finisher':
+        return 'Finisher';
+      case 'recovery':
+        return 'Recovery';
+      default: {
+        const ordinal = blocks
+          .slice(0, blockIndex + 1)
+          .filter((candidate) => candidate.kind === 'exercise').length;
+        return blockIndex === currentBlockIndex && !completedIds.includes(block.id)
+          ? `Exercise · ${ordinal} of ${exerciseCount}`
+          : 'Exercise';
+      }
+    }
+  };
 
-      <div className="fixed bottom-[calc(16px+env(safe-area-inset-bottom))] right-4 z-50 grid gap-2 xl:right-[max(1rem,calc(50%-36rem))]">
+  const completedSetsForCurrent =
+    timerPhase === 'rest-between-sets' ? currentSet : Math.max(0, currentSet - 1);
+
+  return (
+    <div className="flex min-h-dvh flex-col bg-bg text-ink">
+      {/* header */}
+      <header className="sticky top-0 z-30 flex flex-col gap-2 bg-bg px-4 pb-2.5 pt-3.5">
+        <div className="flex items-center justify-between gap-2">
+          <Link
+            href={`/workout/${encodeURIComponent(workspace)}`}
+            aria-label="Exit session"
+            className="flex h-[38px] w-[38px] flex-none items-center justify-center rounded-full border border-ln bg-transparent text-[16px] text-ink"
+          >
+            ←
+          </Link>
+          <h1 className="m-0 overflow-hidden text-ellipsis whitespace-nowrap font-display text-[19px] font-extrabold">
+            {day.heading}
+          </h1>
+          <div className="w-[38px] flex-none" />
+        </div>
+        <div className="flex flex-col gap-1">
+          <div className="flex justify-between text-[12px] text-fnt">
+            <span>
+              {completedCount} of {totalCount} blocks
+            </span>
+            <span className="font-semibold text-acc-deep">{cheer}</span>
+          </div>
+          <div className="h-[5px] rounded-full bg-ln">
+            <div
+              className="h-full rounded-full bg-acc transition-[width] duration-300"
+              style={{ width: `${(completedCount / Math.max(totalCount, 1)) * 100}%` }}
+            />
+          </div>
+        </div>
+      </header>
+
+      {/* block list */}
+      <div
+        className={cx(
+          'flex flex-1 flex-col gap-2 px-2 pt-0.5',
+          isStopwatchVisible
+            ? 'pb-[calc(248px+env(safe-area-inset-bottom))]'
+            : 'pb-[calc(88px+env(safe-area-inset-bottom))]',
+        )}
+      >
+        {blocks.map((block, index) => {
+          const isDone = completedIds.includes(block.id);
+          const state: BlockCardState =
+            isDone ? 'done' : index === currentBlockIndex ? 'current' : 'pending';
+          return (
+            <div
+              key={block.id}
+              ref={(element) => {
+                blockRefs.current[index] = element;
+              }}
+              tabIndex={-1}
+            >
+              <WorkoutBlockCard
+                block={block}
+                state={state}
+                kindLabel={kindLabelFor(index)}
+                setLabel={
+                  state === 'current' && block.kind === 'exercise'
+                    ? `Set ${Math.min(currentSet, block.setCount)} of ${block.setCount}`
+                    : null
+                }
+                completedSets={state === 'current' ? completedSetsForCurrent : 0}
+                isZoomed={zoomedBlockIndex === index}
+                onToggleDone={() => handleToggleDone(index)}
+                onSelect={() => resetTimerAt(index)}
+                onToggleZoom={() =>
+                  setZoomedBlockIndex((current) => (current === index ? null : index))
+                }
+              />
+            </div>
+          );
+        })}
+
+        {isSessionDone ? (
+          <div className="flex flex-col items-center gap-1.5 rounded-[16px] border border-teal bg-teal-soft p-[18px] text-center">
+            <div className="font-display text-[22px] font-extrabold text-teal-deep">
+              Day conquered.
+            </div>
+            <p className="m-0 text-[13px] text-mut">
+              Every block done. Go earn your dinner — Jeff is waiting.
+            </p>
+            <ButtonLink variant="ink" size="sm" className="mt-1 h-10 px-[18px] text-[13px]" href="/recipes">
+              Ask Jeff the Cook →
+            </ButtonLink>
+          </div>
+        ) : null}
+      </div>
+
+      {/* floating action buttons */}
+      <div
+        className={cx(
+          'fixed z-[35] flex flex-col gap-2.5 right-[max(14px,calc(50%-226px))]',
+          isStopwatchVisible
+            ? 'bottom-[calc(240px+env(safe-area-inset-bottom))]'
+            : 'bottom-[calc(18px+env(safe-area-inset-bottom))]',
+        )}
+      >
         <button
           type="button"
-          className={[
-            'inline-flex h-12 w-12 items-center justify-center rounded-full border border-slate-900/10 text-white shadow-[0_14px_36px_rgba(23,24,28,0.26)] transition hover:-translate-y-0.5',
-            isChatVisible ? 'bg-cyan-600' : 'bg-[#17181c]',
-          ].join(' ')}
           onClick={() => setIsChatVisible((current) => !current)}
-          aria-label={isChatVisible ? 'Hide coach chat' : 'Show coach chat'}
-          title={isChatVisible ? 'Hide coach chat' : 'Show coach chat'}
+          aria-label={isChatVisible ? 'Hide coach chat' : 'Ask Arnold'}
+          className="flex h-12 w-12 cursor-pointer items-center justify-center rounded-full border border-ln bg-card font-display text-[16px] font-extrabold text-ink shadow-[0_6px_18px_rgba(0,0,0,0.35)]"
         >
-          <ChatIcon />
+          A
         </button>
         <button
           type="button"
-          className="inline-flex h-12 w-12 items-center justify-center rounded-full border border-slate-900/10 bg-[#17181c] text-white shadow-[0_14px_36px_rgba(23,24,28,0.26)] transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-80"
           onClick={toggleStopwatchVisibility}
-          aria-label={isStopwatchVisible ? 'Hide stopwatch' : 'Show stopwatch'}
+          aria-label={isStopwatchVisible ? 'Hide timer' : 'Show timer'}
           title={
-            isStopwatchVisible
-              ? isTimerLocked
-                ? 'Pause or finish the stopwatch before hiding it'
-                : 'Hide stopwatch'
-              : 'Show stopwatch'
+            isStopwatchVisible && isTimerLocked
+              ? 'Pause the timer before hiding it'
+              : undefined
           }
+          className="flex h-12 w-12 cursor-pointer items-center justify-center rounded-full border-none bg-acc text-white shadow-[0_6px_18px_rgba(255,106,61,0.4)]"
         >
           <TimerIcon />
         </button>
@@ -399,47 +513,74 @@ export function StartWorkoutView({ day, workspace }: StartWorkoutViewProps) {
         dayHeading={day.heading}
         isOpen={isChatVisible}
         isStopwatchVisible={isStopwatchVisible}
+        onClose={() => setIsChatVisible(false)}
       />
 
-      <section className="rounded-[1.75rem] border border-white/70 bg-[linear-gradient(180deg,rgba(255,255,255,0.95),rgba(248,249,251,0.88)),linear-gradient(180deg,#fff,#fff)] p-5 shadow-[0_20px_45px_rgba(41,51,64,0.08)] backdrop-blur-xl sm:p-6">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <p className="mb-2 text-xs font-bold uppercase tracking-[0.16em] text-[#ff6359]">Current session</p>
-            <h2 className="m-0 font-[Avenir_Next_Condensed,Arial_Narrow,sans-serif] text-[clamp(1.45rem,5.5vw,2.1rem)] leading-none tracking-[-0.03em]">{day.heading}</h2>
-            <p className="mt-1 text-sm leading-relaxed text-slate-500">Work through one block at a time and keep the phone on this screen.</p>
-          </div>
-          <div className="grid min-w-[88px] gap-0.5 rounded-[22px] bg-[#17181c] px-3.5 py-3 text-center text-white">
-            <strong className="text-[1.2rem] leading-none">{progressLabel}</strong>
-            <span className="text-[0.72rem] uppercase tracking-[0.08em] text-white/72">completed</span>
-          </div>
-        </div>
-
-        <div className="my-[18px] h-2.5 overflow-hidden rounded-full bg-slate-900/10" aria-hidden="true">
-          <span className="block h-full rounded-full bg-gradient-to-br from-cyan-500 to-cyan-300" style={{ width: `${(completedCount / Math.max(totalCount, 1)) * 100}%` }} />
-        </div>
-
-        <div className="grid gap-4">
-          {blocks.map((block, index) => (
-            <div
-              key={block.id}
-              ref={(element) => {
-                blockRefs.current[index] = element;
-              }}
-              tabIndex={-1}
-            >
-              <WorkoutBlockCard
-                block={block}
-                display="start"
-                checked={completedIds.includes(block.id)}
-                onToggle={(blockId) => {
-                  setCompletedIds((current) => toggleWorkoutBlock(current, blockId));
-                }}
-              />
+      {/* timer dock */}
+      {isStopwatchVisible ? (
+        <section
+          aria-label="Timer"
+          className="theme-light fixed inset-x-0 bottom-[calc(10px+env(safe-area-inset-bottom))] z-30 mx-auto flex w-auto max-w-[460px] flex-col gap-1.5 rounded-[20px] bg-bg px-4 pb-3.5 pt-3 text-ink shadow-[0_-10px_40px_rgba(0,0,0,0.45)] max-[480px]:mx-2.5"
+        >
+          <div className="flex items-center justify-between gap-2">
+            <div className="overflow-hidden text-ellipsis whitespace-nowrap text-[13px] font-semibold">
+              {currentBlock?.name ?? 'No block selected'}
             </div>
-          ))}
-        </div>
-      </section>
-    </section>
+            <div className="max-w-[45%] overflow-hidden text-ellipsis whitespace-nowrap text-[11.5px] font-semibold text-mut">
+              {isCurrentExercise && currentBlock
+                ? `Set ${Math.min(currentSet, currentBlock.setCount)} / ${currentBlock.setCount}`
+                : currentBlock?.prescription}
+            </div>
+          </div>
+          <div className="flex items-center justify-between gap-2.5">
+            <button
+              type="button"
+              onClick={() => jumpToBlock(-1)}
+              disabled={currentBlockIndex === 0}
+              aria-label="Previous block"
+              className="h-11 w-11 flex-none cursor-pointer rounded-full border border-ln2 bg-transparent text-[16px] text-ink disabled:opacity-40"
+            >
+              ‹
+            </button>
+            <div className="flex min-w-0 flex-col items-center gap-1">
+              <div
+                className={cx(
+                  'font-display text-[52px] font-extrabold leading-[0.95] tabular-nums',
+                  phase.digitClass,
+                )}
+              >
+                {formatDuration(remainingSeconds)}
+              </div>
+              <span
+                className={cx(
+                  'whitespace-nowrap rounded-full px-2.5 py-1 text-[10px] font-bold tracking-[0.4px]',
+                  phase.chipClass,
+                )}
+              >
+                {phase.label} — {phase.copy}
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => jumpToBlock(1)}
+              disabled={currentBlockIndex >= blocks.length - 1}
+              aria-label="Next block"
+              className="h-11 w-11 flex-none cursor-pointer rounded-full border border-ln2 bg-transparent text-[16px] text-ink disabled:opacity-40"
+            >
+              ›
+            </button>
+          </div>
+          <button
+            type="button"
+            onClick={handleStartPauseToggle}
+            aria-label={startPauseLabel}
+            className="flex h-[58px] w-[58px] cursor-pointer items-center justify-center self-center rounded-full border-none bg-ink text-onink"
+          >
+            {isRunning ? <PauseIcon /> : <PlayIcon />}
+          </button>
+        </section>
+      ) : null}
+    </div>
   );
 }
 

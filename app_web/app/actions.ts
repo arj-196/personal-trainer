@@ -60,9 +60,9 @@ export async function createWorkspaceAction(formData: FormData): Promise<void> {
   redirect(`/workspace/${encodeURIComponent(slug)}`);
 }
 
-export async function saveProfileAction(formData: FormData): Promise<void> {
+function buildProfileFromFormData(formData: FormData): AthleteProfileRecord {
   const workspace = String(formData.get('workspace') ?? '');
-  const profile: AthleteProfileRecord = {
+  return {
     workspaceSlug: workspace,
     name: String(formData.get('name') ?? ''),
     age: parseNumber(formData.get('age')),
@@ -79,10 +79,32 @@ export async function saveProfileAction(formData: FormData): Promise<void> {
     cardioPreference: String(formData.get('cardioPreference') ?? 'walk'),
     notes: parseLines(formData.get('notes')),
   };
-  await saveAthleteProfile(workspace, profile);
-  revalidatePath(`/workspace/${workspace}`);
+}
+
+export async function saveProfileAction(formData: FormData): Promise<void> {
+  const profile = buildProfileFromFormData(formData);
+  await saveAthleteProfile(profile.workspaceSlug, profile);
+  revalidatePath(`/workspace/${profile.workspaceSlug}`);
   revalidatePath('/');
-  redirect(`/workspace/${encodeURIComponent(workspace)}`);
+  redirect(`/workspace/${encodeURIComponent(profile.workspaceSlug)}`);
+}
+
+/**
+ * Autosave variant used by the Athlete Profile editor ("saved as you type").
+ * Never redirects; reports success so the client can surface errors + retry.
+ */
+export async function autosaveProfileAction(
+  formData: FormData,
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const profile = buildProfileFromFormData(formData);
+    await saveAthleteProfile(profile.workspaceSlug, profile);
+    revalidatePath(`/workspace/${profile.workspaceSlug}`);
+    revalidatePath('/');
+    return { ok: true };
+  } catch (error) {
+    return { ok: false, error: error instanceof Error ? error.message : 'Save failed.' };
+  }
 }
 
 export async function saveCheckInAction(formData: FormData): Promise<void> {

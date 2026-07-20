@@ -1,7 +1,5 @@
 'use client';
 
-import Link from 'next/link';
-import { createPortal } from 'react-dom';
 import { useEffect, useMemo, useState } from 'react';
 
 import {
@@ -19,6 +17,18 @@ import type {
 } from '@/lib/recipes/types';
 import { audioFileExtensionForMimeType, normalizeAudioMimeType } from '@/lib/recipes/audio-format';
 import { useMicrophoneRecorder } from '@/lib/recipes/use-microphone-recorder';
+import {
+  Button,
+  Card,
+  Chip,
+  Display,
+  ErrorBanner,
+  Kicker,
+  Skeleton,
+  Spinner,
+  cx,
+  textareaClass,
+} from '@/components/ui';
 
 const MODE_OPTIONS: Array<{ value: RecipeMode; label: string }> = [
   { value: 'strict', label: 'Strict' },
@@ -26,27 +36,28 @@ const MODE_OPTIONS: Array<{ value: RecipeMode; label: string }> = [
   { value: 'anything', label: 'Anything' },
 ];
 
-type WorkspaceStatus =
-  | 'Ready to generate'
-  | 'Listening...'
-  | 'Transcribing...'
-  | 'Interpreting...'
-  | 'Generating...'
-  | 'Saving...'
-  | 'Saved';
+const MODE_HINTS: Record<RecipeMode, string> = {
+  strict: 'Only your ingredients — pantry staples excepted.',
+  hybrid: 'Mostly yours, a short shopping list allowed.',
+  anything: 'Jeff cooks free. Your list is just inspiration.',
+};
+
+type MicStage = 'Listening… tell Jeff what you’ve got' | 'Transcribing…' | 'Interpreting…' | null;
 
 export function RecipeWorkspace() {
   const [draft, setDraft] = useState<RecipeState>(createEmptyRecipeState());
   const [committed, setCommitted] = useState<RecipeState | null>(null);
   const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [status, setStatus] = useState<WorkspaceStatus>('Ready to generate');
-  const [feedback, setFeedback] = useState<string | null>(null);
+  const [savedIds, setSavedIds] = useState<string[]>([]);
+  const [micStage, setMicStage] = useState<MicStage>(null);
+  const [heardExplanation, setHeardExplanation] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [editField, setEditField] = useState<'ingredients' | 'notes' | null>(null);
   const [editValue, setEditValue] = useState('');
-  const [isBusy, setIsBusy] = useState(false);
-  const [isClient, setIsClient] = useState(false);
-  const [deletingSaved, setDeletingSaved] = useState<string | null>(null);
+
   const {
     error: micError,
     isRecording,
@@ -54,27 +65,32 @@ export function RecipeWorkspace() {
     stopRecording,
   } = useMicrophoneRecorder({
     onRecordingComplete: handleCapturedAudio,
-    onRecordingStart: () => setStatus('Listening...'),
+    onRecordingStart: () => setMicStage('Listening… tell Jeff what you’ve got'),
   });
 
   const hasPendingChanges = !recipeStatesEqual(draft, committed);
+  const isBusy = isGenerating || isSaving || micStage !== null;
   const canGenerate = draft.ingredients.length > 0 && !isBusy;
 
-  const currentUtteranceSummary = useMemo(
-    () => `${draft.ingredients.length} ingredients, ${draft.mode} mode`,
-    [draft.ingredients.length, draft.mode]
-  );
+  const syncChip = useMemo(() => {
+    if (isGenerating) {
+      return { label: '… Generating', className: 'border-gold bg-gold-soft text-gold-deep' };
+    }
+    if (recommendations.length === 0) {
+      return { label: 'No recommendations yet', className: 'border-gold bg-gold-soft text-gold-deep' };
+    }
+    if (hasPendingChanges) {
+      return { label: '● Pending changes', className: 'border-gold bg-gold-soft text-gold-deep' };
+    }
+    return { label: '✓ Synced', className: 'border-teal bg-teal-soft text-teal-deep' };
+  }, [isGenerating, recommendations.length, hasPendingChanges]);
 
   useEffect(() => {
     if (micError) {
-      setFeedback(micError);
-      setStatus('Ready to generate');
+      setErrorMessage(micError);
+      setMicStage(null);
     }
   }, [micError]);
-
-  useEffect(() => {
-    setIsClient(true);
-  }, []);
 
   function beginEdit(field: 'ingredients' | 'notes') {
     setEditField(field);
@@ -85,7 +101,6 @@ export function RecipeWorkspace() {
     if (!editField) {
       return;
     }
-
     const patch =
       editField === 'ingredients'
         ? { ingredients: parseIngredientText(editValue) }
@@ -93,7 +108,6 @@ export function RecipeWorkspace() {
     setDraft((current) => applyRecipeStatePatch(current, patch));
     setEditField(null);
     setEditValue('');
-    setFeedback(null);
   }
 
   async function handleGenerate() {
@@ -101,9 +115,9 @@ export function RecipeWorkspace() {
       return;
     }
 
-    setIsBusy(true);
-    setStatus('Generating...');
-    setFeedback(null);
+    setIsGenerating(true);
+    setErrorMessage(null);
+    setHeardExplanation(null);
 
     try {
       const response = await fetch('/api/generate-recommendations', {
@@ -111,35 +125,24 @@ export function RecipeWorkspace() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ recipeState: draft }),
       });
-      const payload = await response.json() as { recommendations?: Recommendation[]; error?: string };
+      const payload = (await response.json()) as { recommendations?: Recommendation[]; error?: string };
       if (!response.ok || !payload.recommendations) {
-        throw new Error(payload.error || 'Generation failed.');
+        throw new Error(payload.error || 'Jeff burned that one. Try generating again.');
       }
 
       setRecommendations(payload.recommendations);
       setCommitted(draft);
       setExpandedId(null);
-      setStatus('Ready to generate');
+      setSavedIds([]);
     } catch (error) {
-      setStatus('Ready to generate');
-      setFeedback(error instanceof Error ? error.message : 'Generation failed.');
+      setErrorMessage(error instanceof Error ? error.message : 'Jeff burned that one. Try generating again.');
     } finally {
-      setIsBusy(false);
+      setIsGenerating(false);
     }
   }
 
-  async function startListening() {
-    setFeedback(null);
-    await startRecording();
-  }
-
-  function stopListening() {
-    stopRecording();
-  }
-
   async function handleCapturedAudio(audioBlob: Blob) {
-    setIsBusy(true);
-    setStatus('Transcribing...');
+    setMicStage('Transcribing…');
     try {
       const mimeType = normalizeAudioMimeType(audioBlob.type);
       const extension = audioFileExtensionForMimeType(mimeType);
@@ -150,277 +153,352 @@ export function RecipeWorkspace() {
         method: 'POST',
         body: transcriptionForm,
       });
-      const transcriptionPayload = await transcriptionResponse.json() as { transcript?: string; error?: string };
+      const transcriptionPayload = (await transcriptionResponse.json()) as {
+        transcript?: string;
+        error?: string;
+      };
       if (!transcriptionResponse.ok || !transcriptionPayload.transcript) {
         throw new Error(transcriptionPayload.error || 'Transcription failed.');
       }
-      console.log('Transcription result:', transcriptionPayload.transcript);
 
-      setStatus('Interpreting...');
+      setMicStage('Interpreting…');
       const interpretResponse = await fetch('/api/interpret-utterance', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ transcript: transcriptionPayload.transcript, draft }),
       });
-      const interpretPayload = await interpretResponse.json() as { result?: InterpretedUtterance; error?: string };
+      const interpretPayload = (await interpretResponse.json()) as {
+        result?: InterpretedUtterance;
+        error?: string;
+      };
       if (!interpretResponse.ok || !interpretPayload.result) {
         throw new Error(interpretPayload.error || 'Interpretation failed.');
       }
 
       setDraft(interpretPayload.result.updatedDraft);
-      setFeedback(interpretPayload.result.explanation || `Updated draft from "${transcriptionPayload.transcript}".`);
-      setStatus('Ready to generate');
+      setHeardExplanation(
+        interpretPayload.result.explanation ||
+          `Updated the draft from “${transcriptionPayload.transcript}”.`,
+      );
+      setErrorMessage(null);
     } catch (error) {
-      setStatus('Ready to generate');
-      setFeedback(error instanceof Error ? error.message : 'Voice update failed.');
+      setErrorMessage(error instanceof Error ? error.message : 'Voice update failed.');
     } finally {
-      setIsBusy(false);
+      setMicStage(null);
     }
   }
 
   async function handleSave(recommendation: Recommendation) {
-    if (!committed) {
+    if (!committed || savedIds.includes(recommendation.id)) {
       return;
     }
 
-    setIsBusy(true);
-    setStatus('Saving...');
-    setFeedback(null);
+    setIsSaving(true);
+    setErrorMessage(null);
     try {
       const response = await fetch('/api/save-recipe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ recipeState: committed, recommendation }),
       });
-      const payload = await response.json() as { snapshot?: { id: string }; error?: string };
+      const payload = (await response.json()) as { snapshot?: { id: string }; error?: string };
       if (!response.ok || !payload.snapshot) {
         throw new Error(payload.error || 'Save failed.');
       }
-      setStatus('Saved');
-      setFeedback(`Saved "${recommendation.title}".`);
-      window.setTimeout(() => setStatus('Ready to generate'), 1200);
+      setSavedIds((current) => [...current, recommendation.id]);
     } catch (error) {
-      setStatus('Ready to generate');
-      setFeedback(error instanceof Error ? error.message : 'Save failed.');
+      setErrorMessage(error instanceof Error ? error.message : 'Save failed.');
     } finally {
-      setIsBusy(false);
+      setIsSaving(false);
     }
   }
 
   return (
-    <main className="mx-auto w-full max-w-6xl px-4 pb-[calc(68px+22px+24px+env(safe-area-inset-bottom))] pt-4 sm:px-6 sm:pt-5">
-      <section className="rounded-[1.75rem] border border-white/70 bg-[linear-gradient(150deg,rgba(255,255,255,0.94),rgba(255,244,234,0.9)),linear-gradient(180deg,#fff,#f6f0e8)] p-5 shadow-[0_20px_45px_rgba(41,51,64,0.08)] backdrop-blur-xl sm:p-6">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <p className="mb-2 text-xs font-bold uppercase tracking-[0.16em] text-[#ff6359]">Recipe workspace</p>
-            <h1 className="m-0 font-[Avenir_Next_Condensed,Arial_Narrow,sans-serif] text-[clamp(2rem,10vw,3.4rem)] leading-[0.95] tracking-[-0.03em]">Jeff the Cook!</h1>
-          </div>
-          <div className="grid h-16 w-16 shrink-0 place-items-center rounded-full bg-gradient-to-br from-white/95 to-slate-100/90 text-sm font-extrabold tracking-[0.08em] text-slate-800 shadow-[0_12px_24px_rgba(43,52,61,0.1)]" aria-hidden="true">JC</div>
+    <div className="flex flex-col gap-3 px-[18px] pb-[120px] pt-4">
+      <div className="flex items-center justify-between">
+        <Display as="h1" className="text-[26px]">
+          Jeff the Cook
+        </Display>
+        <span
+          className={cx(
+            'whitespace-nowrap rounded-full border px-2.5 py-1 text-[11px] font-semibold',
+            syncChip.className,
+          )}
+        >
+          {syncChip.label}
+        </span>
+      </div>
+
+      {micStage ? (
+        <div className="flex items-center gap-2.5 rounded-[16px] border border-gold bg-card px-3.5 py-3">
+          <Spinner tone="gold" className="h-4 w-4" />
+          <div className="animate-pulse-soft text-[13px] font-semibold text-gold-deep">{micStage}</div>
         </div>
-        <p className="mt-3 text-sm leading-relaxed text-slate-500">
-          Voice-first recipe generation with a draft workspace you can review before you commit.
-        </p>
-        <div className="mt-4 flex flex-wrap gap-2.5">
-          <Link className="inline-flex min-h-11 items-center justify-center rounded-full border border-slate-300/60 bg-white/75 px-4 py-2.5 text-sm font-bold text-slate-800 transition hover:-translate-y-0.5" href="/">
-            Workout View
-          </Link>
-          <Link className="inline-flex min-h-11 items-center justify-center rounded-full border border-slate-300/60 bg-white/75 px-4 py-2.5 text-sm font-bold text-slate-800 transition hover:-translate-y-0.5" href="/saved-recipes">
-            Saved Recipes
-          </Link>
-        </div>
-      </section>
+      ) : null}
 
-      <section className="relative mt-4 overflow-hidden rounded-[1.75rem] border border-white/70 bg-white/80 p-5 pb-[88px] shadow-[0_20px_45px_rgba(41,51,64,0.08)] backdrop-blur-xl sm:p-6 sm:pb-[88px]">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <h2 className="m-0 font-[Avenir_Next_Condensed,Arial_Narrow,sans-serif] text-[clamp(1.45rem,5.5vw,2.1rem)] leading-none tracking-[-0.03em]">Main View</h2>
-            <p className="m-0 text-sm leading-relaxed text-slate-500">Status: <strong>{status}</strong></p>
+      {heardExplanation ? (
+        <div className="flex items-start gap-2.5 rounded-[16px] border border-teal bg-teal-soft px-3.5 py-3">
+          <div className="text-[14px]">👂</div>
+          <div className="flex-1 text-[12.5px] leading-relaxed text-teal-deep">
+            <b>Jeff heard you.</b> {heardExplanation}
           </div>
-          <div className="flex flex-wrap gap-2">
-            <span className="inline-flex items-center rounded-full bg-[#ff6359]/12 px-3 py-1.5 text-xs font-bold text-[#b54843]">{currentUtteranceSummary}</span>
-            <span className={`inline-flex items-center rounded-full px-3 py-1.5 text-xs font-bold ${hasPendingChanges ? 'bg-[#ffe7df] text-[#8f2d1f]' : 'bg-[#ff6359]/12 text-[#b54843]'}`}>
-              {hasPendingChanges ? 'Pending changes' : 'Recommendations synced'}
-            </span>
-          </div>
-        </div>
-
-        <div className="mt-4 grid gap-4">
-          <section className="rounded-[1.5rem] border border-slate-200/70 bg-white/75 p-4">
-            <div className="grid gap-4">
-              <EditableField
-                label="Ingredients"
-                editing={editField === 'ingredients'}
-                displayValue={draft.ingredients.length > 0 ? ingredientTextFromList(draft.ingredients) : 'Double-click and add what you have.'}
-                editValue={editValue}
-                onBeginEdit={() => beginEdit('ingredients')}
-                onChange={setEditValue}
-                onCommit={commitEdit}
-                placeholder="potatoes, onions, garlic, chicken"
-              />
-              <EditableField
-                label="Notes"
-                editing={editField === 'notes'}
-                displayValue={draft.notesRaw || 'Double-click and add preferences or constraints.'}
-                editValue={editValue}
-                onBeginEdit={() => beginEdit('notes')}
-                onChange={setEditValue}
-                onCommit={commitEdit}
-                placeholder="air fried, high protein, spicy, under 20 minutes"
-              />
-              <section className="border-t border-slate-200/70 pt-3">
-                <span className="mb-1 block text-[0.72rem] uppercase tracking-[0.1em] text-slate-500">Mode</span>
-                <div className="flex flex-wrap gap-2.5">
-                  {MODE_OPTIONS.map((option) => (
-                    <button
-                      key={option.value}
-                      type="button"
-                      className={`rounded-full border px-4 py-2.5 text-sm font-bold ${draft.mode === option.value ? 'border-transparent bg-[#ff6359] text-white' : 'border-slate-300/60 bg-white/85 text-slate-600'}`}
-                      onClick={() => setDraft((current) => applyRecipeStatePatch(current, { mode: option.value }))}
-                    >
-                      {option.label}
-                    </button>
-                  ))}
-                </div>
-              </section>
-            </div>
-          </section>
-
-          <div className="flex flex-col items-stretch justify-between gap-3 px-1 sm:flex-row sm:items-center">
-            <button className="inline-flex min-h-11 items-center justify-center rounded-full border border-transparent bg-gradient-to-br from-[#ff6a60] to-[#ff7f5d] px-4 py-2.5 text-sm font-bold text-white shadow-[0_12px_24px_rgba(255,99,89,0.24)] transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60" type="button" onClick={handleGenerate} disabled={!canGenerate}>
-              Generate Recipes
-            </button>
-            <p className="m-0 text-sm leading-relaxed text-slate-500">
-              Recommendations only update when you confirm the current draft.
-            </p>
-          </div>
-
-          {feedback ? (
-            <div className={`rounded-2xl px-4 py-3 text-sm ${feedback.toLowerCase().includes('failed') ? 'bg-[#ffe4df] text-[#8f2d1f]' : 'bg-cyan-100/70 text-slate-900'}`}>
-              {feedback}
-            </div>
-          ) : null}
-
-          <section className="rounded-[1.5rem] border border-slate-200/70 bg-white/75 p-4">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-              <div>
-                <h2 className="m-0 font-[Avenir_Next_Condensed,Arial_Narrow,sans-serif] text-[clamp(1.45rem,5.5vw,2.1rem)] leading-none tracking-[-0.03em]">Recommendations</h2>
-                <p className="m-0 text-sm leading-relaxed text-slate-500">
-                  {recommendations.length === 0 ? 'Generate to see three recipe options.' : 'Tap a card to expand details.'}
-                </p>
-              </div>
-            </div>
-            {recommendations.length === 0 ? (
-              <div className="mt-4 rounded-[1.5rem] border border-white/70 bg-white/80 p-4">
-                <h3 className="m-0 font-[Avenir_Next_Condensed,Arial_Narrow,sans-serif] text-[clamp(1.3rem,5vw,1.7rem)] leading-[1.05] tracking-[-0.03em]">Nothing generated yet</h3>
-                <p className="mt-2 text-sm leading-relaxed text-slate-600">Speak ingredients and constraints, review the draft, then generate.</p>
-              </div>
-            ) : (
-              <div className="mt-4 grid gap-4">
-                {recommendations.map((recommendation) => {
-                  const expanded = expandedId === recommendation.id;
-                  return (
-                    <article key={recommendation.id} className={`rounded-[1.5rem] border border-slate-200/70 bg-white/80 p-4 ${expanded ? 'shadow-[0_20px_45px_rgba(41,51,64,0.08)]' : ''}`}>
-                      <button
-                        type="button"
-                        className="flex w-full flex-col items-start justify-between gap-3 border-0 bg-transparent p-0 text-left sm:flex-row"
-                        onClick={() => setExpandedId(expanded ? null : recommendation.id)}
-                      >
-                        <div>
-                          <h3 className="m-0 font-[Avenir_Next_Condensed,Arial_Narrow,sans-serif] text-[1.4rem] leading-none tracking-[-0.03em]">{recommendation.title}</h3>
-                          <p className="m-0 text-sm leading-relaxed text-slate-500">{recommendation.summary}</p>
-                        </div>
-                        <span className="inline-flex items-center rounded-full bg-[#ff6359]/12 px-3 py-1.5 text-xs font-bold text-[#b54843]">{recommendation.totalMinutes ? `${recommendation.totalMinutes} min` : 'Flexible'}</span>
-                      </button>
-
-                      {expanded ? (
-                        <div className="mt-3 grid gap-3">
-                          <section className="border-t border-slate-200/70 pt-3">
-                            <span className="mb-1 block text-[0.72rem] uppercase tracking-[0.1em] text-slate-500">Rationale</span>
-                            <p className="m-0 text-sm leading-relaxed text-slate-500">{recommendation.rationale}</p>
-                          </section>
-                          <section className="border-t border-slate-200/70 pt-3">
-                            <span className="mb-1 block text-[0.72rem] uppercase tracking-[0.1em] text-slate-500">Measured Ingredients</span>
-                            <ul className="m-0 list-disc space-y-1 pl-5 text-sm leading-relaxed text-slate-600">
-                              {recommendation.ingredientLines.map((line) => (
-                                <li key={line}>{line}</li>
-                              ))}
-                            </ul>
-                          </section>
-                          <section className="border-t border-slate-200/70 pt-3">
-                            <span className="mb-1 block text-[0.72rem] uppercase tracking-[0.1em] text-slate-500">Available Ingredients Used</span>
-                            <div className="flex flex-wrap gap-2">
-                              {recommendation.availableIngredientsUsed.map((item) => (
-                                <span key={item} className="inline-flex items-center rounded-full bg-[#ff6359]/12 px-3 py-1.5 text-xs font-bold text-[#b54843]">{item}</span>
-                              ))}
-                            </div>
-                          </section>
-                          <section className="border-t border-slate-200/70 pt-3">
-                            <span className="mb-1 block text-[0.72rem] uppercase tracking-[0.1em] text-slate-500">Available Ingredients Unused</span>
-                            <div className="flex flex-wrap gap-2">
-                              {recommendation.availableIngredientsUnused.length > 0 ? recommendation.availableIngredientsUnused.map((item) => (
-                                <span key={item} className="inline-flex items-center rounded-full bg-cyan-100/70 px-3 py-1.5 text-xs font-bold text-cyan-800">{item}</span>
-                              )) : <span className="inline-flex items-center rounded-full bg-[#ff6359]/12 px-3 py-1.5 text-xs font-bold text-[#b54843]">none</span>}
-                            </div>
-                          </section>
-                          <section className="border-t border-slate-200/70 pt-3">
-                            <span className="mb-1 block text-[0.72rem] uppercase tracking-[0.1em] text-slate-500">Extra Ingredients Needed</span>
-                            <div className="flex flex-wrap gap-2">
-                              {recommendation.extraIngredients.length > 0 ? recommendation.extraIngredients.map((item) => (
-                                <span key={item} className="inline-flex items-center rounded-full bg-cyan-100/70 px-3 py-1.5 text-xs font-bold text-cyan-800">{item}</span>
-                              )) : <span className="inline-flex items-center rounded-full bg-[#ff6359]/12 px-3 py-1.5 text-xs font-bold text-[#b54843]">none</span>}
-                            </div>
-                          </section>
-                          <section className="border-t border-slate-200/70 pt-3">
-                            <span className="mb-1 block text-[0.72rem] uppercase tracking-[0.1em] text-slate-500">Preparation Steps</span>
-                            <ol className="m-0 list-decimal pl-5 text-sm leading-relaxed text-slate-600">
-                              {recommendation.steps.map((step) => (
-                                <li key={step}>{step}</li>
-                              ))}
-                            </ol>
-                          </section>
-                          <div className="flex flex-wrap gap-2.5">
-                            <button className="inline-flex min-h-11 items-center justify-center rounded-full border border-slate-300/60 bg-white/75 px-4 py-2.5 text-sm font-bold text-slate-800 transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60" type="button" onClick={() => handleSave(recommendation)} disabled={isBusy}>
-                              Save
-                            </button>
-                          </div>
-                        </div>
-                      ) : null}
-                    </article>
-                  );
-                })}
-              </div>
-            )}
-          </section>
-        </div>
-
-      </section>
-
-      {isClient ? createPortal(
-        <div className="pointer-events-none fixed inset-x-0 bottom-[calc(22px+env(safe-area-inset-bottom))] z-[2147483647] flex justify-center sm:bottom-[calc(18px+env(safe-area-inset-bottom))]">
           <button
             type="button"
-            className={`pointer-events-auto grid h-[68px] w-[68px] place-items-center rounded-full border-0 text-white shadow-[0_22px_60px_rgba(20,24,30,0.16)] ${isRecording ? 'bg-[#c8362f]' : 'bg-[#17181c]'}`}
-            onClick={isRecording ? stopListening : startListening}
-            disabled={isBusy && !isRecording}
-            aria-label={isRecording ? 'Stop listening' : 'Start listening'}
+            onClick={() => setHeardExplanation(null)}
+            aria-label="Dismiss"
+            className="cursor-pointer border-none bg-transparent p-0 text-[13px] text-teal-deep"
           >
-            <MicIcon />
+            ✕
           </button>
-        </div>,
-        document.body
+        </div>
       ) : null}
-    </main>
+
+      {errorMessage ? <ErrorBanner>{errorMessage}</ErrorBanner> : null}
+
+      {/* draft */}
+      <Card className="flex flex-col gap-2.5 px-4 py-3.5">
+        <div className="flex items-center justify-between">
+          <Kicker>Ingredients</Kicker>
+          <button
+            type="button"
+            onClick={editField === 'ingredients' ? commitEdit : () => beginEdit('ingredients')}
+            className="flex cursor-pointer items-center gap-1 rounded-full border-none bg-acc-soft px-3 py-1.5 text-[12px] font-bold text-acc-deep"
+          >
+            ✎ {editField === 'ingredients' ? 'Done' : 'Edit'}
+          </button>
+        </div>
+        {editField === 'ingredients' ? (
+          <textarea
+            className={textareaClass}
+            rows={5}
+            value={editValue}
+            onChange={(event) => setEditValue(event.target.value)}
+            placeholder="one ingredient per line"
+            autoFocus
+          />
+        ) : draft.ingredients.length > 0 ? (
+          <div className="flex flex-wrap gap-1.5">
+            {draft.ingredients.map((ingredient) => (
+              <span
+                key={ingredient}
+                className="rounded-full bg-bg2 px-3 py-1.5 text-[12.5px] font-semibold text-ink"
+              >
+                {ingredient}
+              </span>
+            ))}
+          </div>
+        ) : (
+          <div className="text-[13px] text-fnt">
+            Nothing yet. Hit Edit — or just tell Jeff what you&apos;ve got.
+          </div>
+        )}
+
+        <div className="flex flex-col gap-2 border-t border-dashed border-ln pt-2.5">
+          <div className="flex items-center justify-between">
+            <Kicker>Notes for Jeff</Kicker>
+            <button
+              type="button"
+              onClick={editField === 'notes' ? commitEdit : () => beginEdit('notes')}
+              className="cursor-pointer border-none bg-transparent px-1.5 py-0.5 text-[12px] font-bold text-acc"
+            >
+              ✎ {editField === 'notes' ? 'Done' : 'Edit'}
+            </button>
+          </div>
+          {editField === 'notes' ? (
+            <textarea
+              className={textareaClass}
+              rows={2}
+              value={editValue}
+              onChange={(event) => setEditValue(event.target.value)}
+              placeholder="constraints, cravings, time budget…"
+              autoFocus
+            />
+          ) : (
+            <div className="text-[13px] leading-relaxed text-mut">
+              {draft.notesRaw || 'No constraints. Jeff cooks free.'}
+            </div>
+          )}
+        </div>
+      </Card>
+
+      {/* mode */}
+      <div className="flex rounded-full border border-ln bg-card p-1">
+        {MODE_OPTIONS.map((option) => (
+          <button
+            key={option.value}
+            type="button"
+            onClick={() => setDraft((current) => applyRecipeStatePatch(current, { mode: option.value }))}
+            className={cx(
+              'h-[38px] flex-1 cursor-pointer rounded-full border-none text-[13px] font-semibold',
+              draft.mode === option.value ? 'bg-ink text-onink' : 'bg-transparent text-mut',
+            )}
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
+      <div className="-mt-1 text-center text-[11px] text-fnt">{MODE_HINTS[draft.mode]}</div>
+
+      <Button
+        type="button"
+        size="lg"
+        onClick={handleGenerate}
+        disabled={!canGenerate}
+      >
+        Generate 3 recipes →
+      </Button>
+
+      {/* recommendations */}
+      {isGenerating ? (
+        <div className="flex flex-col gap-2.5">
+          <div className="animate-pulse-soft text-center text-[12px] text-fnt">
+            Jeff is thinking with his hands…
+          </div>
+          <Skeleton className="h-[92px]" />
+          <Skeleton className="h-[92px]" />
+          <Skeleton className="h-[92px]" />
+        </div>
+      ) : null}
+
+      {!isGenerating &&
+        recommendations.map((recommendation) => {
+          const isExpanded = expandedId === recommendation.id;
+          const isSaved = savedIds.includes(recommendation.id);
+          return (
+            <Card key={recommendation.id} className="overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setExpandedId(isExpanded ? null : recommendation.id)}
+                className="flex w-full cursor-pointer flex-col gap-1.5 border-none bg-transparent px-4 py-3.5 text-left"
+              >
+                <div className="flex items-baseline justify-between gap-2">
+                  <Display as="h3" className="text-[16.5px] font-bold leading-tight">
+                    {recommendation.title}
+                  </Display>
+                  <div className="whitespace-nowrap text-[12px] font-bold text-acc">
+                    {recommendation.totalMinutes ? `${recommendation.totalMinutes} min` : 'flexible'}
+                  </div>
+                </div>
+                <p className="m-0 text-[13px] leading-relaxed text-mut">{recommendation.summary}</p>
+                <div className="flex flex-wrap gap-1.5">
+                  <Chip tone="teal" className="text-[10px]">
+                    used {recommendation.availableIngredientsUsed.length}
+                  </Chip>
+                  <Chip className="text-[10px]">
+                    unused {recommendation.availableIngredientsUnused.length}
+                  </Chip>
+                  <Chip tone="gold" className="text-[10px]">
+                    need {recommendation.extraIngredients.length}
+                  </Chip>
+                </div>
+              </button>
+              {isExpanded ? (
+                <div className="flex flex-col gap-3 border-t border-dashed border-ln px-4 pb-4">
+                  <p className="m-0 pt-3 text-[12.5px] leading-relaxed text-mut">
+                    <b className="text-ink">Why this:</b> {recommendation.rationale}
+                  </p>
+                  <div className="flex flex-col gap-1">
+                    <Kicker>Ingredients</Kicker>
+                    {recommendation.ingredientLines.map((line) => (
+                      <div key={line} className="flex gap-2 text-[13px] text-ink">
+                        <span className="text-acc">·</span>
+                        {line}
+                      </div>
+                    ))}
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <ChipGroup
+                      label="You have, used:"
+                      items={recommendation.availableIngredientsUsed}
+                      tone="teal"
+                    />
+                    {recommendation.availableIngredientsUnused.length > 0 ? (
+                      <ChipGroup
+                        label="You have, unused:"
+                        items={recommendation.availableIngredientsUnused}
+                        tone="neutral"
+                      />
+                    ) : null}
+                    {recommendation.extraIngredients.length > 0 ? (
+                      <ChipGroup
+                        label="Need to get:"
+                        items={recommendation.extraIngredients}
+                        tone="gold"
+                      />
+                    ) : null}
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <Kicker>Steps</Kicker>
+                    {recommendation.steps.map((step, index) => (
+                      <div key={step} className="flex gap-2.5 text-[13px] leading-relaxed">
+                        <span className="flex-none font-display font-extrabold text-acc">
+                          {index + 1}
+                        </span>
+                        <span className="text-ink">{step}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <Button
+                    type="button"
+                    variant={isSaved ? 'soft' : 'accent'}
+                    className={cx('h-11 text-[13.5px]', isSaved && 'bg-teal-soft text-teal-deep')}
+                    onClick={() => handleSave(recommendation)}
+                    disabled={isSaving || isSaved}
+                  >
+                    {isSaved ? '✓ Saved to snapshots' : 'Save this recipe'}
+                  </Button>
+                </div>
+              ) : null}
+            </Card>
+          );
+        })}
+
+      {/* mic */}
+      <div className="pointer-events-none fixed inset-x-0 bottom-[calc(96px+env(safe-area-inset-bottom))] z-30 flex flex-col items-center gap-1">
+        <button
+          type="button"
+          onClick={isRecording ? stopRecording : () => void startRecording()}
+          disabled={isBusy && !isRecording}
+          aria-label={isRecording ? 'Stop listening' : 'Tell Jeff what you have'}
+          className={cx(
+            'pointer-events-auto flex h-[66px] w-[66px] cursor-pointer items-center justify-center rounded-full border-none text-white shadow-[0_10px_26px_rgba(255,106,61,0.45)] disabled:opacity-60',
+            isRecording ? 'animate-mic-pulse bg-gold' : 'bg-acc',
+          )}
+        >
+          <MicIcon />
+        </button>
+        <div className="pointer-events-none rounded-[6px] bg-bg px-2 py-px text-[11px] font-semibold text-mut">
+          {isRecording || micStage ? 'Jeff is listening…' : 'Tell Jeff what you’ve got'}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ChipGroup({
+  label,
+  items,
+  tone,
+}: {
+  label: string;
+  items: string[];
+  tone: 'teal' | 'gold' | 'neutral';
+}) {
+  return (
+    <div className="flex flex-wrap items-center gap-1.5">
+      <span className="text-[10px] font-bold uppercase text-fnt">{label}</span>
+      {items.map((item) => (
+        <Chip key={item} tone={tone}>
+          {item}
+        </Chip>
+      ))}
+    </div>
   );
 }
 
 function MicIcon() {
   return (
-    <svg
-      className="h-7 w-7"
-      viewBox="0 0 24 24"
-      aria-hidden="true"
-      focusable="false"
-    >
+    <svg className="h-7 w-7" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
       <path
         d="M12 3.5a3.5 3.5 0 0 0-3.5 3.5v5a3.5 3.5 0 1 0 7 0V7A3.5 3.5 0 0 0 12 3.5Z"
         fill="currentColor"
@@ -430,50 +508,5 @@ function MicIcon() {
         fill="currentColor"
       />
     </svg>
-  );
-}
-
-function EditableField({
-  label,
-  editing,
-  displayValue,
-  editValue,
-  onBeginEdit,
-  onChange,
-  onCommit,
-  placeholder,
-}: {
-  label: string;
-  editing: boolean;
-  displayValue: string;
-  editValue: string;
-  onBeginEdit: () => void;
-  onChange: (value: string) => void;
-  onCommit: () => void;
-  placeholder: string;
-}) {
-  return (
-    <section className="border-t border-slate-200/70 pt-3">
-      <span className="mb-1 block text-[0.72rem] uppercase tracking-[0.1em] text-slate-500">{label}</span>
-      {editing ? (
-        <textarea
-          className="min-h-[92px] w-full resize-y rounded-[18px] border border-slate-300/60 bg-white/85 px-3.5 py-3 text-slate-900"
-          value={editValue}
-          onChange={(event) => onChange(event.target.value)}
-          onBlur={onCommit}
-          onKeyDown={(event) => {
-            if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') {
-              onCommit();
-            }
-          }}
-          autoFocus
-          placeholder={placeholder}
-        />
-      ) : (
-        <button type="button" className="w-full border-0 bg-transparent p-0 text-left leading-relaxed text-slate-900" onDoubleClick={onBeginEdit}>
-          {displayValue}
-        </button>
-      )}
-    </section>
   );
 }

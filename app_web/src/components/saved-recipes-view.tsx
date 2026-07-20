@@ -5,16 +5,16 @@ import { useState } from 'react';
 
 import type { SavedRecipeSnapshot } from '@/lib/recipes/types';
 import type { SavedRecipeListItem } from '@/lib/server/recipes-db';
-
-const shellClass = 'mx-auto w-full max-w-6xl px-4 pb-8 pt-4 sm:px-6 sm:pt-5';
-const heroClass = 'rounded-[1.75rem] border border-white/70 bg-[linear-gradient(150deg,rgba(255,255,255,0.94),rgba(255,244,234,0.9)),linear-gradient(180deg,#fff,#f6f0e8)] p-5 shadow-[0_20px_45px_rgba(41,51,64,0.08)] backdrop-blur-xl sm:p-6';
-const cardClass = 'rounded-[1.75rem] border border-white/70 bg-white/80 p-5 shadow-[0_20px_45px_rgba(41,51,64,0.08)] backdrop-blur-xl sm:p-6';
-const kickerClass = 'mb-2 text-xs font-bold uppercase tracking-[0.16em] text-[#ff6359]';
-const heroTitleClass = 'm-0 font-["Avenir_Next_Condensed","Arial_Narrow",sans-serif] leading-[0.95] tracking-[-0.03em] text-[clamp(2rem,10vw,3.4rem)]';
-const sectionTitleClass = 'm-0 font-["Avenir_Next_Condensed","Arial_Narrow",sans-serif] leading-none tracking-[-0.03em] text-[clamp(1.4rem,5vw,2rem)]';
-const copyClass = 'm-0 text-sm leading-relaxed text-slate-500';
-const softActionClass = 'inline-flex min-h-11 items-center justify-center rounded-full border border-slate-300/60 bg-white/75 px-4 py-2.5 text-sm font-bold text-slate-800 transition hover:-translate-y-0.5';
-const errorClass = 'rounded-2xl bg-[#ffe4df] px-4 py-3 text-sm text-[#8f2d1f]';
+import {
+  Button,
+  ButtonLink,
+  Card,
+  Chip,
+  Display,
+  EmptyState,
+  ErrorBanner,
+  Kicker,
+} from '@/components/ui';
 
 export function SavedRecipesView({
   initialItems,
@@ -25,128 +25,183 @@ export function SavedRecipesView({
 }) {
   const [items, setItems] = useState(initialItems);
   const [error, setError] = useState<string | null>(null);
+  const [confirmingId, setConfirmingId] = useState<string | null>(null);
 
   async function handleDelete(id: string) {
     setError(null);
-    const response = await fetch(`/api/saved-recipes/${encodeURIComponent(id)}`, { method: 'DELETE' });
+    setConfirmingId(null);
+    const response = await fetch(`/api/saved-recipes/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+    });
     if (!response.ok) {
-      const payload = await response.json().catch(() => ({ error: 'Delete failed.' })) as { error?: string };
+      const payload = (await response.json().catch(() => ({ error: 'Delete failed.' }))) as {
+        error?: string;
+      };
       setError(payload.error || 'Delete failed.');
       return;
     }
     setItems((current) => current.filter((item) => item.id !== id));
   }
 
+  if (snapshot) {
+    return <SnapshotDetail snapshot={snapshot} />;
+  }
+
   return (
-    <main className={shellClass}>
-      <section className={heroClass}>
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <p className={kickerClass}>Saved snapshots</p>
-            <h1 className={heroTitleClass}>Saved Recipes</h1>
-          </div>
-          <div className="grid h-16 w-16 shrink-0 place-items-center rounded-full bg-gradient-to-br from-white/95 to-slate-100/90 text-sm font-extrabold tracking-[0.08em] text-slate-800 shadow-[0_12px_24px_rgba(43,52,61,0.1)]">SV</div>
-        </div>
-        <p className="mt-3 text-sm leading-relaxed text-slate-500">Immutable recipe snapshots stored in Postgres.</p>
-        <div className="mt-4 flex flex-wrap gap-2.5">
-          <Link className={softActionClass} href="/recipes">
-            Back to Jeff the Cook
-          </Link>
-        </div>
-      </section>
+    <div className="flex flex-col gap-3 px-[18px] pb-6 pt-4">
+      <Display as="h1" className="text-[26px]">
+        Saved Recipes
+      </Display>
 
-      {error ? <div className={`${errorClass} mt-4`}>{error}</div> : null}
+      {error ? <ErrorBanner>{error}</ErrorBanner> : null}
 
-      <div className="mt-4 grid gap-4 lg:grid-cols-[1.1fr_1fr]">
-        <section className={cardClass}>
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-            <div>
-              <h2 className={sectionTitleClass}>Saved List</h2>
-              <p className={copyClass}>{items.length} snapshot{items.length === 1 ? '' : 's'}</p>
-            </div>
-          </div>
-          <div className="mt-4 grid gap-3">
-            {items.length === 0 ? (
-              <div className="rounded-[1.5rem] border border-white/70 bg-white/80 p-4">
-                <h3 className={sectionTitleClass}>No saved recipes</h3>
-                <p className="mt-2 text-sm leading-relaxed text-slate-600">Save a generated recommendation from the main recipe workspace.</p>
+      {items.length === 0 ? (
+        <EmptyState
+          emoji="🍳"
+          title="Nothing in the pantry"
+          action={
+            <ButtonLink variant="ink" size="sm" className="h-[42px] px-[18px] text-[13px]" href="/recipes">
+              Ask Jeff →
+            </ButtonLink>
+          }
+        >
+          When Jeff cooks up something you like, hit Save — the recipe is frozen exactly as
+          generated.
+        </EmptyState>
+      ) : null}
+
+      {items.map((item) => (
+        <Card key={item.id} className="flex flex-col gap-2 rounded-[18px] px-4 py-3.5">
+          <Link
+            href={`/saved-recipes/${encodeURIComponent(item.id)}`}
+            className="flex flex-col gap-1"
+          >
+            <div className="flex items-baseline justify-between gap-2">
+              <Display as="h2" className="text-[16px] font-bold">
+                {item.title}
+              </Display>
+              <div className="whitespace-nowrap text-[11px] text-fnt">
+                {new Date(item.savedAt).toLocaleString(undefined, {
+                  month: 'short',
+                  day: 'numeric',
+                  hour: 'numeric',
+                  minute: '2-digit',
+                })}
               </div>
-            ) : items.map((item) => (
-              <article key={item.id} className="flex flex-col gap-3 rounded-[1.5rem] border border-slate-200/70 bg-white/75 p-4 sm:flex-row sm:justify-between">
-                <div>
-                  <h3 className="m-0 font-[Avenir_Next_Condensed,Arial_Narrow,sans-serif] text-[1.4rem] leading-none tracking-[-0.03em]">{item.title}</h3>
-                  <p className="mt-1 text-sm leading-relaxed text-slate-500">{item.summary}</p>
-                  <p className="mt-1 text-sm leading-relaxed text-slate-500">{new Date(item.savedAt).toLocaleString()}</p>
-                </div>
-                <div className="flex flex-wrap gap-2.5">
-                  <Link className={softActionClass} href={`/saved-recipes/${encodeURIComponent(item.id)}`}>
-                    Open
-                  </Link>
-                  <button type="button" className={softActionClass} onClick={() => handleDelete(item.id)}>
-                    Delete
-                  </button>
-                </div>
-              </article>
-            ))}
-          </div>
-        </section>
-
-        <section className={cardClass}>
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-            <div>
-              <h2 className={sectionTitleClass}>Snapshot Detail</h2>
-              <p className={copyClass}>
-                {snapshot ? 'Selected saved recipe.' : 'Open a snapshot to inspect its frozen recipe state.'}
-              </p>
             </div>
-          </div>
-          {snapshot ? (
-            <div className="mt-4 grid gap-3">
-              <section className="border-t border-slate-200/70 pt-3">
-                <span className="mb-1 block text-[0.72rem] uppercase tracking-[0.1em] text-slate-500">Title</span>
-                <p className={copyClass}>{snapshot.recommendation.title}</p>
-              </section>
-              <section className="border-t border-slate-200/70 pt-3">
-                <span className="mb-1 block text-[0.72rem] uppercase tracking-[0.1em] text-slate-500">Summary</span>
-                <p className={copyClass}>{snapshot.recommendation.summary}</p>
-              </section>
-              <section className="border-t border-slate-200/70 pt-3">
-                <span className="mb-1 block text-[0.72rem] uppercase tracking-[0.1em] text-slate-500">Saved At</span>
-                <p className={copyClass}>{new Date(snapshot.savedAt).toLocaleString()}</p>
-              </section>
-              <section className="border-t border-slate-200/70 pt-3">
-                <span className="mb-1 block text-[0.72rem] uppercase tracking-[0.1em] text-slate-500">State</span>
-                <p className={copyClass}>
-                  Ingredients: {snapshot.recipeState.ingredients.join(', ') || 'none'}<br />
-                  Notes: {snapshot.recipeState.notesRaw || 'none'}<br />
-                  Mode: {snapshot.recipeState.mode}
-                </p>
-              </section>
-              <section className="border-t border-slate-200/70 pt-3">
-                <span className="mb-1 block text-[0.72rem] uppercase tracking-[0.1em] text-slate-500">Steps</span>
-                <ol className="m-0 list-decimal pl-5 text-sm leading-relaxed text-slate-600">
-                  {snapshot.recommendation.steps.map((step) => (
-                    <li key={step}>{step}</li>
-                  ))}
-                </ol>
-              </section>
-              <section className="border-t border-slate-200/70 pt-3">
-                <span className="mb-1 block text-[0.72rem] uppercase tracking-[0.1em] text-slate-500">Measured Ingredients</span>
-                <ul className="m-0 list-disc pl-5 text-sm leading-relaxed text-slate-600">
-                  {snapshot.recommendation.ingredientLines.map((line) => (
-                    <li key={line}>{line}</li>
-                  ))}
-                </ul>
-              </section>
+            <p className="m-0 text-[12.5px] leading-relaxed text-mut">{item.summary}</p>
+          </Link>
+
+          {confirmingId === item.id ? (
+            <div className="flex items-center gap-2 rounded-[12px] border border-err-line bg-err-soft px-3 py-2">
+              <div className="flex-1 text-[12px] font-semibold text-err">
+                Delete forever? Snapshots don&apos;t come back.
+              </div>
+              <button
+                type="button"
+                onClick={() => void handleDelete(item.id)}
+                className="cursor-pointer rounded-full border-none bg-err px-3 py-1.5 text-[11.5px] font-bold text-white"
+              >
+                Delete
+              </button>
+              <button
+                type="button"
+                onClick={() => setConfirmingId(null)}
+                className="cursor-pointer rounded-full border border-ln2 bg-transparent px-2.5 py-1.5 text-[11.5px] font-bold text-ink"
+              >
+                Keep
+              </button>
             </div>
           ) : (
-            <div className="mt-4 rounded-[1.5rem] border border-white/70 bg-white/80 p-4">
-              <h3 className={sectionTitleClass}>Nothing selected</h3>
-              <p className="mt-2 text-sm leading-relaxed text-slate-600">Choose an item from the saved list to inspect the immutable snapshot.</p>
+            <div className="flex gap-2">
+              <ButtonLink
+                variant="outline"
+                size="sm"
+                className="h-9 flex-1 border-none bg-bg2"
+                href={`/saved-recipes/${encodeURIComponent(item.id)}`}
+              >
+                Open
+              </ButtonLink>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-9 border-err-line px-3.5 text-err"
+                onClick={() => setConfirmingId(item.id)}
+              >
+                Delete
+              </Button>
             </div>
           )}
-        </section>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
+function SnapshotDetail({ snapshot }: { snapshot: SavedRecipeSnapshot }) {
+  const { recommendation, recipeState } = snapshot;
+  const mode = recipeState.mode.charAt(0).toUpperCase() + recipeState.mode.slice(1);
+
+  return (
+    <div className="flex flex-col gap-3 px-[18px] pb-6 pt-4">
+      <div className="flex items-center gap-2.5">
+        <Link
+          href="/saved-recipes"
+          aria-label="Back to saved recipes"
+          className="flex h-9 w-9 flex-none items-center justify-center rounded-full border border-ln2 bg-card text-ink"
+        >
+          ←
+        </Link>
+        <Chip tone="vio" className="font-bold">
+          ❄ Immutable snapshot
+        </Chip>
       </div>
-    </main>
+
+      <div className="flex flex-col gap-1">
+        <Display as="h1" className="text-[24px]">
+          {recommendation.title}
+        </Display>
+        <div className="text-[11.5px] text-fnt">
+          Saved {new Date(snapshot.savedAt).toLocaleString()}
+          {recommendation.totalMinutes ? ` · ${recommendation.totalMinutes} min` : ''}
+        </div>
+      </div>
+
+      <p className="m-0 text-[13.5px] leading-relaxed text-mut">{recommendation.summary}</p>
+
+      <Card className="flex flex-col gap-1.5 rounded-[18px] px-4 py-3.5">
+        <Kicker>Ingredients</Kicker>
+        {recommendation.ingredientLines.map((line) => (
+          <div key={line} className="flex gap-2 text-[13px]">
+            <span className="text-acc">·</span>
+            {line}
+          </div>
+        ))}
+      </Card>
+
+      <Card className="flex flex-col gap-2 rounded-[18px] px-4 py-3.5">
+        <Kicker>Steps</Kicker>
+        {recommendation.steps.map((step, index) => (
+          <div key={step} className="flex gap-2.5 text-[13px] leading-relaxed">
+            <span className="flex-none font-display font-extrabold text-acc">{index + 1}</span>
+            <span>{step}</span>
+          </div>
+        ))}
+      </Card>
+
+      <div className="flex flex-col gap-1.5 rounded-[18px] border border-vio bg-vio-soft px-4 py-3.5">
+        <Kicker className="text-vio-deep">❄ The state that produced this</Kicker>
+        <div className="text-[12.5px] leading-relaxed text-ink">
+          <b>Ingredients:</b> {recipeState.ingredients.join(', ') || '—'}
+        </div>
+        <div className="text-[12.5px] leading-relaxed text-ink">
+          <b>Notes:</b> {recipeState.notesRaw || '—'}
+        </div>
+        <div className="text-[12.5px] text-ink">
+          <b>Mode:</b> {mode}
+        </div>
+      </div>
+    </div>
   );
 }

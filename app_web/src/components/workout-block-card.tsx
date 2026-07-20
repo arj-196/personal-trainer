@@ -1,135 +1,154 @@
 import { googleImagesSearchUrl, type WorkoutBlock } from '@/lib/workout-helpers';
+import { cx } from '@/components/ui';
+
+export type BlockCardState = 'done' | 'current' | 'pending';
 
 type WorkoutBlockCardProps = {
   block: WorkoutBlock;
-  checked?: boolean;
-  onToggle?: (blockId: string) => void;
-  display?: 'compact' | 'start';
+  state: BlockCardState;
+  /** e.g. "Exercise · 2 of 3" for exercises, "Warm-up" otherwise. */
+  kindLabel: string;
+  /** "Set 2 of 4" while this exercise block is current. */
+  setLabel?: string | null;
+  /** Completed set count for the pip row (exercise blocks only). */
+  completedSets?: number;
+  isZoomed?: boolean;
+  onToggleDone: () => void;
+  onSelect: () => void;
+  onToggleZoom?: () => void;
 };
 
-function blockLabel(kind: WorkoutBlock['kind']): string {
-  switch (kind) {
-    case 'warmup':
-      return 'Warm-up';
-    case 'finisher':
-      return 'Finisher';
-    case 'recovery':
-      return 'Recovery';
-    default:
-      return 'Exercise';
-  }
-}
-
-function ImageSearchIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path
-        d="M4 5h16v10H4V5Zm2 2v6h12V7H6Zm1.5 5 2.5-3 2 2.5 1.5-2 2.5 3.5h-8.5Zm8-3.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3ZM15.5 16.5l4 4-1.5 1.5-4-4v-1.5h1.5Z"
-        fill="currentColor"
-      />
-    </svg>
-  );
-}
-
-const gradientByKind: Record<WorkoutBlock['kind'], string> = {
-  exercise: 'bg-gradient-to-b from-white/96 to-slate-50/92',
-  warmup: 'bg-gradient-to-b from-cyan-100/90 to-white/92',
-  finisher: 'bg-gradient-to-b from-amber-100/90 to-white/92',
-  recovery: 'bg-gradient-to-b from-violet-100/85 to-white/92',
+const KIND_CHIP_CLASSES: Record<WorkoutBlock['kind'], string> = {
+  warmup: 'bg-teal-soft text-teal-deep',
+  exercise: 'bg-ink text-onink',
+  finisher: 'bg-gold-soft text-gold-deep',
+  recovery: 'bg-vio-soft text-vio-deep',
 };
 
-const artByKind: Record<WorkoutBlock['kind'], string> = {
-  exercise: 'bg-gradient-to-br from-white/70 to-white/40',
-  warmup: 'bg-gradient-to-br from-cyan-300/30 to-white/45',
-  finisher: 'bg-gradient-to-br from-amber-300/30 to-white/45',
-  recovery: 'bg-gradient-to-br from-violet-300/25 to-white/45',
+const KIND_OUTLINE_CLASSES: Record<WorkoutBlock['kind'], string> = {
+  warmup: 'border-teal text-teal',
+  exercise: 'border-fnt text-fnt',
+  finisher: 'border-gold text-gold-deep',
+  recovery: 'border-vio text-vio-deep',
 };
 
 export function WorkoutBlockCard({
   block,
-  checked = false,
-  onToggle,
-  display = 'compact',
+  state,
+  kindLabel,
+  setLabel,
+  completedSets = 0,
+  isZoomed = false,
+  onToggleDone,
+  onSelect,
+  onToggleZoom,
 }: WorkoutBlockCardProps) {
-  const isStartView = display === 'start';
-  const isCollapsedComplete = isStartView && checked;
+  if (state === 'done') {
+    return (
+      <button
+        type="button"
+        onClick={onToggleDone}
+        className="flex w-full cursor-pointer items-center gap-2.5 rounded-[14px] border-none bg-card px-3.5 py-2 text-left opacity-55"
+      >
+        <span className="flex h-[19px] w-[19px] flex-none items-center justify-center rounded-full bg-teal text-[10px] text-white">
+          ✓
+        </span>
+        <span className="flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-[12.5px] text-mut">
+          {block.name}
+          {block.prescription ? ` · ${block.prescription}` : ''}
+        </span>
+        <span className="text-[10px] text-fnt">done</span>
+      </button>
+    );
+  }
+
+  if (state === 'pending') {
+    return (
+      <button
+        type="button"
+        onClick={onSelect}
+        className="flex w-full cursor-pointer items-center gap-2.5 rounded-[14px] border-none bg-card px-3.5 py-[11px] text-left"
+      >
+        <span
+          className={cx(
+            'whitespace-nowrap rounded-full border px-2 py-0.5 text-[9.5px] font-bold',
+            KIND_OUTLINE_CLASSES[block.kind],
+          )}
+        >
+          {kindLabel}
+        </span>
+        <span className="flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-[12.5px] text-ink">
+          {block.name}
+          {block.prescription ? ` · ${block.prescription}` : ''}
+        </span>
+      </button>
+    );
+  }
 
   return (
-    <article
-      className={[
-        'overflow-hidden rounded-[1.5rem] border border-white/85 shadow-[0_18px_34px_rgba(43,52,61,0.08)] transition',
-        gradientByKind[block.kind],
-        checked ? 'border-cyan-500/40 shadow-[0_16px_28px_rgba(34,184,199,0.12)]' : '',
-        isCollapsedComplete
-          ? 'grid grid-cols-1 border-emerald-600/35 bg-emerald-50/85 opacity-75 shadow-[0_8px_16px_rgba(53,153,101,0.12)]'
-          : 'grid',
-      ].join(' ')}
-    >
-      {!isCollapsedComplete ? (
-        <div className="min-h-40 bg-gradient-to-br from-amber-100/65 to-cyan-100/70">
-          {block.imageUrl ? (
-            <img className="aspect-[16/11] h-full w-full object-cover" src={block.imageUrl} alt={block.name} />
-          ) : (
-            <div className={`grid min-h-40 place-items-center p-4 text-center text-sm font-bold uppercase tracking-[0.08em] text-slate-600 ${artByKind[block.kind]}`}>
-              <span>{blockLabel(block.kind)}</span>
-            </div>
+    <article className="theme-light flex flex-col gap-1.5 rounded-[16px] bg-bg p-1.5 pb-2 text-ink">
+      <div className="flex items-center justify-between px-1 pt-0.5">
+        <span
+          className={cx(
+            'whitespace-nowrap rounded-full px-2.5 py-1 text-[10.5px] font-bold tracking-[0.5px]',
+            KIND_CHIP_CLASSES[block.kind],
           )}
+        >
+          {kindLabel}
+        </span>
+        <button
+          type="button"
+          onClick={onToggleDone}
+          aria-label={`Mark ${block.name} done`}
+          className="h-[26px] w-[26px] cursor-pointer rounded-full border-[1.5px] border-ln2 bg-transparent"
+        />
+      </div>
+      <h3 className="m-0 px-1 font-display text-[24px] font-extrabold leading-[1.05]">{block.name}</h3>
+      {block.imageUrl ? (
+        <>
+          <button
+            type="button"
+            onClick={onToggleZoom}
+            className={cx(
+              'w-full cursor-pointer overflow-hidden rounded-[11px] border-none bg-card p-0 transition-[height]',
+              isZoomed ? 'h-[370px]' : 'h-[214px]',
+            )}
+          >
+            <img src={block.imageUrl} alt={block.name} className="h-full w-full object-contain" />
+          </button>
+          <div className="-mt-0.5 text-center text-[10px] text-fnt">tap image to enlarge</div>
+        </>
+      ) : null}
+      <div className="flex items-baseline justify-between gap-2 px-1">
+        <div className="text-[15px] font-bold leading-snug text-acc">{block.prescription}</div>
+        {setLabel ? <div className="whitespace-nowrap text-[11.5px] text-fnt">{setLabel}</div> : null}
+      </div>
+      {block.notes ? (
+        <p className="m-0 px-1 text-[12.5px] leading-relaxed text-mut">{block.notes}</p>
+      ) : null}
+      {block.kind === 'exercise' && block.setCount > 1 ? (
+        <div className="flex gap-1 px-1 pb-0.5" aria-hidden>
+          {Array.from({ length: block.setCount }, (_, index) => (
+            <div
+              key={index}
+              className={cx(
+                'h-[5px] flex-1 rounded-full',
+                index < completedSets ? 'bg-ink' : 'bg-ln2',
+              )}
+            />
+          ))}
         </div>
       ) : null}
-      <div className={isCollapsedComplete ? 'grid gap-2 p-3 sm:px-4' : 'grid gap-2.5 p-4'}>
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-          <span className={`block text-[0.72rem] uppercase tracking-[0.1em] ${checked ? 'text-emerald-600' : 'text-slate-500'}`}>
-            {blockLabel(block.kind)}
-          </span>
-          {onToggle ? (
-            <label className={[
-              'inline-flex items-center gap-2 rounded-full px-3 py-2 text-xs font-bold',
-              checked ? 'bg-cyan-500/15 text-cyan-800' : 'bg-slate-900/6 text-slate-600',
-            ].join(' ')}>
-              <input
-                type="checkbox"
-                checked={checked}
-                onChange={() => onToggle(block.id)}
-                className="accent-cyan-500"
-              />
-              <span>{checked ? 'Done' : 'Mark done'}</span>
-            </label>
-          ) : null}
-        </div>
-        <h3 className={`m-0 font-["Avenir_Next_Condensed","Arial_Narrow",sans-serif] leading-none tracking-[-0.03em] ${isCollapsedComplete ? 'text-[1.08rem]' : 'text-[1.3rem]'}`}>
-          {block.name}
-        </h3>
-        {!isCollapsedComplete ? (
-          <>
-            <p className="m-0 text-[0.98rem] font-bold leading-[1.42] text-slate-900">{block.prescription}</p>
-            {block.notes ? <p className="m-0 text-sm leading-relaxed text-slate-500">{block.notes}</p> : null}
-            <div className="mt-1 flex flex-wrap gap-2">
-              {block.kind === 'exercise' && block.searchName ? (
-                isStartView ? (
-                  <a
-                    className="inline-flex min-h-11 items-center justify-center rounded-full border border-slate-300/60 bg-white/75 px-4 py-2.5 text-sm font-bold text-slate-800 transition hover:-translate-y-0.5"
-                    href={googleImagesSearchUrl(block.searchName)}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    Google Images
-                  </a>
-                ) : (
-                  <a
-                    className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-300/60 bg-white/80 text-slate-900 transition hover:-translate-y-0.5 hover:shadow-[0_10px_18px_rgba(43,52,61,0.1)]"
-                    href={googleImagesSearchUrl(block.searchName)}
-                    target="_blank"
-                    rel="noreferrer"
-                    aria-label={`Search Google Images for ${block.searchName}`}
-                  >
-                    <ImageSearchIcon />
-                  </a>
-                )
-              ) : null}
-            </div>
-          </>
-        ) : null}
-      </div>
+      {block.kind === 'exercise' && !block.imageUrl && block.searchName ? (
+        <a
+          href={googleImagesSearchUrl(block.searchName)}
+          target="_blank"
+          rel="noreferrer"
+          className="px-1 pb-0.5 text-[11px] text-fnt underline"
+        >
+          Find form pics on Google Images ↗
+        </a>
+      ) : null}
     </article>
   );
 }

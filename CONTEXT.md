@@ -40,6 +40,10 @@ _Avoid_: Survey, report
 A long-running request to create, review, and publish a new **Workout Plan** for a **Workspace**.
 _Avoid_: Worker job, workout request, background task
 
+**Active Workspace**:
+The **Workspace** the web app currently treats as "mine" for navigation — the last workspace opened in this browser, persisted client-side. Powers the Workout tab and the Home "Today" card.
+_Avoid_: Default workspace, current account, selected workspace
+
 **Recipe Workspace**:
 The draft state used to collect ingredients, constraints, and mode before recipe recommendations are generated.
 _Avoid_: Recipe editor, pantry
@@ -58,6 +62,7 @@ _Avoid_: Recipe, favorite
 - A **Workout Day** produces one or more **Workout Blocks** for session execution.
 - A **Workout Session Coach Chat** belongs to the active browser execution of one **Workout Session** and is not stored in the database.
 - A **Recipe Workspace** may produce many **Saved Recipe Snapshots** over time.
+- A browser has at most one **Active Workspace**; it is a client-side navigation concept (localStorage), never stored in the database. Fallback when unset: first workspace alphabetically; with zero workspaces, workspace-scoped tabs show a setup empty state.
 
 ## Example dialogue
 

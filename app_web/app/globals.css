@@ -1,5 +1,137 @@
 @import "tailwindcss";
 
+/*
+ * Personal Trainer design tokens.
+ * Light values are the default; dark values apply when the user toggles the
+ * theme (html[data-theme="dark"]) or inside a `.theme-dark` scope.
+ */
+:root,
+.theme-light {
+  --pt-page: #e7dfd0;
+  --pt-bg: #f6f1e8;
+  --pt-bg2: #efe8da;
+  --pt-card: #ffffff;
+  --pt-ink: #1c1a17;
+  --pt-mut: #6b6455;
+  --pt-fnt: #8a8271;
+  --pt-ln: #e8e0d0;
+  --pt-ln2: #ddd2bd;
+  --pt-acc: #ff6a3d;
+  --pt-acc-soft: #ffe6da;
+  --pt-acc-deep: #c94718;
+  --pt-teal: #2f9e8f;
+  --pt-teal-soft: #dff0ed;
+  --pt-teal-deep: #217465;
+  --pt-gold: #e0a52e;
+  --pt-gold-soft: #fff3e0;
+  --pt-gold-deep: #96690d;
+  --pt-vio: #7f6ee0;
+  --pt-vio-soft: #efeafd;
+  --pt-vio-deep: #5a48c9;
+  --pt-err: #b33d1e;
+  --pt-err-soft: #fde7e0;
+  --pt-err-line: #f2b5a3;
+  --pt-onink: #f6f1e8;
+}
+
+:root[data-theme="dark"],
+.theme-dark {
+  --pt-page: #121110;
+  --pt-bg: #1c1a17;
+  --pt-bg2: #242019;
+  --pt-card: #2a2620;
+  --pt-ink: #f6f1e8;
+  --pt-mut: #c8c0af;
+  --pt-fnt: #958c78;
+  --pt-ln: #3d382f;
+  --pt-ln2: #4a4438;
+  --pt-acc: #ff6a3d;
+  --pt-acc-soft: rgba(69, 36, 22, 0.59);
+  --pt-acc-deep: #ffa07e;
+  --pt-teal: #3db3a2;
+  --pt-teal-soft: #1e3833;
+  --pt-teal-deep: #7fd0c2;
+  --pt-gold: #e0a52e;
+  --pt-gold-soft: #3a2f14;
+  --pt-gold-deep: #e8c06a;
+  --pt-vio: #9b8cf0;
+  --pt-vio-soft: #2c2547;
+  --pt-vio-deep: #b3a6f2;
+  --pt-err: #ff9d84;
+  --pt-err-soft: #3a1f18;
+  --pt-err-line: #5c2c1e;
+  --pt-onink: #1c1a17;
+}
+
+@theme inline {
+  --color-page: var(--pt-page);
+  --color-bg: var(--pt-bg);
+  --color-bg2: var(--pt-bg2);
+  --color-card: var(--pt-card);
+  --color-ink: var(--pt-ink);
+  --color-mut: var(--pt-mut);
+  --color-fnt: var(--pt-fnt);
+  --color-ln: var(--pt-ln);
+  --color-ln2: var(--pt-ln2);
+  --color-acc: var(--pt-acc);
+  --color-acc-soft: var(--pt-acc-soft);
+  --color-acc-deep: var(--pt-acc-deep);
+  --color-teal: var(--pt-teal);
+  --color-teal-soft: var(--pt-teal-soft);
+  --color-teal-deep: var(--pt-teal-deep);
+  --color-gold: var(--pt-gold);
+  --color-gold-soft: var(--pt-gold-soft);
+  --color-gold-deep: var(--pt-gold-deep);
+  --color-vio: var(--pt-vio);
+  --color-vio-soft: var(--pt-vio-soft);
+  --color-vio-deep: var(--pt-vio-deep);
+  --color-err: var(--pt-err);
+  --color-err-soft: var(--pt-err-soft);
+  --color-err-line: var(--pt-err-line);
+  --color-onink: var(--pt-onink);
+  --font-display: var(--font-bricolage), "Bricolage Grotesque", sans-serif;
+  --font-sans: var(--font-instrument), "Instrument Sans", sans-serif;
+}
+
+@theme {
+  --animate-pulse-soft: pt-pulse 1.3s ease-in-out infinite;
+  --animate-spin-slim: pt-spin 1s linear infinite;
+  --animate-skeleton: pt-skeleton 1.4s linear infinite;
+  --animate-mic-pulse: pt-mic 1.2s ease-out infinite;
+
+  @keyframes pt-pulse {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.35;
+    }
+  }
+  @keyframes pt-spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+  @keyframes pt-skeleton {
+    0% {
+      background-position: 200% 0;
+    }
+    100% {
+      background-position: -200% 0;
+    }
+  }
+  @keyframes pt-mic {
+    0%,
+    100% {
+      box-shadow: 0 0 0 0 rgba(255, 106, 61, 0.5);
+    }
+    70% {
+      box-shadow: 0 0 0 22px rgba(255, 106, 61, 0);
+    }
+  }
+}
+
 @layer base {
   * {
     box-sizing: border-box;
@@ -12,12 +144,10 @@
 
   body {
     margin: 0;
-    color: #1f2227;
-    background:
-      radial-gradient(circle at top left, rgba(255, 255, 255, 0.88), transparent 32%),
-      radial-gradient(circle at top right, rgba(34, 184, 199, 0.1), transparent 26%),
-      linear-gradient(135deg, #f2efeb 0%, #ede8e2 42%, #f6f2ee 100%);
-    font-family: "Avenir Next", "Segoe UI", sans-serif;
+    background: var(--pt-page);
+    color: var(--pt-ink);
+    font-family: var(--font-instrument), "Instrument Sans", sans-serif;
+    -webkit-font-smoothing: antialiased;
   }
 
   a {
@@ -35,5 +165,17 @@
   select,
   textarea {
     font: inherit;
+    color: inherit;
+  }
+
+  input:focus-visible,
+  textarea:focus-visible,
+  select:focus-visible {
+    outline: 2px solid var(--pt-acc);
+    outline-offset: -1px;
+  }
+
+  input[type="range"] {
+    accent-color: var(--pt-acc);
   }
 }

@@ -1,237 +1,184 @@
 import Link from 'next/link';
+import { cookies } from 'next/headers';
 
 import { createWorkspaceAction, logoutAction } from './actions';
+import { ACTIVE_WORKSPACE_COOKIE, resolveActiveWorkspace } from '@/lib/active-workspace';
 import {
   getCurrentCommitHash,
   getCurrentEnvVariables,
-  getHeaderCommitId,
   isDebugEnabled,
 } from '@/lib/debug-info';
+import { buildWorkoutDayBlocks } from '@/lib/workout-helpers';
+import { listCheckIns } from '@/lib/server/workspaces';
 import {
   listWorkspaces,
+  planMetaShort,
+  readUserProfileSummary,
   readWorkoutPlan,
 } from '@/lib/trainer-data';
+import { Button, ButtonLink, Card, Display, EmptyState, Kicker, inputClass } from '@/components/ui';
+import { ThemeToggle } from '@/components/theme-toggle';
+import { TodayCard, type TodayDaySummary } from '@/components/today-card';
 
 export const dynamic = 'force-dynamic';
 
-const shellClass = 'mx-auto w-full max-w-6xl px-4 pb-8 pt-4 sm:px-6 sm:pt-5';
-const cardClass = 'rounded-[1.75rem] border border-white/70 bg-white/80 p-5 shadow-[0_20px_45px_rgba(41,51,64,0.08)] backdrop-blur-xl sm:p-6';
-const sectionHeadClass = 'flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between';
-const sectionTitleClass = 'm-0 font-["Avenir_Next_Condensed","Arial_Narrow",sans-serif] text-3xl leading-none tracking-[-0.03em]';
-const sectionCopyClass = 'm-0 text-sm leading-relaxed text-slate-500';
-const sectionKickerClass = 'mb-2 text-xs font-bold uppercase tracking-[0.16em] text-[#ff6359]';
-const softActionClass = 'inline-flex min-h-11 items-center justify-center rounded-full border border-slate-300/60 bg-white/75 px-4 py-2.5 text-sm font-bold text-slate-800 transition hover:-translate-y-0.5';
-const primaryActionClass = 'inline-flex min-h-11 items-center justify-center rounded-full border border-transparent bg-gradient-to-br from-[#ff6a60] to-[#ff7f5d] px-4 py-2.5 text-sm font-bold text-white shadow-[0_12px_24px_rgba(255,99,89,0.24)] transition hover:-translate-y-0.5';
+function greetingForHour(hour: number): string {
+  if (hour < 12) {
+    return 'Morning,';
+  }
+  if (hour < 18) {
+    return 'Afternoon,';
+  }
+  return 'Evening,';
+}
 
-export default async function HomePage({
-  searchParams,
-}: {
-  searchParams: Promise<{ workspace?: string }>;
-}) {
-  const params = await searchParams;
+export default async function HomePage() {
   const workspaces = await listWorkspaces();
+  const cookieStore = await cookies();
+  const activeWorkspace = resolveActiveWorkspace(
+    cookieStore.get(ACTIVE_WORKSPACE_COOKIE)?.value ?? null,
+    workspaces,
+  );
+
+  const plan = activeWorkspace ? await readWorkoutPlan(activeWorkspace) : null;
+  const profile = activeWorkspace ? await readUserProfileSummary(activeWorkspace) : null;
+
+  const workspaceCards = await Promise.all(
+    workspaces.map(async (slug) => {
+      const wsPlan = slug === activeWorkspace ? plan : await readWorkoutPlan(slug);
+      const checkIns = await listCheckIns(slug);
+      return {
+        slug,
+        sub: wsPlan
+          ? `${wsPlan.title} · ${checkIns.length} check-in${checkIns.length === 1 ? '' : 's'}`
+          : 'No plan yet — set up the athlete profile',
+      };
+    }),
+  );
+
+  const todayDays: TodayDaySummary[] = plan
+    ? plan.days.map((day, index) => ({
+        dayNumber: index + 1,
+        heading: day.heading,
+        blockCount: buildWorkoutDayBlocks(day).length,
+      }))
+    : [];
+
+  const greetingName = profile?.name?.trim() || activeWorkspace || 'athlete';
   const showDebugPanel = isDebugEnabled();
-  const headerCommitId = getHeaderCommitId();
-  const debugCommitHash = showDebugPanel ? getCurrentCommitHash() : null;
-  const debugEnvVars = showDebugPanel ? getCurrentEnvVariables() : [];
-  const selectedWorkspace =
-    params.workspace && workspaces.includes(params.workspace)
-      ? params.workspace
-      : workspaces[0];
-  const plan = selectedWorkspace ? await readWorkoutPlan(selectedWorkspace) : null;
 
   return (
-    <main className={shellClass}>
-      {showDebugPanel ? (
-        <section className={`${cardClass} mb-4`}>
-          <div className={sectionHeadClass}>
-            <div>
-              <h2 className={sectionTitleClass}>Debug</h2>
-              <p className={sectionCopyClass}>Server-side runtime details for the current page render.</p>
+    <div className="flex flex-col gap-4 px-[18px] pb-6 pt-[22px]">
+      <header className="flex items-start justify-between">
+        <Display as="h1" className="text-[30px] leading-[1.02]">
+          {greetingForHour(new Date().getHours())}
+          <br />
+          <span className="text-acc">{greetingName}.</span>
+        </Display>
+        <ThemeToggle />
+      </header>
+
+      <section className="flex flex-col gap-2">
+        <Kicker>Today</Kicker>
+        {plan && activeWorkspace ? (
+          <TodayCard
+            workspace={activeWorkspace}
+            planTitle={plan.title}
+            metaShort={planMetaShort(plan.meta)}
+            nextCheckIn={plan.nextCheckIn}
+            days={todayDays}
+          />
+        ) : (
+          <EmptyState
+            title="No plan yet."
+            action={
+              activeWorkspace ? (
+                <ButtonLink variant="ink" size="sm" className="h-[40px] px-[18px] text-[13px]" href={`/workspace/${encodeURIComponent(activeWorkspace)}`}>
+                  Set up {activeWorkspace} →
+                </ButtonLink>
+              ) : null
+            }
+          >
+            Fill the athlete profile, then let the coach draft your first multi-week plan.
+          </EmptyState>
+        )}
+      </section>
+
+      <section className="flex flex-col gap-2">
+        <Kicker>Workspaces</Kicker>
+        {workspaceCards.map((workspace) => (
+          <Link
+            key={workspace.slug}
+            href={`/workspace/${encodeURIComponent(workspace.slug)}`}
+            className={[
+              'flex items-center gap-3 rounded-[16px] border bg-card px-4 py-3.5',
+              workspace.slug === activeWorkspace ? 'border-acc' : 'border-ln',
+            ].join(' ')}
+          >
+            <div className="flex h-10 w-10 flex-none items-center justify-center rounded-[12px] bg-acc-soft font-display text-[16px] font-extrabold text-acc-deep">
+              {workspace.slug[0]?.toUpperCase()}
             </div>
-          </div>
-          <div className="mt-4 grid gap-4">
-            <div className="rounded-3xl border border-slate-200/60 bg-white/80 p-4">
-              <strong className="mb-1 block">Current Git Commit Hash</strong>
-              <p className="m-0 break-all font-mono text-sm text-slate-500">{debugCommitHash}</p>
-            </div>
-            <div className="rounded-3xl border border-slate-200/60 bg-white/80 p-4">
-              <strong className="mb-2 block">Current Environment Variables</strong>
-              <div className="grid gap-2">
-                {debugEnvVars.map((item) => (
-                  <div key={item.key} className="grid gap-2 rounded-2xl border border-slate-200/60 bg-white/80 p-3">
-                    <code className="text-xs break-all">{item.key}</code>
-                    <code className="text-xs break-all">{item.value}</code>
-                  </div>
-                ))}
+            <div className="min-w-0 flex-1">
+              <div className="text-[14.5px] font-bold">{workspace.slug}</div>
+              <div className="overflow-hidden text-ellipsis whitespace-nowrap text-[12px] text-fnt">
+                {workspace.sub}
               </div>
             </div>
+            <div className="text-fnt">›</div>
+          </Link>
+        ))}
+        <form action={createWorkspaceAction} className="flex gap-2">
+          <input
+            className={`${inputClass} h-[44px] rounded-full border-ln2 bg-card px-4 text-[13px]`}
+            name="workspace"
+            placeholder="New workspace name…"
+            required
+          />
+          <Button variant="outline" type="submit" className="bg-card px-4 text-[13px]">
+            Create
+          </Button>
+        </form>
+      </section>
+
+      <section className="flex flex-col gap-2">
+        <Kicker>Kitchen</Kicker>
+        <Link
+          href="/recipes"
+          className="flex items-center gap-3 rounded-[20px] border border-gold bg-gold-soft px-[18px] py-4"
+        >
+          <div className="text-[24px]">🎙</div>
+          <div className="flex-1">
+            <Display as="div" className="text-[16px] font-bold text-ink">
+              Jeff the Cook
+            </Display>
+            <div className="text-[12.5px] text-mut">Say what&apos;s in the fridge. Get 3 recipes.</div>
           </div>
-        </section>
+          <div className="text-fnt">›</div>
+        </Link>
+      </section>
+
+      {showDebugPanel ? (
+        <Card className="p-4">
+          <Kicker className="mb-2">Debug</Kicker>
+          <p className="m-0 break-all font-mono text-[12px] text-mut">{getCurrentCommitHash()}</p>
+          <div className="mt-2 grid gap-1">
+            {getCurrentEnvVariables().map((item) => (
+              <code key={item.key} className="break-all text-[11px] text-fnt">
+                {item.key}={item.value}
+              </code>
+            ))}
+          </div>
+        </Card>
       ) : null}
 
-      {workspaces.length === 0 ? (
-        <section className={cardClass}>
-          <h2 className={sectionTitleClass}>No workspaces yet</h2>
-          <p className="mt-3 text-sm leading-relaxed text-slate-600">
-            Create one from the trainer CLI with <code>personal-trainer init &lt;name&gt;</code>,
-            then generate a plan and refresh this page.
-          </p>
-        </section>
-      ) : (
-        <div className="grid gap-4 sm:gap-5">
-          <section className={cardClass}>
-            <div className={sectionHeadClass}>
-              <div>
-                <p className={sectionKickerClass}>Workspace</p>
-                <h2 className={sectionTitleClass}>Pick your active plan</h2>
-                <p className={sectionCopyClass}>Workspaces, athlete profiles, and check-ins now live in Postgres.</p>
-              </div>
-              <form action={logoutAction}>
-                <button className={softActionClass} type="submit">Sign out</button>
-              </form>
-            </div>
-            <div className="mt-4 flex flex-wrap gap-2 overflow-x-auto pb-1">
-              {workspaces.map((workspace) => (
-                <Link
-                  key={workspace}
-                  className={[
-                    'inline-flex min-h-11 items-center justify-center rounded-full border px-4 py-2.5 text-sm font-bold transition hover:-translate-y-0.5',
-                    workspace === selectedWorkspace
-                      ? 'border-transparent bg-slate-900 text-white'
-                      : 'border-slate-300/60 bg-white/75 text-slate-800',
-                  ].join(' ')}
-                  href={`/?workspace=${workspace}`}
-                >
-                  {workspace}
-                </Link>
-              ))}
-            </div>
-          </section>
-          {plan ? (
-            <section className={cardClass}>
-              <div className={sectionHeadClass}>
-                <div>
-                  <p className={sectionKickerClass}>Current plan</p>
-                  <h2 className={sectionTitleClass}>{plan.title}</h2>
-                  <p className={sectionCopyClass}>Workspace <strong>{selectedWorkspace}</strong></p>
-                </div>
-                <div className="flex flex-wrap gap-2.5">
-                  <Link className={primaryActionClass} href={`/workout/${selectedWorkspace}`}>
-                    Open workout
-                  </Link>
-                  <Link className={softActionClass} href={`/workspace/${selectedWorkspace}`}>
-                    Edit workspace
-                  </Link>
-                  <Link className={softActionClass} href={`/workout/${selectedWorkspace}/start`}>
-                    Start session
-                  </Link>
-                </div>
-              </div>
-
-              <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1.8fr)_minmax(280px,1fr)]">
-                <div className="grid gap-3 rounded-[1.5rem] border border-slate-200/70 bg-gradient-to-b from-white/90 to-slate-50/80 p-4">
-                  <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                    {plan.meta.map((item, index) => (
-                      <article
-                        key={item.label}
-                        className={[
-                          'rounded-3xl border border-white/80 p-3',
-                          index % 3 === 1
-                            ? 'bg-gradient-to-b from-amber-100/70 to-white/90'
-                            : index % 3 === 2
-                              ? 'bg-gradient-to-b from-violet-100/70 to-white/90'
-                              : 'bg-gradient-to-b from-cyan-100/70 to-white/90',
-                        ].join(' ')}
-                      >
-                        <span className="block text-[0.72rem] uppercase tracking-[0.1em] text-slate-500">{item.label}</span>
-                        <span className="mt-1 block text-base font-bold leading-tight">{item.value}</span>
-                      </article>
-                    ))}
-                  </div>
-
-                  <div className="grid gap-3 md:grid-cols-2">
-                    <div className="rounded-3xl border border-slate-200/70 bg-white/80 p-4">
-                      <strong className="mb-1 block">Summary</strong>
-                      <p className="m-0 text-sm leading-relaxed text-slate-600">{plan.summary}</p>
-                    </div>
-                    <div className="rounded-3xl border border-slate-200/70 bg-gradient-to-b from-cyan-100/65 to-white/85 p-4">
-                      <strong className="mb-1 block">Progression</strong>
-                      <p className="m-0 text-sm leading-relaxed text-slate-600">{plan.progression}</p>
-                    </div>
-                  </div>
-
-                  <div className="rounded-3xl border border-slate-200/70 bg-white/80 p-4">
-                    <strong className="mb-1 block">Next Check-In</strong>
-                    <p className="m-0 text-sm leading-relaxed text-slate-600">{plan.nextCheckIn}</p>
-                  </div>
-                </div>
-
-                <aside className="grid content-start gap-3 rounded-[1.5rem] border border-slate-200/70 bg-[radial-gradient(circle_at_top_right,rgba(34,184,199,0.12),transparent_35%),linear-gradient(180deg,rgba(255,241,218,0.75),rgba(255,255,255,0.92))] p-4">
-                  <p className={sectionKickerClass}>Recipes</p>
-                  <h3 className={sectionTitleClass}>Jeff the Cook is ready for voice-led recipe runs.</h3>
-                  <p className={sectionCopyClass}>
-                    Speak ingredients and constraints, review the draft workspace, then generate and save three
-                    recipe options.
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    <span className="inline-flex items-center rounded-full bg-[#ff6359]/12 px-3 py-1.5 text-xs font-bold text-[#b54843]">Voice-first</span>
-                    <span className="inline-flex items-center rounded-full bg-[#ff6359]/12 px-3 py-1.5 text-xs font-bold text-[#b54843]">Draft review</span>
-                    <span className="inline-flex items-center rounded-full bg-[#ff6359]/12 px-3 py-1.5 text-xs font-bold text-[#b54843]">Postgres snapshots</span>
-                  </div>
-                  <div className="flex flex-wrap gap-2.5">
-                    <Link className={primaryActionClass} href="/recipes">
-                      Open Jeff the Cook
-                    </Link>
-                  </div>
-                </aside>
-              </div>
-            </section>
-          ) : (
-            <section className={cardClass}>
-              <h2 className={sectionTitleClass}>No plan yet</h2>
-              <p className="mt-3 text-sm leading-relaxed text-slate-600">
-                The selected workspace exists, but no current workout plan has been published to Postgres yet.
-                Run <code>personal-trainer plan {selectedWorkspace}</code> in the trainer app.
-                You can also open the workspace or workout page and generate a plan from the web app.
-              </p>
-              <div className="mt-4 grid gap-4">
-                <aside className="grid content-start gap-3 rounded-[1.5rem] border border-slate-200/70 bg-[radial-gradient(circle_at_top_right,rgba(34,184,199,0.12),transparent_35%),linear-gradient(180deg,rgba(255,241,218,0.75),rgba(255,255,255,0.92))] p-4">
-                  <p className={sectionKickerClass}>Recipes</p>
-                  <h3 className={sectionTitleClass}>Jeff the Cook still works without a generated plan.</h3>
-                  <p className={sectionCopyClass}>
-                    Open the recipe workspace directly, speak your ingredients, and save snapshots independently
-                    from the trainer flow.
-                  </p>
-                  <div className="flex flex-wrap gap-2.5">
-                    <Link className={primaryActionClass} href="/recipes">
-                      Open Jeff the Cook
-                    </Link>
-                  </div>
-                </aside>
-              </div>
-            </section>
-          )}
-          <section className={cardClass}>
-            <form action={createWorkspaceAction} className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
-              <div>
-                <p className={sectionKickerClass}>Create Workspace</p>
-                <h2 className={sectionTitleClass}>Start a new athlete workspace</h2>
-                <p className={sectionCopyClass}>Create the workspace here, then fill the athlete profile before generating a plan locally.</p>
-              </div>
-              <div className="flex flex-col gap-3 sm:flex-row">
-                <input
-                  className="min-h-11 rounded-full border border-slate-300/60 bg-white/75 px-4 py-2.5 text-sm font-medium text-slate-800"
-                  name="workspace"
-                  placeholder="workspace name"
-                  required
-                />
-                <button className={primaryActionClass} type="submit">Create</button>
-              </div>
-            </form>
-          </section>
-        </div>
-      )}
-    </main>
+      <form action={logoutAction} className="self-center">
+        <button
+          type="submit"
+          className="cursor-pointer border-none bg-transparent p-1.5 text-[13px] text-fnt underline"
+        >
+          Sign out
+        </button>
+      </form>
+    </div>
   );
 }

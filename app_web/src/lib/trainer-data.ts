@@ -30,6 +30,14 @@ export async function readUserProfileSummary(workspace: string): Promise<UserPro
   return readUserProfileSummaryRow(workspace);
 }
 
+/** Compact "Label value · Label value" line from the first plan meta entries. */
+export function planMetaShort(meta: Array<{ label: string; value: string }>): string {
+  return meta
+    .slice(0, 2)
+    .map((item) => `${item.label} ${item.value}`)
+    .join(' · ');
+}
+
 export function workspaceImageUrl(workspace: string, relativePath: string | null): string | null {
   if (!relativePath) {
     return null;
