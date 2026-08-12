@@ -200,17 +200,17 @@ def test_build_plan_rejects_invalid_structured_output() -> None:
         build_plan(profile, plan_version=1, agent=agent)
 
 
-def test_build_plan_records_openai_backend() -> None:
+def test_build_plan_records_openrouter_backend() -> None:
     profile = UserProfile(name="Jordan")
     agent = StaticAgent(
         _valid_plan_payload(),
-        provider="openai",
-        model_name="gpt-5.4-mini",
+        provider="openrouter",
+        model_name="deepseek/deepseek-v4-flash",
     )
 
     plan = build_plan(profile, plan_version=2, agent=agent)
 
-    assert plan.planner_backend == "openai/gpt-5.4-mini"
+    assert plan.planner_backend == "openrouter/deepseek/deepseek-v4-flash"
 
 
 def test_build_plan_rejects_non_positive_timing_values() -> None:

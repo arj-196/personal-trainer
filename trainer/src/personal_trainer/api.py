@@ -27,7 +27,7 @@ from personal_trainer.generation_jobs import (
     serialize_job,
 )
 from personal_trainer.llm import start_session
-from personal_trainer.openai_client import OpenAIChatClient, OpenAIClientConfig
+from personal_trainer.llm_client import DEFAULT_BASE_URL, LlmChatClient, LlmClientConfig
 from personal_trainer.workout_session_chat import (
     WorkoutSessionChatError,
     WorkoutSessionChatRequest,
@@ -35,7 +35,7 @@ from personal_trainer.workout_session_chat import (
     answer_workout_session_chat,
 )
 from personal_trainer.workout_planner import (
-    OpenAITrainerAgent,
+    LlmTrainerAgent,
     TrainerAgent,
     TrainerPlanDraft,
     TrainerPlanRequest,
@@ -46,6 +46,19 @@ from personal_trainer.workout_planner import (
 LOGGER = logging.getLogger(__name__)
 app = FastAPI(title="Personal Trainer API")
 EXECUTOR = ThreadPoolExecutor(max_workers=int(os.getenv("TRAINER_API_WORKERS", "2")))
+DEFAULT_MODEL = "deepseek/deepseek-v4-flash"
+
+
+def _resolve_model(stored_model: str | None, env_default: str) -> str:
+    """Resolve the planner model, ignoring legacy bare OpenAI names.
+
+    Jobs created before the OpenRouter cutover persisted un-prefixed model
+    names like 'gpt-5.4-mini' that OpenRouter does not recognize.
+    """
+    model = (stored_model or "").strip()
+    if model and "/" in model:
+        return model
+    return env_default
 
 
 class WorkoutSessionChatTurnPayload(BaseModel):
@@ -86,8 +99,8 @@ def create_workout_plan_generation(
     workspace: str,
     background_tasks: BackgroundTasks,
 ) -> dict[str, Any]:
-    provider = "openai"
-    model = os.getenv("TRAINER_OPENAI_MODEL", os.getenv("OPENAI_MODEL", "gpt-5.4-mini"))
+    provider = "openrouter"
+    model = os.getenv("TRAINER_MODEL", DEFAULT_MODEL)
     try:
         plan_version = next_plan_version(workspace)
         job, created = create_or_get_active_job(
@@ -145,21 +158,21 @@ def create_workout_session_chat(
             detail=f"Workspace '{workspace}' does not have a current Workout Plan.",
         )
 
-    api_key = os.getenv("OPENAI_API_KEY", "").strip()
+    api_key = os.getenv("OPENROUTER_API_KEY", "").strip()
     if not api_key:
         raise HTTPException(
             status_code=500,
-            detail="OPENAI_API_KEY is required for Workout Session chat.",
+            detail="OPENROUTER_API_KEY is required for Workout Session chat.",
         )
 
     model = os.getenv(
-        "TRAINER_CHAT_OPENAI_MODEL",
-        os.getenv("TRAINER_OPENAI_MODEL", os.getenv("OPENAI_MODEL", "gpt-5.4-mini")),
+        "TRAINER_CHAT_MODEL",
+        os.getenv("TRAINER_MODEL", DEFAULT_MODEL),
     )
-    base_url = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1")
-    timeout_seconds = int(os.getenv("TRAINER_CHAT_OPENAI_TIMEOUT_SECONDS", "45"))
-    client = OpenAIChatClient(
-        OpenAIClientConfig(
+    base_url = os.getenv("LLM_BASE_URL", DEFAULT_BASE_URL)
+    timeout_seconds = int(os.getenv("TRAINER_CHAT_TIMEOUT_SECONDS", "45"))
+    client = LlmChatClient(
+        LlmClientConfig(
             api_key=api_key,
             model=model,
             base_url=base_url,
@@ -189,7 +202,7 @@ def create_workout_session_chat(
     except WorkoutSessionChatError as error:
         message = str(error)
         status_code = 400
-        if "OpenAI" in message or "could not reach" in message or "timed out" in message:
+        if "LLM" in message or "could not reach" in message or "timed out" in message:
             status_code = 502
         LOGGER.warning(
             "Workout Session chat failed",
@@ -225,18 +238,18 @@ def _run_generation_job(job_id: str) -> None:
                 "Generating Workout Plan with latest Check-in",
                 extra={"workspace": workspace, "check_in_date": checkin.check_in_date.isoformat()},
             )
-        api_key = os.getenv("OPENAI_API_KEY", "").strip()
+        api_key = os.getenv("OPENROUTER_API_KEY", "").strip()
         if not api_key:
-            raise WorkoutPlannerError("OPENAI_API_KEY is required for web-triggered generation.")
+            raise WorkoutPlannerError("OPENROUTER_API_KEY is required for web-triggered generation.")
 
-        model = job.planner_model or os.getenv("TRAINER_OPENAI_MODEL", "gpt-5.4-mini")
-        base_url = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1")
-        timeout_seconds = int(os.getenv("TRAINER_OPENAI_TIMEOUT_SECONDS", "180"))
+        model = _resolve_model(job.planner_model, os.getenv("TRAINER_MODEL", DEFAULT_MODEL))
+        base_url = os.getenv("LLM_BASE_URL", DEFAULT_BASE_URL)
+        timeout_seconds = int(os.getenv("TRAINER_TIMEOUT_SECONDS", "180"))
         max_review_iterations = int(os.getenv("TRAINER_PLAN_REVIEW_MAX_ITERATIONS", "5"))
         agent = _JobTrackingAgent(
-            OpenAITrainerAgent(
-                OpenAIChatClient(
-                    OpenAIClientConfig(
+            LlmTrainerAgent(
+                LlmChatClient(
+                    LlmClientConfig(
                         api_key=api_key,
                         model=model,
                         base_url=base_url,

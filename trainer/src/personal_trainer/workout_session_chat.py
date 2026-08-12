@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from typing import Any, Protocol
 
 from personal_trainer.models import UserProfile
-from personal_trainer.openai_client import OpenAIError
+from personal_trainer.llm_client import LlmError
 from personal_trainer.prompting import PromptManager, PromptManagerError
 
 LOGGER = logging.getLogger(__name__)
@@ -120,7 +120,7 @@ def answer_workout_session_chat(
             schema=CHAT_RESPONSE_SCHEMA,
             schema_name="workout_session_chat",
         )
-    except OpenAIError as error:
+    except LlmError as error:
         raise WorkoutSessionChatError(str(error)) from error
 
     return _parse_response(payload)

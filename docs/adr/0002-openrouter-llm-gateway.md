@@ -1,0 +1,7 @@
+# OpenRouter as the hosted LLM gateway, with a cheap default model
+
+We lost direct OpenAI API access, so all hosted LLM calls (Workout Plan Generation and Workout Session Coach Chat) now go through OpenRouter's OpenAI-compatible API. The client is provider-neutral (`llm_client.py`, `LLM_BASE_URL` can point at any OpenAI-compatible endpoint); only the API key (`OPENROUTER_API_KEY`) is provider-specific. The default model is `deepseek/deepseek-v4-flash` — chosen over staying in the GPT family (`gpt-5.4-nano`) and over the absolute cheapest options (`gpt-oss-120b`) because it was the best quality-per-dollar tier supporting strict JSON-schema output, at roughly 93% below the previous `gpt-5.4-mini` cost. Cost control is handled at the OpenRouter account level (spend cap) plus per-call token-usage logging in the client; no in-app budget enforcement, deliberately, since this is a single-user app.
+
+Old Workout Plan Generation Jobs persist `planner_backend` values like `openai/gpt-5.4-mini`; these are historical facts and are not rewritten. A resuming job whose stored model has no provider prefix falls back to the current default model.
+
+The web app's recipe module (`app_web/src/lib/recipes/openai.ts`) still calls OpenAI directly and is non-functional without an OpenAI key. This is deliberate: the recipe feature is no longer used, so it was not migrated. Do not port it to OpenRouter without deciding what to do about its audio-transcription dependency, which OpenRouter does not offer.

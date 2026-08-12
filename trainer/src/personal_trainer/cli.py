@@ -36,8 +36,8 @@ from personal_trainer.markdown_io import (
     load_profile,
 )
 from personal_trainer.notes_publisher import NotesPublishError, publish_plan_to_notes
+from personal_trainer.llm_client import DEFAULT_BASE_URL, LlmClientConfig
 from personal_trainer.ollama_client import OllamaClientConfig
-from personal_trainer.openai_client import OpenAIClientConfig
 from personal_trainer.db import save_workout_plan, upsert_profile
 from personal_trainer.workout_planner import (
     WorkoutPlannerError,
@@ -130,12 +130,12 @@ def planner_options(function):
         help="Repeatable Ollama model tag used for plan generation. Accepts comma-separated values.",
     )(function)
     function = click.option(
-        "--openai-model",
-        "openai_model",
+        "--openrouter-model",
+        "openrouter_model",
         multiple=True,
-        envvar="TRAINER_OPENAI_MODELS",
+        envvar="TRAINER_OPENROUTER_MODELS",
         callback=_parse_model_option,
-        help="Repeatable OpenAI model name used for plan generation. Accepts comma-separated values.",
+        help="Repeatable OpenRouter model name used for plan generation. Accepts comma-separated values.",
     )(function)
     function = click.option(
         "--ollama-base-url",
@@ -146,19 +146,19 @@ def planner_options(function):
         help="Base URL for the local Ollama server.",
     )(function)
     function = click.option(
-        "--openai-base-url",
-        "openai_base_url",
-        envvar="OPENAI_BASE_URL",
-        default="https://api.openai.com/v1",
+        "--llm-base-url",
+        "llm_base_url",
+        envvar="LLM_BASE_URL",
+        default=DEFAULT_BASE_URL,
         show_default=True,
-        help="Base URL for the OpenAI-compatible API.",
+        help="Base URL for the OpenAI-compatible LLM API.",
     )(function)
     function = click.option(
-        "--openai-api-key",
-        "openai_api_key",
-        envvar="OPENAI_API_KEY",
+        "--openrouter-api-key",
+        "openrouter_api_key",
+        envvar="OPENROUTER_API_KEY",
         default="",
-        help="API key used for OpenAI plan generation.",
+        help="API key used for OpenRouter plan generation.",
     )(function)
     function = click.option(
         "--session-id",
@@ -286,10 +286,10 @@ def init_command(workspace: Path) -> None:
 def plan_command(
     workspace: Path,
     ollama_model: tuple[str, ...],
-    openai_model: tuple[str, ...],
+    openrouter_model: tuple[str, ...],
     ollama_base_url: str,
-    openai_base_url: str,
-    openai_api_key: str,
+    llm_base_url: str,
+    openrouter_api_key: str,
     session_id: str,
     timeout_seconds: int,
     max_review_iterations: int,
@@ -308,8 +308,8 @@ def plan_command(
         )
     targets = _resolve_planner_targets(
         ollama_models=ollama_model,
-        openai_models=openai_model,
-        openai_api_key=openai_api_key,
+        openrouter_models=openrouter_model,
+        openrouter_api_key=openrouter_api_key,
     )
     resolved_session_id = _resolve_session_id(
         session_id=session_id,
@@ -327,8 +327,8 @@ def plan_command(
         targets=targets,
         session_id=resolved_session_id,
         ollama_base_url=ollama_base_url,
-        openai_base_url=openai_base_url,
-        openai_api_key=openai_api_key,
+        llm_base_url=llm_base_url,
+        openrouter_api_key=openrouter_api_key,
         timeout_seconds=timeout_seconds,
         max_review_iterations=max_review_iterations,
     )
@@ -388,18 +388,18 @@ def checkin_command(workspace: Path, checkin_date: datetime | None) -> None:
 def _resolve_planner_targets(
     *,
     ollama_models: tuple[str, ...],
-    openai_models: tuple[str, ...],
-    openai_api_key: str,
+    openrouter_models: tuple[str, ...],
+    openrouter_api_key: str,
 ) -> list[PlannerTarget]:
     targets = [PlannerTarget(provider="ollama", model=model) for model in ollama_models]
     targets.extend(
-        PlannerTarget(provider="openai", model=model) for model in openai_models
+        PlannerTarget(provider="openrouter", model=model) for model in openrouter_models
     )
     if not targets:
         targets.append(PlannerTarget(provider="ollama", model="gpt-oss:20b"))
-    if openai_models and not openai_api_key.strip():
+    if openrouter_models and not openrouter_api_key.strip():
         raise click.ClickException(
-            "OpenAI model generation requires OPENAI_API_KEY or --openai-api-key."
+            "OpenRouter model generation requires OPENROUTER_API_KEY or --openrouter-api-key."
         )
     return targets
 
@@ -412,8 +412,8 @@ def _build_plans(
     targets: list[PlannerTarget],
     session_id: str,
     ollama_base_url: str,
-    openai_base_url: str,
-    openai_api_key: str,
+    llm_base_url: str,
+    openrouter_api_key: str,
     timeout_seconds: int,
     max_review_iterations: int,
     checkin=None,
@@ -428,7 +428,7 @@ def _build_plans(
             target.model,
         )
         try:
-            if target.provider == "openai":
+            if target.provider == "openrouter":
                 build_result = build_plan_with_review(
                     profile,
                     plan_version=plan_version,
@@ -436,10 +436,10 @@ def _build_plans(
                     workflow_name="weekly_plan_generation",
                     session_id=session_id,
                     llm_log_path=WORKSPACES_ROOT / workspace_slug / ".trainer" / "logs" / "llm_calls.jsonl",
-                    openai_client_config=OpenAIClientConfig(
-                        api_key=openai_api_key,
+                    llm_client_config=LlmClientConfig(
+                        api_key=openrouter_api_key,
                         model=target.model,
-                        base_url=openai_base_url,
+                        base_url=llm_base_url,
                         timeout_seconds=max(30, timeout_seconds),
                     ),
                     max_review_iterations=max_review_iterations,

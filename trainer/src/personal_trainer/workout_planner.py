@@ -22,10 +22,10 @@ from personal_trainer.ollama_client import (
     OllamaClientConfig,
     OllamaError,
 )
-from personal_trainer.openai_client import (
-    OpenAIChatClient,
-    OpenAIClientConfig,
-    OpenAIError,
+from personal_trainer.llm_client import (
+    LlmChatClient,
+    LlmClientConfig,
+    LlmError,
 )
 from personal_trainer.prompting import PromptManager, PromptManagerError
 
@@ -286,8 +286,8 @@ class OllamaTrainerAgent:
         )
 
 
-class OpenAITrainerAgent:
-    def __init__(self, client: OpenAIChatClient) -> None:
+class LlmTrainerAgent:
+    def __init__(self, client: LlmChatClient) -> None:
         self._client = client
         self.model_name = client.config.model
 
@@ -317,7 +317,7 @@ class OpenAITrainerAgent:
             model=self.model_name,
             prompt=user_prompt,
             metadata={
-                "provider": "openai",
+                "provider": "openrouter",
                 "target_plan_version": request.plan_version,
                 "athlete_name": request.profile.name,
                 **metadata,
@@ -338,7 +338,7 @@ class OpenAITrainerAgent:
         )
         return TrainerPlanDraft(
             payload=payload,
-            provider="openai",
+            provider="openrouter",
             model_name=self.model_name,
         )
 
@@ -360,7 +360,7 @@ def build_plan(
     *,
     agent: TrainerAgent | None = None,
     client_config: OllamaClientConfig | None = None,
-    openai_client_config: OpenAIClientConfig | None = None,
+    llm_client_config: LlmClientConfig | None = None,
     workflow_name: str = "weekly_plan_generation",
     trace_id: str | None = None,
     session_id: str | None = None,
@@ -373,7 +373,7 @@ def build_plan(
         checkin=checkin,
         agent=agent,
         client_config=client_config,
-        openai_client_config=openai_client_config,
+        llm_client_config=llm_client_config,
         workflow_name=workflow_name,
         trace_id=trace_id,
         session_id=session_id,
@@ -390,7 +390,7 @@ def build_plan_with_review(
     *,
     agent: TrainerAgent | None = None,
     client_config: OllamaClientConfig | None = None,
-    openai_client_config: OpenAIClientConfig | None = None,
+    llm_client_config: LlmClientConfig | None = None,
     workflow_name: str = "weekly_plan_generation",
     trace_id: str | None = None,
     session_id: str | None = None,
@@ -403,8 +403,8 @@ def build_plan_with_review(
     planner: TrainerAgent
     if agent is not None:
         planner = agent
-    elif openai_client_config is not None:
-        planner = OpenAITrainerAgent(OpenAIChatClient(openai_client_config))
+    elif llm_client_config is not None:
+        planner = LlmTrainerAgent(LlmChatClient(llm_client_config))
     else:
         planner = OllamaTrainerAgent(
             OllamaChatClient(client_config or OllamaClientConfig())
@@ -434,7 +434,7 @@ def build_plan_with_review(
         )
     except WorkoutPlannerError:
         raise
-    except (OllamaError, OpenAIError) as error:
+    except (OllamaError, LlmError) as error:
         raise WorkoutPlannerError(
             f"Unable to generate a plan with model '{planner.model_name}': {error}"
         ) from error
@@ -693,7 +693,7 @@ def _run_reviewer_step(
         )
     except WorkoutPlannerError:
         raise
-    except (OllamaError, OpenAIError) as error:
+    except (OllamaError, LlmError) as error:
         raise WorkoutPlannerError(
             f"Unable to run review step '{step_name}' with model '{planner.model_name}': {error}"
         ) from error
@@ -722,7 +722,7 @@ def _run_plan_revision_step(
         )
     except WorkoutPlannerError:
         raise
-    except (OllamaError, OpenAIError) as error:
+    except (OllamaError, LlmError) as error:
         raise WorkoutPlannerError(
             f"Unable to run revision step '{step_name}' with model '{planner.model_name}': {error}"
         ) from error

@@ -29,8 +29,8 @@ def test_trainer_api_returns_generation_job(monkeypatch) -> None:
                 "status": "running",
                 "current_step": "planner_initial",
                 "target_plan_version": 2,
-                "planner_provider": "openai",
-                "planner_model": "gpt-5.4-mini",
+                "planner_provider": "openrouter",
+                "planner_model": "deepseek/deepseek-v4-flash",
                 "workout_plan_id": None,
                 "step_history": [],
                 "review_feed": [],
@@ -55,8 +55,8 @@ def test_trainer_api_returns_generation_job(monkeypatch) -> None:
 
 def test_workout_session_chat_uses_configured_chat_model(monkeypatch) -> None:
     monkeypatch.setenv("TRAINER_API_TOKEN", "secret")
-    monkeypatch.setenv("OPENAI_API_KEY", "openai-secret")
-    monkeypatch.setenv("TRAINER_CHAT_OPENAI_MODEL", "gpt-cheap-chat")
+    monkeypatch.setenv("OPENROUTER_API_KEY", "openrouter-secret")
+    monkeypatch.setenv("TRAINER_CHAT_MODEL", "cheap/chat-model")
     monkeypatch.setattr(
         "personal_trainer.api.read_profile",
         lambda workspace: UserProfile(name="Jordan"),
@@ -67,11 +67,11 @@ def test_workout_session_chat_uses_configured_chat_model(monkeypatch) -> None:
     )
     captured = {}
 
-    class FakeOpenAIChatClient:
+    class FakeLlmChatClient:
         def __init__(self, config):
             captured["model"] = config.model
 
-    monkeypatch.setattr("personal_trainer.api.OpenAIChatClient", FakeOpenAIChatClient)
+    monkeypatch.setattr("personal_trainer.api.LlmChatClient", FakeLlmChatClient)
     monkeypatch.setattr(
         "personal_trainer.api.answer_workout_session_chat",
         lambda request, profile, rendered_plan, client: WorkoutSessionChatResponse(
@@ -90,12 +90,12 @@ def test_workout_session_chat_uses_configured_chat_model(monkeypatch) -> None:
     assert response.json() == {
         "arnoldResponse": "Arnold answer.",
     }
-    assert captured["model"] == "gpt-cheap-chat"
+    assert captured["model"] == "cheap/chat-model"
 
 
 def test_workout_session_chat_returns_404_without_current_plan(monkeypatch) -> None:
     monkeypatch.setenv("TRAINER_API_TOKEN", "secret")
-    monkeypatch.setenv("OPENAI_API_KEY", "openai-secret")
+    monkeypatch.setenv("OPENROUTER_API_KEY", "openrouter-secret")
     monkeypatch.setattr(
         "personal_trainer.api.read_profile",
         lambda workspace: UserProfile(name="Jordan"),

@@ -5,7 +5,7 @@ import json
 import pytest
 
 from personal_trainer.models import UserProfile
-from personal_trainer.openai_client import OpenAIError
+from personal_trainer.llm_client import LlmError
 from personal_trainer.workout_session_chat import (
     CHAT_RESPONSE_SCHEMA,
     WorkoutSessionChatError,
@@ -124,8 +124,8 @@ def test_answer_workout_session_chat_rejects_blank_question() -> None:
         )
 
 
-def test_answer_workout_session_chat_wraps_openai_errors() -> None:
-    with pytest.raises(WorkoutSessionChatError, match="OpenAI request failed"):
+def test_answer_workout_session_chat_wraps_llm_errors() -> None:
+    with pytest.raises(WorkoutSessionChatError, match="LLM request failed"):
         answer_workout_session_chat(
             WorkoutSessionChatRequest(
                 workspace="wk_jordan",
@@ -134,5 +134,5 @@ def test_answer_workout_session_chat_wraps_openai_errors() -> None:
             ),
             profile=_profile(),
             rendered_plan=_rendered_plan(),
-            client=StaticChatClient(error=OpenAIError("OpenAI request failed")),
+            client=StaticChatClient(error=LlmError("LLM request failed")),
         )

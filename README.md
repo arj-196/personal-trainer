@@ -25,7 +25,7 @@ export APP_USERNAME=coach
 export APP_PASSWORD=secret
 export APP_SESSION_SECRET=change-me
 export TRAINER_API_TOKEN=dev-secret
-export OPENAI_API_KEY=...
+export OPENROUTER_API_KEY=...
 
 docker compose up --build
 ```
@@ -45,7 +45,7 @@ docker compose down -v
 ## Production
 
 - Web app: Vercel
-- Trainer API: VPS-hosted Docker service deployed by GitHub Actions
+- Trainer API: Docker service on the Mac mini behind Caddy, deployed by GitHub Actions on every push to `main`
 - Database: Neon Postgres
 
 Deployment details live in the app READMEs.

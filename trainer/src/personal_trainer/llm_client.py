@@ -9,22 +9,26 @@ from urllib.request import Request, urlopen
 
 LOGGER = logging.getLogger(__name__)
 
+DEFAULT_BASE_URL = "https://openrouter.ai/api/v1"
 
-class OpenAIError(RuntimeError):
-    """Raised when the OpenAI API cannot satisfy a planner request."""
+
+class LlmError(RuntimeError):
+    """Raised when the LLM provider cannot satisfy a planner request."""
 
 
 @dataclass(frozen=True, slots=True)
-class OpenAIClientConfig:
+class LlmClientConfig:
     api_key: str
     model: str
-    base_url: str = "https://api.openai.com/v1"
+    base_url: str = DEFAULT_BASE_URL
     timeout_seconds: int = 180
     temperature: float = 0.2
 
 
-class OpenAIChatClient:
-    def __init__(self, config: OpenAIClientConfig) -> None:
+class LlmChatClient:
+    """Chat client for any OpenAI-compatible endpoint (OpenRouter by default)."""
+
+    def __init__(self, config: LlmClientConfig) -> None:
         self.config = config
 
     def chat_json(
@@ -37,7 +41,7 @@ class OpenAIChatClient:
     ) -> dict[str, Any]:
         endpoint = f"{self.config.base_url.rstrip('/')}/chat/completions"
         LOGGER.info(
-            "Sending OpenAI request to %s using model '%s'",
+            "Sending LLM request to %s using model '%s'",
             endpoint,
             self.config.model,
         )
@@ -71,27 +75,29 @@ class OpenAIChatClient:
             with urlopen(request, timeout=self.config.timeout_seconds) as response:
                 response_payload = json.loads(response.read().decode("utf-8"))
         except HTTPError as error:
-            raise OpenAIError(self._format_http_error(error)) from error
+            raise LlmError(self._format_http_error(error)) from error
         except URLError as error:
-            raise OpenAIError(
-                f"could not reach OpenAI at {self.config.base_url}: {error.reason}"
+            raise LlmError(
+                f"could not reach the LLM provider at {self.config.base_url}: {error.reason}"
             ) from error
         except TimeoutError as error:
-            raise OpenAIError(
-                f"timed out waiting for OpenAI after {self.config.timeout_seconds} seconds"
+            raise LlmError(
+                f"timed out waiting for the LLM provider after {self.config.timeout_seconds} seconds"
             ) from error
+
+        self._log_usage(response_payload)
 
         choices = response_payload.get("choices")
         if not isinstance(choices, list) or not choices:
-            raise OpenAIError("OpenAI response did not include any completion choices")
+            raise LlmError("LLM response did not include any completion choices")
 
         message = choices[0].get("message")
         if not isinstance(message, dict):
-            raise OpenAIError("OpenAI response did not include a message payload")
+            raise LlmError("LLM response did not include a message payload")
 
         refusal = message.get("refusal")
         if isinstance(refusal, str) and refusal.strip():
-            raise OpenAIError(f"OpenAI refused the request: {refusal.strip()}")
+            raise LlmError(f"LLM refused the request: {refusal.strip()}")
 
         content = message.get("content")
         if isinstance(content, str) and content.strip():
@@ -106,20 +112,32 @@ class OpenAIChatClient:
                 if isinstance(text, str) and text.strip():
                     return self._parse_json_content(text)
 
-        raise OpenAIError("OpenAI response did not include structured JSON content")
+        raise LlmError("LLM response did not include structured JSON content")
+
+    def _log_usage(self, response_payload: dict[str, Any]) -> None:
+        usage = response_payload.get("usage")
+        if not isinstance(usage, dict):
+            return
+        LOGGER.info(
+            "LLM usage for model '%s': prompt_tokens=%s completion_tokens=%s total_tokens=%s",
+            self.config.model,
+            usage.get("prompt_tokens"),
+            usage.get("completion_tokens"),
+            usage.get("total_tokens"),
+        )
 
     def _parse_json_content(self, content: str) -> dict[str, Any]:
         try:
             parsed = json.loads(content)
         except json.JSONDecodeError as error:
-            raise OpenAIError(
-                "OpenAI returned invalid JSON for the structured plan"
+            raise LlmError(
+                "LLM returned invalid JSON for the structured plan"
             ) from error
         if not isinstance(parsed, dict):
-            raise OpenAIError(
-                "OpenAI returned a structured response with the wrong top-level type"
+            raise LlmError(
+                "LLM returned a structured response with the wrong top-level type"
             )
-        LOGGER.info("OpenAI response received from model '%s'", self.config.model)
+        LOGGER.info("LLM response received from model '%s'", self.config.model)
         return parsed
 
     def _format_http_error(self, error: HTTPError) -> str:
@@ -142,4 +160,4 @@ class OpenAIChatClient:
         detail = f"HTTP {error.code}"
         if body:
             detail = f"{detail}: {body}"
-        return f"OpenAI request failed with {detail}"
+        return f"LLM request failed with {detail}"
