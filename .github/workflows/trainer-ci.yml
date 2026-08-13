@@ -1,0 +1,38 @@
+# Advisory CI only: deploys are pull-based via caretaker on the Mac mini and
+# do not gate on these tests (see docs/adr/0003).
+name: Trainer CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Test Trainer
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: trainer
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install Poetry
+        run: pipx install poetry==2.2.1
+
+      - name: Install dependencies
+        run: poetry install --with dev --no-interaction --no-ansi
+
+      - name: Run trainer tests
+        run: poetry run pytest

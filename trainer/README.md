@@ -14,7 +14,7 @@ From the repository root, run the full local stack:
 
 ```bash
 export TRAINER_API_TOKEN=dev-secret
-export OPENAI_API_KEY=...
+export OPENROUTER_API_KEY=...
 docker compose up --build
 ```
 
@@ -47,10 +47,10 @@ export PRODUCTION_DATABASE_URL=<neon-connection-string>
 Optional model configuration:
 
 ```bash
-export OPENAI_API_KEY=...
-export OPENAI_BASE_URL=https://api.openai.com/v1
-export TRAINER_OPENAI_MODEL=gpt-5.4-mini
-export TRAINER_CHAT_OPENAI_MODEL=gpt-5.4-mini
+export OPENROUTER_API_KEY=...
+export LLM_BASE_URL=https://openrouter.ai/api/v1
+export TRAINER_MODEL=deepseek/deepseek-v4-flash
+export TRAINER_CHAT_MODEL=deepseek/deepseek-v4-flash
 export TRAINER_OLLAMA_BASE_URL=http://localhost:11434
 export TRAINER_PLAN_REVIEW_MAX_ITERATIONS=5
 ```
@@ -118,7 +118,7 @@ Useful options:
 
 ```bash
 --ollama-model <model>
---openai-model <model>
+--openrouter-model <model>
 --session-id <id>
 --max-review-iterations <count>
 ```
@@ -137,7 +137,7 @@ Run the trainer service for web-triggered Workout Plan generation:
 
 ```bash
 export TRAINER_API_TOKEN=dev-secret
-export OPENAI_API_KEY=...
+export OPENROUTER_API_KEY=...
 poetry run personal-trainer serve --host 127.0.0.1 --port 8010
 ```
 
@@ -167,56 +167,33 @@ history.
 
 ## Production Deployment
 
-The production Trainer API runs on the VPS as a Docker Compose service. Pushes
-to the repository `main` branch trigger `.github/workflows/deploy-trainer.yml`,
-which runs the Trainer test suite, builds the `production` Docker image, pushes
-it privately to GHCR, SSHes to the VPS, runs `personal-trainer db setup --prod`,
-restarts the service, and waits up to 60 seconds for `/health` to pass before
-marking the deployment failed.
+The production Trainer API runs on the Mac mini, deployed by
+[caretaker](https://github.com/arj-196/caretaker) (see `docs/adr/0003`). This
+repo carries **no deploy configuration**: the compose service (`trainer-api`,
+built from this repo's `trainer/Dockerfile`, target `production`, with the
+`/health` healthcheck) is defined in caretaker's central compose, and the
+migration step is a hook in caretaker's config.
 
-The VPS runtime directory is:
+Every push to `main` deploys: caretaker polls the mini's checkout, rebuilds
+the image from source, runs `personal-trainer db setup --prod` on the new
+image while the old container still serves, then swaps containers. The test
+suite (`.github/workflows/trainer-ci.yml`) is advisory and does not gate
+deploys. Deploy history is at `deploys.arj.lol`; failures ping Telegram and
+block the failing SHA until the next push.
 
-```bash
-/home/github/prod/personal-trainer
-```
-
-Create `/home/github/prod/personal-trainer/.env` on the VPS with runtime
-secrets:
+Runtime secrets live on the mini in caretaker's
+`central/env/.personal-trainer.env`:
 
 ```bash
 DATABASE_URL=<neon-connection-string>
 PRODUCTION_DATABASE_URL=<neon-connection-string>
 TRAINER_API_TOKEN=<shared-secret>
-OPENAI_API_KEY=<openai-key>
-OPENAI_BASE_URL=https://api.openai.com/v1
-TRAINER_OPENAI_MODEL=gpt-5.4-mini
-TRAINER_CHAT_OPENAI_MODEL=gpt-5.4-mini
+OPENROUTER_API_KEY=<openrouter-key>
+LLM_BASE_URL=https://openrouter.ai/api/v1
+TRAINER_MODEL=deepseek/deepseek-v4-flash
+TRAINER_CHAT_MODEL=deepseek/deepseek-v4-flash
 TRAINER_PLAN_REVIEW_MAX_ITERATIONS=5
 ```
-
-The production Compose file is `deploy/trainer/docker-compose.yml`. It binds
-the API to `127.0.0.1:8010`, so Caddy should proxy the public HTTPS Trainer API
-domain to that local upstream. The service health endpoint is `/health`.
-
-Required GitHub Secrets:
-
-```bash
-VPS_HOST=<vps-hostname-or-ip>
-VPS_USER=<dedicated-deploy-user>
-VPS_PORT=<ssh-port>
-VPS_SSH_KEY=<private-key-for-deploy-user>
-GHCR_USERNAME=<github-user-or-bot>
-GHCR_READ_TOKEN=<github-token-with-read-packages>
-```
-
-The deploy workflow uploads `deploy/trainer/docker-compose.yml`, writes
-non-secret image metadata to `deploy.env`, pulls the new image, runs:
-
-```bash
-docker compose --env-file .env --env-file deploy.env run --rm trainer-api personal-trainer db setup --prod
-```
-
-and restarts the `trainer-api` service.
 
 ## Sync Commands
 
